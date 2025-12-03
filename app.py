@@ -152,19 +152,29 @@ st.download_button("CSV herunterladen", data=csv_qm, file_name=f"qm_va_{dt.date.
 # ----------------------------
 st.markdown("## 📄 Einzel-PDF Export")
 
-export_va = st.selectbox("VA für PDF auswählen", options=df_qm_all["VA_Nr"].unique() if not df_qm_all.empty else [])
+export_va = st.selectbox(
+    "VA für PDF auswählen",
+    options=df_qm_all["VA_Nr"].unique() if not df_qm_all.empty else []
+)
 
+# PDF nur erzeugen, wenn Button gedrückt
 if st.button("PDF Export starten"):
     df_sel = df_qm_all[df_qm_all["VA_Nr"] == export_va]
     if df_sel.empty:
         st.warning("Keine Daten für die ausgewählte VA gefunden.")
     else:
         pdf_bytes = export_pdf_row_to_bytes(df_sel.iloc[0])
-        st.download_button(
-            label="Download PDF",
-            data=pdf_bytes,
-            file_name=f"{export_va}.pdf",
-            mime="application/pdf"
-        )
+        # Ergebnis im Session-State speichern
+        st.session_state["pdf_ready"] = pdf_bytes
+        st.success("PDF wurde erstellt – jetzt herunterladen möglich.")
+
+# Download-Button bleibt sichtbar, solange PDF im Session-State liegt
+if "pdf_ready" in st.session_state:
+    st.download_button(
+        label="Download PDF",
+        data=st.session_state["pdf_ready"],
+        file_name=f"{export_va}.pdf",
+        mime="application/pdf"
+    )
 
 
