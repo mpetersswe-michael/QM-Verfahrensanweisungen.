@@ -2,14 +2,16 @@
 # Imports
 # ----------------------------
 import streamlit as st
+import pandas as pd
+import datetime as dt
 
 # ----------------------------
-# App-Konfiguration
+# Grundkonfiguration
 # ----------------------------
 st.set_page_config(page_title="QM-Verfahrensanweisungen", layout="wide")
 
 # ----------------------------
-# CSS-Styling für Buttons & Loginbox
+# Styles für Buttons & Login
 # ----------------------------
 st.markdown("""
 <style>
@@ -25,7 +27,7 @@ st.markdown("""
     background-color: #45a049;
     color: white;
 }
-.logout-button > button {
+.delete-button > button {
     background-color: #e74c3c;
     color: white;
     border-radius: 8px;
@@ -33,8 +35,20 @@ st.markdown("""
     font-weight: bold;
     border: none;
 }
-.logout-button > button:hover {
+.delete-button > button:hover {
     background-color: #c0392b;
+    color: white;
+}
+.export-button > button {
+    background-color: #3498db;
+    color: white;
+    border-radius: 8px;
+    padding: 0.5em 1em;
+    font-weight: bold;
+    border: none;
+}
+.export-button > button:hover {
+    background-color: #2980b9;
     color: white;
 }
 .login-box {
@@ -56,6 +70,9 @@ st.markdown("""
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
+# Fallback für rerun (neuere Versionen nutzen st.rerun)
+RERUN = getattr(st, "rerun", getattr(st, "experimental_rerun", None))
+
 # ----------------------------
 # Sidebar: Login / Logout
 # ----------------------------
@@ -66,25 +83,28 @@ with st.sidebar:
         st.markdown('<div class="login-box">Bitte Passwort eingeben</div>', unsafe_allow_html=True)
         password = st.text_input("Login Passwort", type="password")
         login_button = st.button("Login")
-        if login_button and password == "qm2024":
-            st.session_state.logged_in = True
-            st.experimental_rerun()
-        elif login_button:
-            st.error("Falsches Passwort.")
+        if login_button:
+            if password == "qm2024":  # Passwort hier definieren
+                st.session_state.logged_in = True
+                if RERUN:
+                    RERUN()
+            else:
+                st.error("Falsches Passwort.")
     else:
         st.success("✅ Eingeloggt")
         st.markdown('<div class="logout-button">', unsafe_allow_html=True)
-        if st.button("Logout"):
-            st.session_state.logged_in = False
-            st.experimental_rerun()
+        logout_button = st.button("Logout")
         st.markdown('</div>', unsafe_allow_html=True)
+        if logout_button:
+            st.session_state.logged_in = False
+            if RERUN:
+                RERUN()
 
 # ----------------------------
 # Hauptbereich: Nur nach Login
 # ----------------------------
-if st.session_state.get("logged_in", False):
+if st.session_state.logged_in:
 
-    # Titelblock
     st.markdown("<h1 style='text-align: center;'>📋 QM-Verfahrensanweisungen</h1>", unsafe_allow_html=True)
     st.divider()
 
@@ -107,28 +127,6 @@ if st.session_state.get("logged_in", False):
     # Speichern-Button
     if st.button("Speichern"):
         if name and quittiert:
-            st.success(f"Quittierung gespeichert für {name} am {datum}.")
-        else:
-            st.warning("Bitte Name eingeben und Checkbox aktivieren.")
-
-    # Daten löschen
-    if st.button("Daten löschen"):
-        name = ""
-        quittiert = False
-        st.info("Eingaben wurden zurückgesetzt.")
-
-    # Export als CSV
-    if st.button("CSV Export"):
-        df_export = pd.DataFrame({
-            "Name": [name],
-            "Datum": [datum],
-            "Quittiert": [quittiert]
-        })
-        csv = df_export.to_csv(index=False).encode("utf-8")
-        st.download_button("Download CSV", data=csv, file_name="quittierung.csv", mime="text/csv")
-
-else:
-    st.markdown("<h2 style='text-align: center;'>🔐 Bitte logge dich ein, um fortzufahren.</h2>", unsafe_allow_html=True)
 
 
 
