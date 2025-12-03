@@ -7,15 +7,17 @@ import datetime as dt
 from fpdf import FPDF
 
 # ----------------------------
-# Grundkonfiguration
+# Konfiguration
 # ----------------------------
 st.set_page_config(page_title="QM-Verfahrensanweisungen", layout="wide")
-
 DATA_FILE_QM = "qm_verfahrensanweisungen.csv"
-QM_COLUMNS = ["VA_Nr", "Titel", "Kapitel", "Unterkapitel", "Revisionsstand"]
+QM_COLUMNS = [
+    "VA_Nr", "Titel", "Kapitel", "Unterkapitel", "Revisionsstand",
+    "Ziel", "Geltungsbereich", "Vorgehensweise", "Kommentar", "Mitgeltende Unterlagen"
+]
 
 # ----------------------------
-# Styles für Buttons & Login
+# Styles
 # ----------------------------
 st.markdown("""
 <style>
@@ -29,7 +31,6 @@ st.markdown("""
 }
 .stButton>button:hover {
     background-color: #45a049;
-    color: white;
 }
 .logout-button > button {
     background-color: #e74c3c;
@@ -37,11 +38,9 @@ st.markdown("""
     border-radius: 8px;
     padding: 0.5em 1em;
     font-weight: bold;
-    border: none;
 }
 .logout-button > button:hover {
     background-color: #c0392b;
-    color: white;
 }
 .login-box {
     background-color: #fff8cc;
@@ -76,10 +75,11 @@ def export_pdf(df_row):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
-    pdf.cell(200, 10, txt="QM-Verfahrensanweisung", ln=True, align="C")
-    pdf.ln(10)
+    pdf.cell(0, 10, "QM-Verfahrensanweisung", ln=True, align="C")
+    pdf.ln(5)
     for col in df_row.index:
-        pdf.cell(200, 10, txt=f"{col}: {df_row[col]}", ln=True)
+        val = str(df_row[col])
+        pdf.multi_cell(0, 8, f"{col}: {val}")
     return pdf.output(dest="S").encode("latin-1")
 
 # ----------------------------
@@ -92,9 +92,9 @@ if not st.session_state["auth"]:
     st.markdown('<div class="login-box">Login QM-Verfahrensanweisungen</div>', unsafe_allow_html=True)
     password = st.text_input("Login Passwort", type="password", key="login_pw")
     if st.button("Login", key="login_btn"):
-        if password == "QM2024":   # ← dein Passwort
+        if password == "QM2024":
             st.session_state["auth"] = True
-            st.success("Willkommen – du bist eingeloggt. Bitte bei den drei Punkten oben rechts 'Rerun' starten.")
+            st.success("Willkommen – du bist eingeloggt. Bitte oben rechts 'Rerun' starten.")
         else:
             st.error("Falsches Passwort.")
     st.stop()
@@ -107,35 +107,38 @@ with st.sidebar:
     st.markdown("---")
 
 # ----------------------------
-# Eingabe einer Verfahrensanweisung
+# Eingabeformular
 # ----------------------------
 st.markdown("## 📘 Neue Verfahrensanweisung erfassen")
 
-# VA-Nummer und Titel
-va_name = st.text_input("Verfahrensanweisung Nr.", placeholder="VA 001")
-va_title = st.text_input("Titel der Verfahrensanweisung", placeholder="Hygieneplan")
-
-# Kapitel-Auswahl (1–10)
+va_nr = st.text_input("VA Nummer", placeholder="z. B. VA003")
+va_title = st.text_input("Titel", placeholder="Kommunikation im Pflegedienst")
 kapitel_num = st.selectbox("Kapitel Nr.", list(range(1, 11)), index=5)
 kapitel = f"Kapitel {kapitel_num}"
-
-# Unterkapitel-Auswahl (z. B. 6.1 bis 6.5)
 unterkapitel = st.selectbox("Unterkapitel Nr.", [f"{kapitel_num}.{i}" for i in range(1, 6)], index=0)
-
-# Revisionsstand
 revision_date = st.date_input("Revisionsstand", value=dt.date.today())
 
-# Speichern
+ziel = st.text_area("Ziel", height=100)
+geltung = st.text_area("Geltungsbereich", height=80)
+vorgehen = st.text_area("Vorgehensweise", height=150)
+kommentar = st.text_area("Kommentar", height=80)
+unterlagen = st.text_area("Mitgeltende Unterlagen", height=80)
+
 if st.button("Verfahrensanweisung speichern"):
-    if not va_name.strip() or not va_title.strip():
-        st.warning("Bitte VA-Nummer und Titel eingeben.")
+    if not va_nr.strip() or not va_title.strip():
+        st.warning("Bitte VA Nummer und Titel eingeben.")
     else:
         new_va = pd.DataFrame([{
-            "VA_Nr": va_name.strip(),
+            "VA_Nr": va_nr.strip(),
             "Titel": va_title.strip(),
             "Kapitel": kapitel,
             "Unterkapitel": unterkapitel,
-            "Revisionsstand": revision_date.strftime("%Y-%m-%d")
+            "Revisionsstand": revision_date.strftime("%Y-%m-%d"),
+            "Ziel": ziel.strip(),
+            "Geltungsbereich": geltung.strip(),
+            "Vorgehensweise": vorgehen.strip(),
+            "Kommentar": kommentar.strip(),
+            "Mitgeltende Unterlagen": unterlagen.strip()
         }])
         try:
             existing_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
@@ -143,47 +146,38 @@ if st.button("Verfahrensanweisung speichern"):
             existing_va = pd.DataFrame(columns=QM_COLUMNS)
         updated_va = pd.concat([existing_va, new_va], ignore_index=True)
         updated_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-        st.success(f"Verfahrensanweisung {va_name} gespeichert.")
+        st.success(f"Verfahrensanweisung {va_nr} gespeichert.")
 
 # ----------------------------
-# Daten anzeigen und exportieren
+# Anzeige & Export
 # ----------------------------
-st.markdown("## Daten anzeigen und exportieren")
+st.markdown("## 📂 Verfahrensanweisungen anzeigen und exportieren")
 
 df_qm_all = load_data(DATA_FILE_QM, QM_COLUMNS)
 
-filter_va = st.selectbox(
-    "Filter nach Verfahrensanweisung",
-    options=[""] + sorted(df_qm_all["VA_Nr"].dropna().str.strip().unique()),
-    index=0,
-    key="filter_va"
-)
+filter_va = st.selectbox("VA auswählen", options=[""] + sorted(df_qm_all["VA_Nr"].dropna().unique()), index=0)
 
 df_filtered = df_qm_all[df_qm_all["VA_Nr"] == filter_va] if filter_va else df_qm_all
-st.dataframe(df_filtered, use_container_width=True, height=300)
+st.dataframe(df_filtered, use_container_width=True)
 
 csv_qm = to_csv_semicolon(df_filtered)
-st.download_button(
-    "CSV herunterladen",
-    data=csv_qm,
-    file_name=f"qm_verfahrensanweisungen_{dt.date.today()}.csv",
-    mime="text/csv"
-)
+st.download_button("CSV herunterladen", data=csv_qm, file_name=f"qm_va_{dt.date.today()}.csv", mime="text/csv")
 
 # ----------------------------
-# PDF Export einer ausgewählten VA
+# PDF Export
 # ----------------------------
-st.markdown("## 📤 Export als PDF")
+st.markdown("## 📤 Einzel-PDF Export")
 
-export_va = st.selectbox("Verfahrensanweisung auswählen", options=df_qm_all["VA_Nr"].unique() if not df_qm_all.empty else [])
+export_va = st.selectbox("VA für PDF auswählen", options=df_qm_all["VA_Nr"].unique() if not df_qm_all.empty else [])
 
 if st.button("PDF Export starten"):
-    if export_va:
-        df_selected = df_qm_all[df_qm_all["VA_Nr"] == export_va].iloc[0]
-        pdf_output = export_pdf(df_selected)
-        st.download_button("Download PDF", data=pdf_output, file_name=f"{export_va}.pdf", mime="application/pdf")
+    df_sel = df_qm_all[df_qm_all["VA_Nr"] == export_va]
+    if df_sel.empty:
+        st.warning("Keine Daten für die ausgewählte VA gefunden.")
     else:
-        st.warning("Bitte eine Verfahrensanweisung auswählen.")
+        pdf_output = export_pdf(df_sel.iloc[0])
+        st.download_button("Download PDF", data=pdf_output, file_name=f"{export_va}.pdf", mime="application/pdf")
+
 
 
 
