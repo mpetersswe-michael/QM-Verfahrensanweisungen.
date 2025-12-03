@@ -162,58 +162,25 @@ export_va = st.selectbox(
     options=df_qm_all["VA_Nr"].unique() if not df_qm_all.empty else []
 )
 
-# PDF erzeugen bei Button-Klick
 if st.button("PDF Export starten"):
     df_sel = df_qm_all[df_qm_all["VA_Nr"] == export_va]
     if df_sel.empty:
         st.warning("Keine Daten für die ausgewählte VA gefunden.")
     else:
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", "B", 14)
-        pdf.cell(0, 10, "QM-Verfahrensanweisung", ln=True, align="C")
-        pdf.set_font("Arial", size=12)
-        pdf.ln(5)
+        pdf_bytes = export_pdf_row_to_bytes(df_sel.iloc[0])
+        if isinstance(pdf_bytes, (bytes, bytearray)) and len(pdf_bytes) > 0:
+            st.session_state["pdf_ready"] = pdf_bytes
+            st.success("PDF wurde erstellt – jetzt herunterladen möglich.")
+        else:
+            st.error("PDF konnte nicht erstellt werden – ungültige Daten.")
 
-        # Kopfzeile
-        pdf.cell(0, 8, f"VA-Nr: {df_sel.iloc[0]['VA_Nr']}", ln=True)
-        pdf.cell(0, 8, f"Titel: {df_sel.iloc[0]['Titel']}", ln=True)
-        pdf.cell(0, 8, f"Kapitel: {df_sel.iloc[0]['Kapitel']}   Unterkapitel: {df_sel.iloc[0]['Unterkapitel']}", ln=True)
-        pdf.cell(0, 8, f"Revisionsstand: {df_sel.iloc[0]['Revisionsstand']}", ln=True)
-        pdf.ln(5)
-
-        # Blöcke
-        def add_block(label, content):
-            pdf.set_font("Arial", "B", 12)
-            pdf.cell(0, 8, f"{label}:", ln=True)
-            pdf.set_font("Arial", size=12)
-            pdf.multi_cell(0, 8, str(content))
-            pdf.ln(2)
-
-        add_block("Ziel", df_sel.iloc[0]["Ziel"])
-        add_block("Geltungsbereich", df_sel.iloc[0]["Geltungsbereich"])
-        add_block("Vorgehensweise", df_sel.iloc[0]["Vorgehensweise"])
-        add_block("Kommentar", df_sel.iloc[0]["Kommentar"])
-        add_block("Mitgeltende Unterlagen", df_sel.iloc[0]["Mitgeltende Unterlagen"])
-        add_block("Erstellt von", df_sel.iloc[0]["Erstellt von"])
-        add_block("Zeitstempel", df_sel.iloc[0]["Zeitstempel"])
-
-        # Ausgabe als Bytes
-        pdf_str = pdf.output(dest="S")
-        pdf_bytes = pdf_str.encode("latin-1") if isinstance(pdf_str, str) else pdf_str
-
-        # Speichern im Session-State
-        st.session_state["pdf_ready"] = pdf_bytes
-        st.success("PDF wurde erstellt – jetzt herunterladen möglich.")
-
-# Download-Button bleibt sichtbar
+# Download-Button nur anzeigen, wenn PDF vorhanden und gültig
 if "pdf_ready" in st.session_state:
-    st.download_button(
-        label="Download PDF",
-        data=st.session_state["pdf_ready"],
-        file_name=f"{export_va}.pdf",
-        mime="application/pdf"
-    )
-
-
-
+    pdf_data = st.session_state["pdf_ready"]
+    if isinstance(pdf_data, (bytes, bytearray)) and len(pdf_data) > 0:
+        st.download_button(
+            label="Download PDF",
+            data=pdf_data,
+            file_name=f"{export_va}.pdf",
+            mime="application/pdf"
+        )
