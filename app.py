@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import datetime as dt
-import tempfile, os
 from fpdf import FPDF
 
 # ----------------------------
@@ -34,39 +33,6 @@ def to_csv_semicolon(df):
 def export_pdf_row_to_bytes(df_row):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", "B", 14)
-    pdf.cell(0, 10, "QM-Verfahrensanweisung", ln=True, align="C")
-    pdf.set_font("Arial", size=12)
-    pdf.ln(5)
-
-    # Kopfzeile
-    pdf.cell(0, 8, f"VA-Nr: {df_row['VA_Nr']}", ln=True)
-    pdf.cell(0, 8, f"Titel: {df_row['Titel']}", ln=True)
-    pdf.cell(0, 8, f"Kapitel: {df_row['Kapitel']}   Unterkapitel: {df_row['Unterkapitel']}", ln=True)
-    pdf.cell(0, 8, f"Revisionsstand: {df_row['Revisionsstand']}", ln=True)
-    pdf.ln(5)
-
-    # Tabelle
-    def add_block(label, content):
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, f"{label}:", ln=True)
-        pdf.set_font("Arial", size=12)
-        pdf.multi_cell(0, 8, str(content))
-        pdf.ln(2)
-
-    add_block("Ziel", df_row["Ziel"])
-    add_block("Geltungsbereich", df_row["Geltungsbereich"])
-    add_block("Vorgehensweise", df_row["Vorgehensweise"])
-    add_block("Kommentar", df_row["Kommentar"])
-    add_block("Mitgeltende Unterlagen", df_row["Mitgeltende Unterlagen"])
-    add_block("Erstellt von", df_row["Erstellt von"])
-    add_block("Zeitstempel", df_row["Zeitstempel"])
-
-    # Ausgabe
-def export_pdf_row_to_bytes(df_row):
-    from fpdf import FPDF
-    pdf = FPDF()
-    pdf.add_page()
     pdf.set_font("Arial", size=12)
     pdf.cell(0, 10, "QM-Verfahrensanweisung", ln=True, align="C")
     pdf.ln(5)
@@ -83,9 +49,9 @@ def export_pdf_row_to_bytes(df_row):
         elif isinstance(pdf_str, bytes):
             return pdf_str
         else:
-            return b""  # Fallback bei unerwartetem Typ
+            return b""
     except Exception:
-        return b""  # Fallback bei Fehle
+        return b""
 
 # ----------------------------
 # Login
@@ -104,16 +70,12 @@ if not st.session_state["auth"]:
             st.error("Falsches Passwort.")
     st.stop()
 
-# ----------------------------
-# Sidebar mit Logout
-# ----------------------------
 with st.sidebar:
     st.markdown("### Navigation")
     if st.button("Logout"):
         st.session_state["auth"] = False
         st.success("Logout erfolgreich – bitte neu einloggen.")
         st.stop()
-
 
 # ----------------------------
 # Eingabeformular
@@ -174,28 +136,29 @@ csv_qm = to_csv_semicolon(df_filtered)
 st.download_button("CSV herunterladen", data=csv_qm, file_name=f"qm_va_{dt.date.today()}.csv", mime="text/csv")
 
 # ----------------------------
-# Streamlit-Block für Export
+# PDF Export
 # ----------------------------
 st.markdown("## 📤 Einzel-PDF Export")
 
 export_va = st.selectbox(
     "VA für PDF auswählen",
-    options=df_qm_all["VA_Nr"].unique() if not df_qm_all.empty else []
+    options=df_qm_all["VA_Nr"].dropna().unique()
 )
 
 if st.button("PDF Export starten"):
     df_sel = df_qm_all[df_qm_all["VA_Nr"] == export_va]
-    if df_sel.empty:
-        st.warning("Keine Daten für die ausgewählte VA gefunden.")
+    if df_sel.empty or df_sel.iloc[0].isnull().any():
+        st.error("PDF konnte nicht erzeugt werden – ungültige oder unvollständige Daten.")
     else:
         pdf_bytes = export_pdf_row_to_bytes(df_sel.iloc[0])
-if isinstance(pdf_bytes, (bytes, bytearray)) and len(pdf_bytes) > 0:
-    st.download_button(
-        label="Download PDF",
-        data=pdf_bytes,
-        file_name=f"{export_va}.pdf",
-        mime="application/pdf"
-    )
-else:
-    st.error("PDF konnte nicht erzeugt werden – ungültige Daten.")
+        if isinstance(pdf_bytes, (bytes, bytearray)) and len(pdf_bytes) > 0:
+            st.download_button(
+                label="Download PDF",
+                data=pdf_bytes,
+                file_name=f"{export_va}.pdf",
+                mime="application/pdf"
+            )
+        else:
+            st.error("PDF konnte nicht erzeugt werden – interne Fehler.")
+
 
