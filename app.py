@@ -111,15 +111,24 @@ with st.sidebar:
 # ----------------------------
 st.markdown("## 📘 Neue Verfahrensanweisung erfassen")
 
+# VA-Nummer und Titel
 va_name = st.text_input("Verfahrensanweisung Nr.", placeholder="VA 001")
 va_title = st.text_input("Titel der Verfahrensanweisung", placeholder="Hygieneplan")
-kapitel = st.selectbox("Kapitel Nr.", ["Kapitel 1", "Kapitel 2", "Kapitel 3", "Kapitel 4", "Kapitel 5", "Kapitel 6"], index=5)
-unterkapitel = st.selectbox("Unterkapitel Nr.", ["6.1", "6.2", "6.3", "6.4"], index=0)
+
+# Kapitel-Auswahl (1–10)
+kapitel_num = st.selectbox("Kapitel Nr.", list(range(1, 11)), index=5)
+kapitel = f"Kapitel {kapitel_num}"
+
+# Unterkapitel-Auswahl (z. B. 6.1 bis 6.5)
+unterkapitel = st.selectbox("Unterkapitel Nr.", [f"{kapitel_num}.{i}" for i in range(1, 6)], index=0)
+
+# Revisionsstand
 revision_date = st.date_input("Revisionsstand", value=dt.date.today())
 
+# Speichern
 if st.button("Verfahrensanweisung speichern"):
     if not va_name.strip() or not va_title.strip():
-        st.warning("Bitte Name und Titel eingeben.")
+        st.warning("Bitte VA-Nummer und Titel eingeben.")
     else:
         new_va = pd.DataFrame([{
             "VA_Nr": va_name.strip(),
