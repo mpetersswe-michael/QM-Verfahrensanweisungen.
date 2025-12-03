@@ -145,12 +145,35 @@ export_va = st.selectbox(
     options=df_qm_all["VA_Nr"].dropna().unique()
 )
 
+def export_pdf_row_to_bytes(df_row):
+    from fpdf import FPDF
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    pdf.cell(0, 10, "QM-Verfahrensanweisung", ln=True, align="C")
+    pdf.ln(5)
+
+    # Sicherstellen, dass df_row eine Series ist
+    if isinstance(df_row, pd.DataFrame):
+        df_row = df_row.iloc[0]
+
+    for col in df_row.index:
+        val = str(df_row[col]) if pd.notna(df_row[col]) else ""
+        pdf.multi_cell(0, 8, f"{col}: {val}")
+        pdf.ln(1)
+
+    try:
+        pdf_str = pdf.output(dest="S")
+        return pdf_str.encode("latin-1") if isinstance(pdf_str, str) else b""
+    except Exception:
+        return b""
+
 if st.button("PDF Export starten"):
     df_sel = df_qm_all[df_qm_all["VA_Nr"] == export_va]
-    if df_sel.empty or df_sel.iloc[0].isnull().any():
-        st.error("PDF konnte nicht erzeugt werden – ungültige oder unvollständige Daten.")
+    if df_sel.empty:
+        st.error("Keine Daten für die ausgewählte VA gefunden.")
     else:
-        pdf_bytes = export_pdf_row_to_bytes(df_sel.iloc[0])
+        pdf_bytes = export_pdf_row_to_bytes(df_sel)
         if isinstance(pdf_bytes, (bytes, bytearray)) and len(pdf_bytes) > 0:
             st.download_button(
                 label="Download PDF",
@@ -160,5 +183,3 @@ if st.button("PDF Export starten"):
             )
         else:
             st.error("PDF konnte nicht erzeugt werden – interne Fehler.")
-
-
