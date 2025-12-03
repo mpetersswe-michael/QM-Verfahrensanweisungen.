@@ -77,10 +77,16 @@ def export_pdf(df_row):
     pdf.set_font("Arial", size=12)
     pdf.cell(0, 10, "QM-Verfahrensanweisung", ln=True, align="C")
     pdf.ln(5)
+
     for col in df_row.index:
         val = str(df_row[col])
         pdf.multi_cell(0, 8, f"{col}: {val}")
-    return pdf.output(dest="S").encode("latin-1")
+        pdf.ln(1)
+
+    out = pdf.output(dest="S")
+    if isinstance(out, str):
+        return out.encode("latin-1")
+    return out  # bereits bytes
 
 # ----------------------------
 # Login-Block
