@@ -1,6 +1,3 @@
-# ----------------------------
-# Imports
-# ----------------------------
 import streamlit as st
 import pandas as pd
 import datetime as dt
@@ -17,45 +14,6 @@ QM_COLUMNS = [
     "Ziel", "Geltungsbereich", "Vorgehensweise", "Kommentar", "Mitgeltende Unterlagen",
     "Erstellt von", "Zeitstempel"
 ]
-
-# ----------------------------
-# Styles
-# ----------------------------
-st.markdown("""
-<style>
-.stButton>button {
-    background-color: #4CAF50;
-    color: white;
-    border-radius: 8px;
-    padding: 0.5em 1em;
-    font-weight: bold;
-    border: none;
-}
-.stButton>button:hover {
-    background-color: #45a049;
-}
-.logout-button > button {
-    background-color: #e74c3c;
-    color: white;
-    border-radius: 8px;
-    padding: 0.5em 1em;
-    font-weight: bold;
-}
-.logout-button > button:hover {
-    background-color: #c0392b;
-}
-.login-box {
-    background-color: #fff8cc;
-    padding: 1.2em;
-    border-radius: 10px;
-    text-align: center;
-    margin-bottom: 2em;
-    font-size: 1.4em;
-    font-weight: bold;
-    color: #333333;
-}
-</style>
-""", unsafe_allow_html=True)
 
 # ----------------------------
 # Hilfsfunktionen
@@ -76,65 +34,65 @@ def to_csv_semicolon(df):
 def export_pdf_row_to_bytes(df_row):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", size=12)
-
+    pdf.set_font("Arial", "B", 14)
     pdf.cell(0, 10, "QM-Verfahrensanweisung", ln=True, align="C")
+    pdf.set_font("Arial", size=12)
     pdf.ln(5)
 
-    for col in df_row.index:
-        val = str(df_row[col])
-        pdf.multi_cell(0, 8, f"{col}: {val}")
-        pdf.ln(1)
+    # Kopfzeile
+    pdf.cell(0, 8, f"VA-Nr: {df_row['VA_Nr']}", ln=True)
+    pdf.cell(0, 8, f"Titel: {df_row['Titel']}", ln=True)
+    pdf.cell(0, 8, f"Kapitel: {df_row['Kapitel']}   Unterkapitel: {df_row['Unterkapitel']}", ln=True)
+    pdf.cell(0, 8, f"Revisionsstand: {df_row['Revisionsstand']}", ln=True)
+    pdf.ln(5)
 
-    # Primärer Weg: Ausgabe als String oder Bytes
+    # Tabelle
+    def add_block(label, content):
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 8, f"{label}:", ln=True)
+        pdf.set_font("Arial", size=12)
+        pdf.multi_cell(0, 8, str(content))
+        pdf.ln(2)
+
+    add_block("Ziel", df_row["Ziel"])
+    add_block("Geltungsbereich", df_row["Geltungsbereich"])
+    add_block("Vorgehensweise", df_row["Vorgehensweise"])
+    add_block("Kommentar", df_row["Kommentar"])
+    add_block("Mitgeltende Unterlagen", df_row["Mitgeltende Unterlagen"])
+    add_block("Erstellt von", df_row["Erstellt von"])
+    add_block("Zeitstempel", df_row["Zeitstempel"])
+
+    # Ausgabe
     out = pdf.output(dest="S")
-    if isinstance(out, bytes):
-        return out
-    elif isinstance(out, str):
-        return out.encode("latin-1")
-    else:
-        # Fallback: Datei schreiben und wieder einlesen
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            tmp_path = tmp.name
-        try:
-            pdf.output(tmp_path, dest="F")
-            with open(tmp_path, "rb") as f:
-                data = f.read()
-            return data
-        finally:
-            try:
-                os.remove(tmp_path)
-            except:
-                pass
+    return out.encode("latin-1") if isinstance(out, str) else out
 
 # ----------------------------
-# Login-Block
+# Login
 # ----------------------------
 if "auth" not in st.session_state:
     st.session_state["auth"] = False
 
 if not st.session_state["auth"]:
-    st.markdown('<div class="login-box">Login QM-Verfahrensanweisungen</div>', unsafe_allow_html=True)
-    password = st.text_input("Login Passwort", type="password", key="login_pw")
-    if st.button("Login", key="login_btn"):
-        if password == "QM2024":
+    st.markdown("## 🔐 Login QM-Verfahrensanweisungen")
+    pw = st.text_input("Passwort", type="password")
+    if st.button("Login"):
+        if pw == "QM2024":
             st.session_state["auth"] = True
-            st.success("Willkommen – du bist eingeloggt. Bitte oben rechts 'Rerun' starten.")
+            st.experimental_rerun()
         else:
             st.error("Falsches Passwort.")
     st.stop()
 
 with st.sidebar:
     st.markdown("### Navigation")
-    if st.button("Logout", key="logout_btn"):
+    if st.button("Logout"):
         st.session_state["auth"] = False
-        st.stop()
-    st.markdown("---")
+        st.experimental_rerun()
 
 # ----------------------------
 # Eingabeformular
 # ----------------------------
-st.markdown("## 📘 Neue Verfahrensanweisung erfassen")
+st.markdown("## 📝 Neue Verfahrensanweisung erfassen")
 
 va_nr = st.text_input("VA Nummer", placeholder="z. B. VA003")
 va_title = st.text_input("Titel", placeholder="Kommunikation im Pflegedienst")
@@ -152,7 +110,7 @@ erstellt_von = st.text_input("Erstellt von (Name + Funktion)", placeholder="z.�
 
 if st.button("Verfahrensanweisung speichern"):
     if not va_nr.strip() or not va_title.strip():
-        st.warning("Bitte VA Nummer und Titel eingeben.")
+        st.warning("VA Nummer und Titel sind Pflicht.")
     else:
         new_va = pd.DataFrame([{
             "VA_Nr": va_nr.strip(),
@@ -169,22 +127,20 @@ if st.button("Verfahrensanweisung speichern"):
             "Zeitstempel": dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }])
         try:
-            existing_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
+            df_old = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
         except:
-            existing_va = pd.DataFrame(columns=QM_COLUMNS)
-        updated_va = pd.concat([existing_va, new_va], ignore_index=True)
-        updated_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-        st.success(f"Verfahrensanweisung {va_nr} gespeichert.")
+            df_old = pd.DataFrame(columns=QM_COLUMNS)
+        df_new = pd.concat([df_old, new_va], ignore_index=True)
+        df_new.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
+        st.success(f"VA {va_nr} gespeichert.")
 
 # ----------------------------
-# Anzeige & Export
+# Anzeige & CSV Export
 # ----------------------------
 st.markdown("## 📂 Verfahrensanweisungen anzeigen und exportieren")
 
 df_qm_all = load_data(DATA_FILE_QM, QM_COLUMNS)
-
 filter_va = st.selectbox("VA auswählen", options=[""] + sorted(df_qm_all["VA_Nr"].dropna().unique()), index=0)
-
 df_filtered = df_qm_all[df_qm_all["VA_Nr"] == filter_va] if filter_va else df_qm_all
 st.dataframe(df_filtered, use_container_width=True)
 
@@ -194,7 +150,7 @@ st.download_button("CSV herunterladen", data=csv_qm, file_name=f"qm_va_{dt.date.
 # ----------------------------
 # PDF Export
 # ----------------------------
-st.markdown("## 📤 Einzel-PDF Export")
+st.markdown("## 📄 Einzel-PDF Export")
 
 export_va = st.selectbox("VA für PDF auswählen", options=df_qm_all["VA_Nr"].unique() if not df_qm_all.empty else [])
 
@@ -204,14 +160,11 @@ if st.button("PDF Export starten"):
         st.warning("Keine Daten für die ausgewählte VA gefunden.")
     else:
         pdf_bytes = export_pdf_row_to_bytes(df_sel.iloc[0])
-        if not isinstance(pdf_bytes, (bytes, bytearray)):
-            st.error(f"Interner Fehler: PDF-Daten sind kein Bytes-Objekt (Typ: {type(pdf_bytes)})")
-        else:
-            st.download_button(
-                label="Download PDF",
-                data=pdf_bytes,
-                file_name=f"{export_va}.pdf",
-                mime="application/pdf"
-            )
+        st.download_button(
+            label="Download PDF",
+            data=pdf_bytes,
+            file_name=f"{export_va}.pdf",
+            mime="application/pdf"
+        )
 
 
