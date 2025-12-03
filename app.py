@@ -167,6 +167,7 @@ csv_qm = to_csv_semicolon(df_filtered)
 st.download_button("CSV herunterladen", data=csv_qm, file_name=f"qm_va_{dt.date.today()}.csv", mime="text/csv")
 
 # ----------------------------
+# ----------------------------
 # PDF Export
 # ----------------------------
 st.markdown("## 📤 Einzel-PDF Export")
@@ -178,10 +179,27 @@ if st.button("PDF Export starten"):
     if df_sel.empty:
         st.warning("Keine Daten für die ausgewählte VA gefunden.")
     else:
-        pdf_str = pdf.output(dest="S")
-       pdf_bytes = pdf_str.encode("latin-1") if isinstance(pdf_str, str) else pdf_str
-       return pdf_bytes
+        from fpdf import FPDF
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        pdf.cell(0, 10, "QM-Verfahrensanweisung", ln=True, align="C")
+        pdf.ln(5)
 
+        for col in df_sel.columns:
+            val = str(df_sel.iloc[0][col])
+            pdf.multi_cell(0, 8, f"{col}: {val}")
+            pdf.ln(1)
+
+        pdf_str = pdf.output(dest="S")
+        pdf_bytes = pdf_str.encode("latin-1") if isinstance(pdf_str, str) else pdf_str
+
+        st.download_button(
+            label="Download PDF",
+            data=pdf_bytes,
+            file_name=f"{export_va}.pdf",
+            mime="application/pdf"
+        )
 
 
 
