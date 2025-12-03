@@ -53,27 +53,34 @@ with st.sidebar:
         st.stop()
 
 # ----------------------------
-# Eingabeformular (alle Felder sichtbar, Speicherung reduziert)
+# Eingabeformular (sichtbar, aber reduzierte Speicherung)
 # ----------------------------
 st.markdown("## 📝 Neue Verfahrensanweisung erfassen")
 
-va_nr = st.text_input("VA Nummer", placeholder="z. B. VA003")
-va_title = st.text_input("Titel", placeholder="Kommunikation im Pflegedienst")
+# Formatwahl für Unterkapitel
+formatwahl = st.radio("Format für Unterkapitel", ["7.1", "7-1"], horizontal=True)
+
+va_nr = st.text_input("VA Nummer", key="va_nr")
+va_title = st.text_input("Titel", key="va_title")
 kapitel_num = st.selectbox("Kapitel Nr.", list(range(1, 11)), index=5)
 kapitel = f"Kapitel {kapitel_num}"
 unterkapitel_num = st.selectbox("Unterkapitel Nr.", list(range(1, 6)), index=0)
-unterkapitel = f"{kapitel_num}.{unterkapitel_num}"   # 👉 immer String im Format 7.1
+unterkapitel = f"{kapitel_num}.{unterkapitel_num}" if formatwahl == "7.1" else f"{kapitel_num}-{unterkapitel_num}"
 revision_date = st.date_input("Revisionsstand", value=dt.date.today())
 
-# Diese Felder bleiben sichtbar, werden aber NICHT gespeichert
-ziel = st.text_area("Ziel", height=100)
-geltung = st.text_area("Geltungsbereich", height=80)
-vorgehen = st.text_area("Vorgehensweise", height=150)
-kommentar = st.text_area("Kommentar", height=80)
-unterlagen = st.text_area("Mitgeltende Unterlagen", height=80)
+ziel = st.text_area("Ziel", key="ziel", height=100)
+geltung = st.text_area("Geltungsbereich", key="geltung", height=80)
+vorgehen = st.text_area("Vorgehensweise", key="vorgehen", height=150)
+kommentar = st.text_area("Kommentar", key="kommentar", height=80)
+unterlagen = st.text_area("Mitgeltende Unterlagen", key="unterlagen", height=80)
+erstellt_von = st.text_input("Erstellt von (Name + Funktion)", key="erstellt_von", placeholder="z. B. Peters-Michael, Qualitätsbeauftragter")
 
-erstellt_von = st.text_input("Erstellt von (Name + Funktion)", placeholder="z. B. Peters-Michael, Qualitätsbeauftragter")
+# Reset-Button
+if st.button("🧹 Eingabe zurücksetzen"):
+    for key in ["va_nr", "va_title", "ziel", "geltung", "vorgehen", "kommentar", "unterlagen", "erstellt_von"]:
+        st.session_state[key] = ""
 
+# Speichern
 if st.button("Verfahrensanweisung speichern"):
     if not va_nr.strip() or not va_title.strip():
         st.warning("VA Nummer und Titel sind Pflicht.")
@@ -82,7 +89,7 @@ if st.button("Verfahrensanweisung speichern"):
             "VA_Nr": va_nr.strip(),
             "Titel": va_title.strip(),
             "Kapitel": kapitel,
-            "Unterkapitel": str(unterkapitel),   # 👉 String erzwingen
+            "Unterkapitel": str(unterkapitel),
             "Revisionsstand": revision_date.strftime("%Y-%m-%d"),
             "Erstellt von": erstellt_von.strip(),
             "Zeitstempel": dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -126,3 +133,4 @@ if st.button("Verfahrensanweisung löschen"):
 # export_va = st.selectbox("VA für PDF auswählen", options=df_qm_all["VA_Nr"].dropna().unique())
 # if st.button("PDF Export starten"):
 #     st.warning("PDF-Export vorübergehend deaktiviert – wird später wieder aktiviert.")
+
