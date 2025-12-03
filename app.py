@@ -78,11 +78,14 @@ def export_pdf_row_to_bytes(df_row):
 
     try:
         pdf_str = pdf.output(dest="S")
-        pdf_bytes = pdf_str.encode("latin-1") if isinstance(pdf_str, str) else b""
-    except Exception as e:
-        pdf_bytes = b""
-
-    return pdf_bytes
+        if isinstance(pdf_str, str):
+            return pdf_str.encode("latin-1")
+        elif isinstance(pdf_str, bytes):
+            return pdf_str
+        else:
+            return b""  # Fallback: leeres PDF
+    except Exception:
+        return b""  # Fallback bei Fehler
 
 
 # ----------------------------
