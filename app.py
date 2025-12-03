@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import datetime as dt
-from fpdf import FPDF
 
 # ----------------------------
 # Konfiguration
@@ -10,7 +9,6 @@ st.set_page_config(page_title="QM-Verfahrensanweisungen", layout="wide")
 DATA_FILE_QM = "qm_verfahrensanweisungen.csv"
 QM_COLUMNS = [
     "VA_Nr", "Titel", "Kapitel", "Unterkapitel", "Revisionsstand",
-    "Ziel", "Geltungsbereich", "Vorgehensweise", "Kommentar", "Mitgeltende Unterlagen",
     "Erstellt von", "Zeitstempel"
 ]
 
@@ -29,29 +27,6 @@ def load_data(file, columns):
 
 def to_csv_semicolon(df):
     return df.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
-
-def export_pdf_row_to_bytes(df_row):
-    from fpdf import FPDF
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-    pdf.cell(0, 10, "QM-Verfahrensanweisung", ln=True, align="C")
-    pdf.ln(5)
-
-    # Sicherstellen, dass df_row eine Series ist
-    if isinstance(df_row, pd.DataFrame):
-        df_row = df_row.iloc[0]
-
-    for col in df_row.index:
-        val = str(df_row[col]) if pd.notna(df_row[col]) else ""
-        pdf.multi_cell(0, 8, f"{col}: {val}")
-        pdf.ln(1)
-
-    try:
-        pdf_str = pdf.output(dest="S")
-        return pdf_str.encode("latin-1") if isinstance(pdf_str, str) else b""
-    except Exception:
-        return b""
 
 # ----------------------------
 # Login
@@ -78,7 +53,7 @@ with st.sidebar:
         st.stop()
 
 # ----------------------------
-# Eingabeformular
+# Eingabeformular (ohne F:J)
 # ----------------------------
 st.markdown("## 📝 Neue Verfahrensanweisung erfassen")
 
@@ -88,12 +63,6 @@ kapitel_num = st.selectbox("Kapitel Nr.", list(range(1, 11)), index=5)
 kapitel = f"Kapitel {kapitel_num}"
 unterkapitel = st.selectbox("Unterkapitel Nr.", [f"{kapitel_num}.{i}" for i in range(1, 6)], index=0)
 revision_date = st.date_input("Revisionsstand", value=dt.date.today())
-
-ziel = st.text_area("Ziel", height=100)
-geltung = st.text_area("Geltungsbereich", height=80)
-vorgehen = st.text_area("Vorgehensweise", height=150)
-kommentar = st.text_area("Kommentar", height=80)
-unterlagen = st.text_area("Mitgeltende Unterlagen", height=80)
 erstellt_von = st.text_input("Erstellt von (Name + Funktion)", placeholder="z. B. Peters-Michael, Qualitätsbeauftragter")
 
 if st.button("Verfahrensanweisung speichern"):
@@ -106,11 +75,6 @@ if st.button("Verfahrensanweisung speichern"):
             "Kapitel": kapitel,
             "Unterkapitel": unterkapitel,
             "Revisionsstand": revision_date.strftime("%Y-%m-%d"),
-            "Ziel": ziel.strip(),
-            "Geltungsbereich": geltung.strip(),
-            "Vorgehensweise": vorgehen.strip(),
-            "Kommentar": kommentar.strip(),
-            "Mitgeltende Unterlagen": unterlagen.strip(),
             "Erstellt von": erstellt_von.strip(),
             "Zeitstempel": dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }])
@@ -136,50 +100,20 @@ csv_qm = to_csv_semicolon(df_filtered)
 st.download_button("CSV herunterladen", data=csv_qm, file_name=f"qm_va_{dt.date.today()}.csv", mime="text/csv")
 
 # ----------------------------
-# PDF Export
+# Daten löschen
 # ----------------------------
-st.markdown("## 📤 Einzel-PDF Export")
+st.markdown("## 🗑️ Verfahrensanweisung löschen")
 
-export_va = st.selectbox(
-    "VA für PDF auswählen",
-    options=df_qm_all["VA_Nr"].dropna().unique()
-)
+delete_va = st.selectbox("VA zum Löschen auswählen", options=sorted(df_qm_all["VA_Nr"].dropna().unique()))
+if st.button("Verfahrensanweisung löschen"):
+    df_qm_all = df_qm_all[df_qm_all["VA_Nr"] != delete_va]
+    df_qm_all.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
+    st.success(f"VA {delete_va} wurde gelöscht.")
 
-def export_pdf_row_to_bytes(df_row):
-    from fpdf import FPDF
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-    pdf.cell(0, 10, "QM-Verfahrensanweisung", ln=True, align="C")
-    pdf.ln(5)
-
-    # Sicherstellen, dass df_row eine Series ist
-    if isinstance(df_row, pd.DataFrame):
-        df_row = df_row.iloc[0]
-
-    for col in df_row.index:
-        val = str(df_row[col]) if pd.notna(df_row[col]) else ""
-        pdf.multi_cell(0, 8, f"{col}: {val}")
-        pdf.ln(1)
-
-    try:
-        pdf_str = pdf.output(dest="S")
-        return pdf_str.encode("latin-1") if isinstance(pdf_str, str) else b""
-    except Exception:
-        return b""
-
-if st.button("PDF Export starten"):
-    df_sel = df_qm_all[df_qm_all["VA_Nr"] == export_va]
-    if df_sel.empty:
-        st.error("Keine Daten für die ausgewählte VA gefunden.")
-    else:
-        pdf_bytes = export_pdf_row_to_bytes(df_sel)
-        if isinstance(pdf_bytes, (bytes, bytearray)) and len(pdf_bytes) > 0:
-            st.download_button(
-                label="Download PDF",
-                data=pdf_bytes,
-                file_name=f"{export_va}.pdf",
-                mime="application/pdf"
-            )
-        else:
-            st.error("PDF konnte nicht erzeugt werden – interne Fehler.")
+# ----------------------------
+# PDF Export (vorerst deaktiviert)
+# ----------------------------
+# st.markdown("## 📤 Einzel-PDF Export")
+# export_va = st.selectbox("VA für PDF auswählen", options=df_qm_all["VA_Nr"].dropna().unique())
+# if st.button("PDF Export starten"):
+#     st.warning("PDF-Export vorübergehend deaktiviert – wird später wieder aktiviert.")
