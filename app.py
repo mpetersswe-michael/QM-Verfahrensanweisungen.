@@ -4,6 +4,7 @@
 import streamlit as st
 import pandas as pd
 import datetime as dt
+import tempfile, os
 from fpdf import FPDF
 
 # ----------------------------
@@ -13,7 +14,8 @@ st.set_page_config(page_title="QM-Verfahrensanweisungen", layout="wide")
 DATA_FILE_QM = "qm_verfahrensanweisungen.csv"
 QM_COLUMNS = [
     "VA_Nr", "Titel", "Kapitel", "Unterkapitel", "Revisionsstand",
-    "Ziel", "Geltungsbereich", "Vorgehensweise", "Kommentar", "Mitgeltende Unterlagen"
+    "Ziel", "Geltungsbereich", "Vorgehensweise", "Kommentar", "Mitgeltende Unterlagen",
+    "Erstellt von", "Zeitstempel"
 ]
 
 # ----------------------------
@@ -71,19 +73,39 @@ def load_data(file, columns):
 def to_csv_semicolon(df):
     return df.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
 
-def export_pdf(df_row):
+def export_pdf_row_to_bytes(df_row):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
+
     pdf.cell(0, 10, "QM-Verfahrensanweisung", ln=True, align="C")
     pdf.ln(5)
+
     for col in df_row.index:
         val = str(df_row[col])
         pdf.multi_cell(0, 8, f"{col}: {val}")
         pdf.ln(1)
-    pdf_str = pdf.output(dest="S")
-    pdf_bytes = pdf_str.encode("latin-1") if isinstance(pdf_str, str) else pdf_str
-    return pdf_bytes
+
+    # Primärer Weg: Ausgabe als String oder Bytes
+    out = pdf.output(dest="S")
+    if isinstance(out, bytes):
+        return out
+    elif isinstance(out, str):
+        return out.encode("latin-1")
+    else:
+        # Fallback: Datei schreiben und wieder einlesen
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            tmp_path = tmp.name
+        try:
+            pdf.output(tmp_path, dest="F")
+            with open(tmp_path, "rb") as f:
+                data = f.read()
+            return data
+        finally:
+            try:
+                os.remove(tmp_path)
+            except:
+                pass
 
 # ----------------------------
 # Login-Block
@@ -126,6 +148,7 @@ geltung = st.text_area("Geltungsbereich", height=80)
 vorgehen = st.text_area("Vorgehensweise", height=150)
 kommentar = st.text_area("Kommentar", height=80)
 unterlagen = st.text_area("Mitgeltende Unterlagen", height=80)
+erstellt_von = st.text_input("Erstellt von (Name + Funktion)", placeholder="z. B. Peters-Michael, Qualitätsbeauftragter")
 
 if st.button("Verfahrensanweisung speichern"):
     if not va_nr.strip() or not va_title.strip():
@@ -141,7 +164,9 @@ if st.button("Verfahrensanweisung speichern"):
             "Geltungsbereich": geltung.strip(),
             "Vorgehensweise": vorgehen.strip(),
             "Kommentar": kommentar.strip(),
-            "Mitgeltende Unterlagen": unterlagen.strip()
+            "Mitgeltende Unterlagen": unterlagen.strip(),
+            "Erstellt von": erstellt_von.strip(),
+            "Zeitstempel": dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }])
         try:
             existing_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
@@ -169,52 +194,9 @@ st.download_button("CSV herunterladen", data=csv_qm, file_name=f"qm_va_{dt.date.
 # ----------------------------
 # PDF Export
 # ----------------------------
-import tempfile, os
-from fpdf import FPDF
-
-def export_pdf_row_to_bytes(df_row):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-
-    pdf.cell(0, 10, "QM-Verfahrensanweisung", ln=True, align="C")
-    pdf.ln(5)
-
-    for col in df_row.index:
-        val = str(df_row[col])
-        pdf.multi_cell(0, 8, f"{col}: {val}")
-        pdf.ln(1)
-
-    # Primärer Weg: Ausgabe als String oder Bytes
-    out = pdf.output(dest="S")
-    if isinstance(out, bytes):
-        return out
-    elif isinstance(out, str):
-        return out.encode("latin-1")
-    else:
-        # Fallback: Datei schreiben und wieder einlesen
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            tmp_path = tmp.name
-        try:
-            pdf.output(tmp_path, dest="F")
-            with open(tmp_path, "rb") as f:
-                data = f.read()
-            return data
-        finally:
-            try:
-                os.remove(tmp_path)
-            except:
-                pass
-
-# ----------------------------
-# Streamlit-Block für Export
-# ----------------------------
 st.markdown("## 📤 Einzel-PDF Export")
 
-export_va = st.selectbox(
-    "VA für PDF auswählen",
-    options=df_qm_all["VA_Nr"].unique() if not df_qm_all.empty else []
-)
+export_va = st.selectbox("VA für PDF auswählen", options=df_qm_all["VA_Nr"].unique() if not df_qm_all.empty else [])
 
 if st.button("PDF Export starten"):
     df_sel = df_qm_all[df_qm_all["VA_Nr"] == export_va]
@@ -231,4 +213,5 @@ if st.button("PDF Export starten"):
                 file_name=f"{export_va}.pdf",
                 mime="application/pdf"
             )
+
 
