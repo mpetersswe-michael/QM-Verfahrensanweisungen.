@@ -170,17 +170,16 @@ if st.button("PDF Export starten"):
         pdf_bytes = export_pdf_row_to_bytes(df_sel.iloc[0])
         if isinstance(pdf_bytes, (bytes, bytearray)) and len(pdf_bytes) > 0:
             st.session_state["pdf_ready"] = pdf_bytes
+            st.session_state["pdf_va"] = export_va
             st.success("PDF wurde erstellt – jetzt herunterladen möglich.")
         else:
             st.error("PDF konnte nicht erstellt werden – ungültige Daten.")
 
-# Download-Button nur anzeigen, wenn PDF vorhanden und gültig
-if "pdf_ready" in st.session_state:
-    pdf_data = st.session_state["pdf_ready"]
-    if isinstance(pdf_data, (bytes, bytearray)) and len(pdf_data) > 0:
-        st.download_button(
-            label="Download PDF",
-            data=pdf_data,
-            file_name=f"{export_va}.pdf",
-            mime="application/pdf"
-        )
+# Download-Button bleibt sichtbar
+if "pdf_ready" in st.session_state and "pdf_va" in st.session_state:
+    st.download_button(
+        label="Download PDF",
+        data=st.session_state["pdf_ready"],
+        file_name=f"{st.session_state['pdf_va']}.pdf",
+        mime="application/pdf"
+    )
