@@ -1,13 +1,38 @@
 import streamlit as st
-import pandas as pd
-import os
 
-# --- Seitentitel und Icon ---
-st.set_page_config(
-    page_title="QM-Verfahrensanweisungen",
-    page_icon="📋",
-    layout="centered"
-)
+# --- App-Konfiguration ---
+st.set_page_config(page_title="QM-Verfahrensanweisungen", page_icon="📋", layout="centered")
+
+# --- SessionState initialisieren ---
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+# --- Sidebar: Login/Logout ---
+with st.sidebar:
+    st.markdown("## 🔐 Loginbereich")
+
+    if not st.session_state.logged_in:
+        password = st.text_input("Passwort eingeben", type="password")
+        if st.button("Login"):
+            if password == "qm2024":  # ← Passwort hier definieren
+                st.session_state.logged_in = True
+                st.success("Login erfolgreich.")
+            else:
+                st.error("Falsches Passwort.")
+    else:
+        st.success("✅ Eingeloggt")
+        if st.button("Logout"):
+            st.session_state.logged_in = False
+            st.experimental_rerun()
+
+# --- Hauptbereich ---
+if st.session_state.logged_in:
+    st.markdown("<h1 style='text-align: center;'>📋 QM-Verfahrensanweisungen</h1>", unsafe_allow_html=True)
+    st.divider()
+    st.info("Willkommen! Bitte wähle oben einen Tab aus.")
+else:
+    st.markdown("<h2 style='text-align: center;'>🔐 Bitte logge dich ein, um fortzufahren.</h2>", unsafe_allow_html=True)
+
 
 # --- Titelblock ---
 st.markdown("<h1 style='text-align: center;'>📋 QM-Verfahrensanweisungen</h1>", unsafe_allow_html=True)
