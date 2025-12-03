@@ -53,7 +53,7 @@ with st.sidebar:
         st.stop()
 
 # ----------------------------
-# Eingabeformular (ohne F:J)
+# Eingabeformular (alle Felder sichtbar, Speicherung reduziert)
 # ----------------------------
 st.markdown("## 📝 Neue Verfahrensanweisung erfassen")
 
@@ -61,8 +61,17 @@ va_nr = st.text_input("VA Nummer", placeholder="z. B. VA003")
 va_title = st.text_input("Titel", placeholder="Kommunikation im Pflegedienst")
 kapitel_num = st.selectbox("Kapitel Nr.", list(range(1, 11)), index=5)
 kapitel = f"Kapitel {kapitel_num}"
-unterkapitel = st.selectbox("Unterkapitel Nr.", [f"{kapitel_num}.{i}" for i in range(1, 6)], index=0)
+unterkapitel_num = st.selectbox("Unterkapitel Nr.", list(range(1, 6)), index=0)
+unterkapitel = f"{kapitel_num}.{unterkapitel_num}"   # 👉 immer String im Format 7.1
 revision_date = st.date_input("Revisionsstand", value=dt.date.today())
+
+# Diese Felder bleiben sichtbar, werden aber NICHT gespeichert
+ziel = st.text_area("Ziel", height=100)
+geltung = st.text_area("Geltungsbereich", height=80)
+vorgehen = st.text_area("Vorgehensweise", height=150)
+kommentar = st.text_area("Kommentar", height=80)
+unterlagen = st.text_area("Mitgeltende Unterlagen", height=80)
+
 erstellt_von = st.text_input("Erstellt von (Name + Funktion)", placeholder="z. B. Peters-Michael, Qualitätsbeauftragter")
 
 if st.button("Verfahrensanweisung speichern"):
@@ -73,7 +82,7 @@ if st.button("Verfahrensanweisung speichern"):
             "VA_Nr": va_nr.strip(),
             "Titel": va_title.strip(),
             "Kapitel": kapitel,
-            "Unterkapitel": unterkapitel,
+            "Unterkapitel": str(unterkapitel),   # 👉 String erzwingen
             "Revisionsstand": revision_date.strftime("%Y-%m-%d"),
             "Erstellt von": erstellt_von.strip(),
             "Zeitstempel": dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
