@@ -63,7 +63,7 @@ def export_pdf_row_to_bytes(df_row):
     add_block("Zeitstempel", df_row["Zeitstempel"])
 
     # Ausgabe
-   def export_pdf_row_to_bytes(df_row):
+def export_pdf_row_to_bytes(df_row):
     from fpdf import FPDF
     pdf = FPDF()
     pdf.add_page()
@@ -83,10 +83,9 @@ def export_pdf_row_to_bytes(df_row):
         elif isinstance(pdf_str, bytes):
             return pdf_str
         else:
-            return b""  # Fallback: leeres PDF
+            return b""  # Fallback bei unerwartetem Typ
     except Exception:
-        return b""  # Fallback bei Fehler
-
+        return b""  # Fallback bei Fehle
 
 # ----------------------------
 # Login
