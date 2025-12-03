@@ -3,20 +3,12 @@
 # ----------------------------
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 import datetime as dt
-from io import BytesIO
-import matplotlib.figure
 
 # ----------------------------
 # Grundkonfiguration
 # ----------------------------
 st.set_page_config(page_title="QM-Verfahrensanweisungen", layout="wide")
-
-# Platzhalter für spätere Datenquellen
-DATA_FILE_QM = "qm_anweisungen.csv"
-QM_COLUMNS = ["Titel", "Version", "Gültig ab"]
 
 # ----------------------------
 # Styles für Buttons & Login
@@ -33,6 +25,30 @@ st.markdown("""
 }
 .stButton>button:hover {
     background-color: #45a049;
+    color: white;
+}
+.delete-button > button {
+    background-color: #e74c3c;
+    color: white;
+    border-radius: 8px;
+    padding: 0.5em 1em;
+    font-weight: bold;
+    border: none;
+}
+.delete-button > button:hover {
+    background-color: #c0392b;
+    color: white;
+}
+.export-button > button {
+    background-color: #3498db;
+    color: white;
+    border-radius: 8px;
+    padding: 0.5em 1em;
+    font-weight: bold;
+    border: none;
+}
+.export-button > button:hover {
+    background-color: #2980b9;
     color: white;
 }
 .login-box {
@@ -58,17 +74,16 @@ if "logged_in" not in st.session_state:
 # Sidebar: Login / Logout
 # ----------------------------
 with st.sidebar:
-    st.markdown("## 🔐 Loginbereich")
+    st.markdown("## 🔒 Loginbereich")
     if not st.session_state.logged_in:
-        with st.container():
-            st.markdown('<div class="login-box">Bitte Passwort eingeben</div>', unsafe_allow_html=True)
-            password = st.text_input("Login Passwort", type="password")
-            if st.button("Login"):
-                if password == "qm2024":
-                    st.session_state.logged_in = True
-                    st.experimental_rerun()
-                else:
-                    st.error("Falsches Passwort.")
+        st.markdown('<div class="login-box">Bitte Passwort eingeben</div>', unsafe_allow_html=True)
+        password = st.text_input("Login Passwort", type="password")
+        if st.button("Login"):
+            if password == "qm2024":
+                st.session_state.logged_in = True
+                st.experimental_rerun()
+            else:
+                st.error("Falsches Passwort.")
     else:
         st.success("✅ Eingeloggt")
         if st.button("Logout"):
@@ -79,178 +94,44 @@ with st.sidebar:
 # Hauptbereich nach Login
 # ----------------------------
 if st.session_state.logged_in:
+
     st.markdown("<h1 style='text-align: center;'>📋 QM-Verfahrensanweisungen</h1>", unsafe_allow_html=True)
     st.divider()
 
-    tab1, tab2, tab3 = st.tabs(["📘 Anweisungen", "✅ Quittierung", "📤 Export"])
-
-    with tab1:
-        st.subheader("📘 Verfahrensanweisungen")
-        st.info("Hier findest du alle aktuellen QM-Anweisungen zum Nachlesen.")
-        df_qm = pd.DataFrame({
-            "Titel": ["Hygieneplan", "Dokumentationsrichtlinie", "Notfallablauf"],
-            "Version": ["v1.2", "v3.0", "v2.1"],
-            "Gültig ab": ["2023-01-01", "2024-05-15", "2023-11-10"]
-        })
-        st.dataframe(df_qm, use_container_width=True)
-
-    with tab2:
-        st.subheader("✅ Quittierung")
-        name = st.text_input("Name")
-        datum = st.date_input("Datum")
-        quittiert = st.checkbox("Ich bestätige, dass ich alle Anweisungen gelesen habe.")
-        if st.button("Quittieren"):
-            if name and quittiert:
-                st.toast(f"Quittierung gespeichert für {name} am {datum}.")
-            else:
-                st.warning("Bitte Name eingeben und Checkbox aktivieren.")
-
-    with tab3:
-        st.subheader("📤 Export")
-        if st.button("CSV herunterladen"):
-            df_export = pd.DataFrame({
-                "Name": [name],
-                "Datum": [datum],
-                "Quittiert": [quittiert]
-            })
-            csv = df_export.to_csv(index=False).encode("utf-8")
-            st.download_button("Download CSV", data=csv, file_name="quittierung.csv", mime="text/csv")
-
-else:
-    st.markdown("<h2 style='text-align: center;'>🔐 Bitte logge dich ein, um fortzufahren.</h2>", unsafe_allow_html=True)
-
-
-    # --- Tabs ---
-    tab1, tab2, tab3 = st.tabs(["📘 Anweisungen", "✅ Quittierung", "📤 Export"])
-
-    # --- Tab 1: Anweisungen ---
-    with tab1:
-        st.subheader("📘 Verfahrensanweisungen")
-        st.info("Hier findest du alle aktuellen QM-Anweisungen zum Nachlesen.")
-        df_anweisungen = pd.DataFrame({
-            "Titel": ["Hygieneplan", "Dokumentationsrichtlinie", "Notfallablauf"],
-            "Version": ["v1.2", "v3.0", "v2.1"],
-            "Gültig ab": ["2023-01-01", "2024-05-15", "2023-11-10"]
-        })
-        st.dataframe(df_anweisungen, use_container_width=True)
-
-    # --- Tab 2: Quittierung ---
-    with tab2:
-        st.subheader("✅ Quittierung")
-        name = st.text_input("Name")
-        datum = st.date_input("Datum")
-        quittiert = st.checkbox("Ich bestätige, dass ich alle Anweisungen gelesen habe.")
-        if st.button("Quittieren"):
-            if name and quittiert:
-                st.toast(f"Quittierung gespeichert für {name} am {datum}.")
-            else:
-                st.warning("Bitte Name eingeben und Checkbox aktivieren.")
-
-    # --- Tab 3: Export ---
-    with tab3:
-        st.subheader("📤 Export")
-        if st.button("CSV herunterladen"):
-            df_export = pd.DataFrame({
-                "Name": [name],
-                "Datum": [datum],
-                "Quittiert": [quittiert]
-            })
-            csv = df_export.to_csv(index=False).encode("utf-8")
-            st.download_button("Download CSV", data=csv, file_name="quittierung.csv", mime="text/csv")
-
-else:
-    st.markdown("<h2 style='text-align: center;'>🔐 Bitte logge dich ein, um fortzufahren.</h2>", unsafe_allow_html=True)
-
-# --- Hauptbereich: Nur anzeigen, wenn eingeloggt ---
-if st.session_state.logged_in:
-
-    # --- Titelblock ---
-    st.markdown("<h1 style='text-align: center;'>📋 QM-Verfahrensanweisungen</h1>", unsafe_allow_html=True)
-    st.divider()
-
-    # --- Tabs ---
-    tab1, tab2, tab3 = st.tabs(["📘 Anweisungen", "✅ Quittierung", "📤 Export"])
-
-    # --- Tab 1: Anweisungen ---
-    with tab1:
-        st.subheader("📘 Verfahrensanweisungen")
-        st.info("Hier findest du alle aktuellen QM-Anweisungen zum Nachlesen.")
-        df_anweisungen = pd.DataFrame({
-            "Titel": ["Hygieneplan", "Dokumentationsrichtlinie", "Notfallablauf"],
-            "Version": ["v1.2", "v3.0", "v2.1"],
-            "Gültig ab": ["2023-01-01", "2024-05-15", "2023-11-10"]
-        })
-        st.dataframe(df_anweisungen, use_container_width=True)
-
-    # --- Tab 2: Quittierung ---
-    with tab2:
-        st.subheader("✅ Quittierung")
-        name = st.text_input("Name")
-        datum = st.date_input("Datum")
-        quittiert = st.checkbox("Ich bestätige, dass ich alle Anweisungen gelesen habe.")
-        if st.button("Quittieren"):
-            if name and quittiert:
-                st.toast(f"Quittierung gespeichert für {name} am {datum}.")
-            else:
-                st.warning("Bitte Name eingeben und Checkbox aktivieren.")
-
-    # --- Tab 3: Export ---
-    with tab3:
-        st.subheader("📤 Export")
-        if st.button("CSV herunterladen"):
-            df_export = pd.DataFrame({
-                "Name": [name],
-                "Datum": [datum],
-                "Quittiert": [quittiert]
-            })
-            csv = df_export.to_csv(index=False).encode("utf-8")
-            st.download_button("Download CSV", data=csv, file_name="quittierung.csv", mime="text/csv")
-
-else:
-    st.markdown("<h2 style='text-align: center;'>🔐 Bitte logge dich ein, um fortzufahren.</h2>", unsafe_allow_html=True)
-
-
-# --- Titelblock ---
-st.markdown("<h1 style='text-align: center;'>📋 QM-Verfahrensanweisungen</h1>", unsafe_allow_html=True)
-st.divider()
-
-# --- Tabs für Navigation ---
-tab1, tab2, tab3 = st.tabs(["📘 Anweisungen", "✅ Quittierung", "📤 Export"])
-
-# --- Tab 1: Anweisungen anzeigen ---
-with tab1:
-    st.subheader("📘 Verfahrensanweisungen")
-    st.info("Hier findest du alle aktuellen QM-Anweisungen zum Nachlesen.")
-    
-    # Beispielhafte Tabelle
-    df_anweisungen = pd.DataFrame({
+    # --- Beispielhafte QM-Daten ---
+    df_qm = pd.DataFrame({
         "Titel": ["Hygieneplan", "Dokumentationsrichtlinie", "Notfallablauf"],
         "Version": ["v1.2", "v3.0", "v2.1"],
         "Gültig ab": ["2023-01-01", "2024-05-15", "2023-11-10"]
     })
-    st.dataframe(df_anweisungen, use_container_width=True)
 
-# --- Tab 2: Quittierung ---
-with tab2:
-    st.subheader("✅ Quittierung")
-    st.success("Bitte bestätige, dass du die Anweisungen gelesen hast.")
-    
+    st.subheader("📘 Aktuelle QM-Anweisungen")
+    st.dataframe(df_qm, use_container_width=True)
+
+    # --- Eingabeformular für neue Quittierung ---
+    st.subheader("✅ Quittierung erfassen")
     name = st.text_input("Name")
-    datum = st.date_input("Datum")
+    datum = st.date_input("Datum", value=dt.date.today())
     quittiert = st.checkbox("Ich bestätige, dass ich alle Anweisungen gelesen habe.")
-    
-    if st.button("Quittieren"):
+
+    # --- Speichern-Button ---
+    if st.button("Speichern", type="primary"):
         if name and quittiert:
-            st.toast(f"Quittierung gespeichert für {name} am {datum}.")
+            st.success(f"Quittierung gespeichert für {name} am {datum}.")
         else:
             st.warning("Bitte Name eingeben und Checkbox aktivieren.")
 
-# --- Tab 3: Export ---
-with tab3:
-    st.subheader("📤 Export")
-    st.info("Hier kannst du die Quittierungen als CSV exportieren.")
-    
-    if st.button("CSV herunterladen"):
+    # --- Daten löschen ---
+    st.markdown('<div class="delete-button">', unsafe_allow_html=True)
+    if st.button("Daten löschen"):
+        name = ""
+        quittiert = False
+        st.info("Eingaben wurden zurückgesetzt.")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # --- Export als CSV ---
+    st.markdown('<div class="export-button">', unsafe_allow_html=True)
+    if st.button("CSV Export"):
         df_export = pd.DataFrame({
             "Name": [name],
             "Datum": [datum],
@@ -258,5 +139,10 @@ with tab3:
         })
         csv = df_export.to_csv(index=False).encode("utf-8")
         st.download_button("Download CSV", data=csv, file_name="quittierung.csv", mime="text/csv")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+else:
+    st.markdown("<h2 style='text-align: center;'>🔐 Bitte logge dich ein, um fortzufahren.</h2>", unsafe_allow_html=True)
+
 
 
