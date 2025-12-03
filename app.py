@@ -155,14 +155,13 @@ st.download_button("CSV herunterladen", data=csv_qm, file_name=f"qm_va_{dt.date.
 # ----------------------------
 # PDF Export
 # ----------------------------
-st.markdown("## 📄 Einzel-PDF Export")
+st.markdown("## 📤 Einzel-PDF Export")
 
 export_va = st.selectbox(
     "VA für PDF auswählen",
     options=df_qm_all["VA_Nr"].unique() if not df_qm_all.empty else []
 )
 
-# PDF erzeugen bei Button-Klick
 if st.button("PDF Export starten"):
     df_sel = df_qm_all[df_qm_all["VA_Nr"] == export_va]
     if df_sel.empty:
@@ -171,49 +170,21 @@ if st.button("PDF Export starten"):
         from fpdf import FPDF
         pdf = FPDF()
         pdf.add_page()
-        pdf.set_font("Arial", "B", 14)
-        pdf.cell(0, 10, "QM-Verfahrensanweisung", ln=True, align="C")
         pdf.set_font("Arial", size=12)
+        pdf.cell(0, 10, "QM-Verfahrensanweisung", ln=True, align="C")
         pdf.ln(5)
 
-        # Kopfzeile
-        pdf.cell(0, 8, f"VA-Nr: {df_sel.iloc[0]['VA_Nr']}", ln=True)
-        pdf.cell(0, 8, f"Titel: {df_sel.iloc[0]['Titel']}", ln=True)
-        pdf.cell(0, 8, f"Kapitel: {df_sel.iloc[0]['Kapitel']}   Unterkapitel: {df_sel.iloc[0]['Unterkapitel']}", ln=True)
-        pdf.cell(0, 8, f"Revisionsstand: {df_sel.iloc[0]['Revisionsstand']}", ln=True)
-        pdf.ln(5)
-
-        def add_block(label, content):
-            pdf.set_font("Arial", "B", 12)
-            pdf.cell(0, 8, f"{label}:", ln=True)
-            pdf.set_font("Arial", size=12)
-            pdf.multi_cell(0, 8, str(content))
-            pdf.ln(2)
-
-        add_block("Ziel", df_sel.iloc[0]["Ziel"])
-        add_block("Geltungsbereich", df_sel.iloc[0]["Geltungsbereich"])
-        add_block("Vorgehensweise", df_sel.iloc[0]["Vorgehensweise"])
-        add_block("Kommentar", df_sel.iloc[0]["Kommentar"])
-        add_block("Mitgeltende Unterlagen", df_sel.iloc[0]["Mitgeltende Unterlagen"])
-        add_block("Erstellt von", df_sel.iloc[0]["Erstellt von"])
-        add_block("Zeitstempel", df_sel.iloc[0]["Zeitstempel"])
+        for col in df_sel.columns:
+            val = str(df_sel.iloc[0][col])
+            pdf.multi_cell(0, 8, f"{col}: {val}")
+            pdf.ln(1)
 
         pdf_str = pdf.output(dest="S")
         pdf_bytes = pdf_str.encode("latin-1") if isinstance(pdf_str, str) else pdf_str
 
-        if isinstance(pdf_bytes, (bytes, bytearray)) and len(pdf_bytes) > 0:
-            st.session_state["pdf_ready"] = pdf_bytes
-            st.session_state["pdf_va"] = export_va
-            st.success("PDF wurde erstellt – jetzt herunterladen möglich.")
-        else:
-            st.error("PDF konnte nicht erstellt werden – ungültige Daten.")
-
-# Download-Button bleibt sichtbar
-if "pdf_ready" in st.session_state and "pdf_va" in st.session_state:
-    st.download_button(
-        label="Download PDF",
-        data=st.session_state["pdf_ready"],
-        file_name=f"{st.session_state['pdf_va']}.pdf",
-        mime="application/pdf"
-    )
-
+        st.download_button(
+            label="Download PDF",
+            data=pdf_bytes,
+            file_name=f"{export_va}.pdf",
+            mime="application/pdf"
+        )
