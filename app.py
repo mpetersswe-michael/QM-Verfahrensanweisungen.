@@ -78,16 +78,21 @@ if not st.session_state["auth"]:
     if st.button("Login"):
         if pw == "QM2024":
             st.session_state["auth"] = True
-            st.experimental_rerun()
+            st.success("Login erfolgreich – du kannst jetzt mit der App arbeiten.")
         else:
             st.error("Falsches Passwort.")
     st.stop()
 
+# ----------------------------
+# Sidebar mit Logout
+# ----------------------------
 with st.sidebar:
     st.markdown("### Navigation")
     if st.button("Logout"):
         st.session_state["auth"] = False
-        st.experimental_rerun()
+        st.success("Logout erfolgreich – bitte neu einloggen.")
+        st.stop()
+
 
 # ----------------------------
 # Eingabeformular
