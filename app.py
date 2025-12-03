@@ -178,8 +178,9 @@ if st.button("PDF Export starten"):
     if df_sel.empty:
         st.warning("Keine Daten für die ausgewählte VA gefunden.")
     else:
-        pdf_output = export_pdf(df_sel.iloc[0])
-        st.download_button("Download PDF", data=pdf_output, file_name=f"{export_va}.pdf", mime="application/pdf")
+        pdf_str = pdf.output(dest="S")
+       pdf_bytes = pdf_str.encode("latin-1") if isinstance(pdf_str, str) else pdf_str
+       return pdf_bytes
 
 
 
