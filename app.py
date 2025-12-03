@@ -170,6 +170,9 @@ st.download_button("CSV herunterladen", data=csv_qm, file_name=f"qm_va_{dt.date.
 # ----------------------------
 # PDF Export
 # ----------------------------
+# ----------------------------
+# PDF Export
+# ----------------------------
 st.markdown("## 📤 Einzel-PDF Export")
 
 export_va = st.selectbox("VA für PDF auswählen", options=df_qm_all["VA_Nr"].unique() if not df_qm_all.empty else [])
@@ -191,6 +194,7 @@ if st.button("PDF Export starten"):
             pdf.multi_cell(0, 8, f"{col}: {val}")
             pdf.ln(1)
 
+        # Ausgabe als Bytes
         pdf_str = pdf.output(dest="S")
         pdf_bytes = pdf_str.encode("latin-1") if isinstance(pdf_str, str) else pdf_str
 
@@ -200,10 +204,3 @@ if st.button("PDF Export starten"):
             file_name=f"{export_va}.pdf",
             mime="application/pdf"
         )
-
-
-
-
-
-
-
