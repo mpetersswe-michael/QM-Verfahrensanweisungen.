@@ -82,11 +82,54 @@ with st.sidebar:
 # ----------------------------
 # Hauptbereich: Nur nach Login
 # ----------------------------
-if st.session_state.logged_in:
+if st.session_state.get("logged_in", False):
+
+    # Titelblock
     st.markdown("<h1 style='text-align: center;'>📋 QM-Verfahrensanweisungen</h1>", unsafe_allow_html=True)
     st.divider()
+
+    # Beispielhafte QM-Daten
+    df_qm = pd.DataFrame({
+        "Titel": ["Hygieneplan", "Dokumentationsrichtlinie", "Notfallablauf"],
+        "Version": ["v1.2", "v3.0", "v2.1"],
+        "Gültig ab": ["2023-01-01", "2024-05-15", "2023-11-10"]
+    })
+
+    st.subheader("📘 Aktuelle QM-Anweisungen")
+    st.dataframe(df_qm, use_container_width=True)
+
+    # Eingabeformular für Quittierung
+    st.subheader("✅ Quittierung erfassen")
+    name = st.text_input("Name")
+    datum = st.date_input("Datum", value=dt.date.today())
+    quittiert = st.checkbox("Ich bestätige, dass ich alle Anweisungen gelesen habe.")
+
+    # Speichern-Button
+    if st.button("Speichern"):
+        if name and quittiert:
+            st.success(f"Quittierung gespeichert für {name} am {datum}.")
+        else:
+            st.warning("Bitte Name eingeben und Checkbox aktivieren.")
+
+    # Daten löschen
+    if st.button("Daten löschen"):
+        name = ""
+        quittiert = False
+        st.info("Eingaben wurden zurückgesetzt.")
+
+    # Export als CSV
+    if st.button("CSV Export"):
+        df_export = pd.DataFrame({
+            "Name": [name],
+            "Datum": [datum],
+            "Quittiert": [quittiert]
+        })
+        csv = df_export.to_csv(index=False).encode("utf-8")
+        st.download_button("Download CSV", data=csv, file_name="quittierung.csv", mime="text/csv")
+
 else:
     st.markdown("<h2 style='text-align: center;'>🔐 Bitte logge dich ein, um fortzufahren.</h2>", unsafe_allow_html=True)
+
 
 
 
