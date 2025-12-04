@@ -194,14 +194,13 @@ if options_va:
                 st.session_state["pdf_filename"] = None
                 st.error(f"PDF konnte nicht erzeugt werden: {e}")
 
-   if st.session_state["pdf_bytes"]:
-    st.download_button(
-        label="Download PDF",
-        data=st.session_state["pdf_bytes"],
-        file_name=st.session_state["pdf_filename"],
-        mime="application/pdf",
-        key="btn_pdf_download"
-    )
-
-
-
+    if st.session_state["pdf_bytes"]:
+        st.download_button(
+            label="Download PDF",
+            data=st.session_state["pdf_bytes"],
+            file_name=st.session_state["pdf_filename"],
+            mime="application/pdf",
+            key="btn_pdf_download"
+        )
+else:
+    st.info("Keine VAs vorhanden. Bitte zuerst eine Verfahrensanweisung speichern.")
