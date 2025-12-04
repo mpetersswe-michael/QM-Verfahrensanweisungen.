@@ -85,9 +85,9 @@ def export_pdf(df_row):
     except Exception as e:
         return None
 
-#       
-#   Login-Block
-#       
+# ----------------------------
+# Login-Block
+# ----------------------------
 if "auth" not in st.session_state:
     st.session_state["auth"] = False
 
@@ -109,8 +109,6 @@ with st.sidebar:
         st.stop()
     st.markdown("---")
 
-# ----------------------------
-# ----------------------------
 # ----------------------------
 # Daten laden und VA-Auswahl
 # ----------------------------
