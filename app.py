@@ -204,27 +204,74 @@ def export_pdf_row_to_bytes(df_row):
                 pass
 
 # ----------------------------
-# Streamlit-Block für Export
+# PDF Export (robust und modular)
 # ----------------------------
-st.markdown("## 📤 Einzel-PDF Export")
+if st.button("PDF Export starten", key="btn_pdf_generate"):
+    try:
+        pdf = FPDF()
+        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.add_page()
 
-export_va = st.selectbox(
-    "VA für PDF auswählen",
-    options=df_qm_all["VA_Nr"].unique() if not df_qm_all.empty else []
-)
+        # Kopf
+        pdf.set_font("Arial", style="", size=16)
+        pdf.cell(0, 10, "QM-Verfahrensanweisung", ln=True, align="C")
+        pdf.ln(5)
 
-if st.button("PDF Export starten"):
-    df_sel = df_qm_all[df_qm_all["VA_Nr"] == export_va]
-    if df_sel.empty:
-        st.warning("Keine Daten für die ausgewählte VA gefunden.")
-    else:
-        pdf_bytes = export_pdf_row_to_bytes(df_sel.iloc[0])
-        if not isinstance(pdf_bytes, (bytes, bytearray)):
-            st.error(f"Interner Fehler: PDF-Daten sind kein Bytes-Objekt (Typ: {type(pdf_bytes)})")
-        else:
-            st.download_button(
-                label="Download PDF",
-                data=pdf_bytes,
-                file_name=f"{export_va}.pdf",
-                mime="application/pdf"
-            )
+        # Pflichtfelder aus CSV
+        pdf.set_font("Arial", size=11)
+        labels = {
+            "VA_Nr": "VA Nummer",
+            "Titel": "Titel",
+            "Kapitel": "Kapitel",
+            "Unterkapitel": "Unterkapitel",
+            "Revisionsstand": "Revisionsstand",
+            "Erstellt von": "Erstellt von",
+            "Zeitstempel": "Zeitstempel",
+        }
+        for col, label in labels.items():
+            val = row[col] if col in row else ""
+            text = str(val) if pd.notna(val) else ""
+            pdf.multi_cell(0, 8, f"{label}: {text}")
+        pdf.ln(3)
+
+        # Zusatzfelder aus Formular
+        def section(title, content):
+            pdf.set_font("Arial", style="B", size=12)
+            pdf.multi_cell(0, 8, title)
+            pdf.set_font("Arial", size=11)
+            safe = content if content else ""
+            try:
+                pdf.multi_cell(0, 8, safe)
+            except Exception:
+                pdf.multi_cell(0, 8, safe.encode("latin-1", "replace").decode("latin-1"))
+            pdf.ln(2)
+
+        section("Beschreibung / Zweck", beschreibung)
+        section("Geltungsbereich", geltungsbereich)
+        section("Verantwortlichkeiten", verantwortlichkeiten)
+        section("Durchführung", durchfuehrung)
+        section("Dokumentation / Nachweise", nachweise)
+
+        # PDF-Bytes erzeugen
+        pdf_raw = pdf.output(dest="S")
+        pdf_bytes = pdf_raw.encode("latin-1") if isinstance(pdf_raw, str) else pdf_raw
+
+        st.session_state["pdf_bytes"] = pdf_bytes
+        st.session_state["pdf_filename"] = f"{row['VA_Nr']}.pdf"
+        st.success("PDF erstellt. Jetzt kannst du es herunterladen.")
+    except Exception as e:
+        st.session_state["pdf_bytes"] = None
+        st.session_state["pdf_filename"] = None
+        st.error(f"PDF konnte nicht erzeugt werden: {e}")
+
+# Download-Button
+if st.session_state["pdf_bytes"]:
+    st.download_button(
+        label="Download PDF",
+        data=st.session_state["pdf_bytes"],
+        file_name=st.session_state["pdf_filename"],
+        mime="application/pdf",
+        key="btn_pdf_download"
+    )
+else:
+    st.button("Download PDF (noch nicht verfügbar)", disabled=True)
