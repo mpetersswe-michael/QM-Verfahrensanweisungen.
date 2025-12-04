@@ -54,12 +54,15 @@ def export_pdf_row_to_bytes(df_row: pd.Series) -> bytes:
     }
     for col in QM_COLUMNS:
         val = df_row[col] if col in df_row.index else ""
-        text = str(val) if pd.notna(val) else ""
+        text = "" if pd.isna(val) else str(val)
         pdf.multi_cell(0, 8, f"{labels.get(col, col)}: {text}")
         pdf.ln(1)
 
-    pdf_bytes = pdf.output(dest="S")
-    return pdf_bytes.encode("latin-1") if isinstance(pdf_bytes, str) else pdf_bytes
+    pdf_str = pdf.output(dest="S")
+    pdf_bytes = pdf_str.encode("latin-1") if isinstance(pdf_str, str) else pdf_str
+    if not pdf_bytes or len(pdf_bytes) == 0:
+        raise ValueError("PDF-Erzeugung ergab leere Daten.")
+    return pdf_bytes
 
 # ----------------------------
 # Login
@@ -95,7 +98,7 @@ va_title = st.text_input("Titel", key="va_title", placeholder="Kommunikationsweg
 kapitel_num = st.selectbox("Kapitel Nr.", list(range(1, 11)), index=6)
 unterkapitel_num = st.selectbox("Unterkapitel Nr.", list(range(1, 11)), index=2)
 kapitel = f"Kapitel {kapitel_num}"
-unterkapitel = f"Kap. {kapitel_num}-{unterkapitel_num}"   # 👉 immer Kap. 7-3 Format
+unterkapitel = f"Kap. {kapitel_num}-{unterkapitel_num}"
 revision_date = st.date_input("Revisionsstand", value=date.today())
 erstellt_von = st.text_input("Erstellt von (Name + Funktion)", key="erstellt_von",
                              placeholder="z. B. Peters, Michael – Qualitätsbeauftragter")
@@ -158,42 +161,44 @@ if st.button("Verfahrensanweisung löschen"):
         save_data(DATA_FILE_QM, df_qm_all)
         st.success(f"VA {delete_va} wurde gelöscht.")
 
-# ---------- PDF Helfer ----------
-def export_pdf_row_to_bytes(df_row: pd.Series) -> bytes:
-    # Serie absichern
-    if isinstance(df_row, pd.DataFrame):
-        df_row = df_row.iloc[0]
+# ----------------------------
+# PDF Export mit session_state
+# ----------------------------
+st.markdown("## 📤 Einzel-PDF Export")
 
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=14)
-    pdf.cell(0, 10, "QM-Verfahrensanweisung", ln=True, align="C")
-    pdf.set_font("Arial", size=11)
-    pdf.ln(5)
+if "pdf_bytes" not in st.session_state:
+    st.session_state["pdf_bytes"] = None
+if "pdf_filename" not in st.session_state:
+    st.session_state["pdf_filename"] = None
 
-    labels = {
-        "VA_Nr": "VA Nummer",
-        "Titel": "Titel",
-        "Kapitel": "Kapitel",
-        "Unterkapitel": "Unterkapitel",
-        "Revisionsstand": "Revisionsstand",
-        "Erstellt von": "Erstellt von",
-        "Zeitstempel": "Zeitstempel",
-    }
-    for col in QM_COLUMNS:
-        val = df_row[col] if col in df_row.index else ""
-        text = "" if pd.isna(val) else str(val)
-        pdf.multi_cell(0, 8, f"{labels.get(col, col)}: {text}")
-        pdf.ln(1)
+if options_va:
+    export_va = st.selectbox("VA für PDF auswählen", options=options_va, key="pdf_export_va")
 
-    # FPDF liefert String -> sicher in bytes konvertieren
-    pdf_str = pdf.output(dest="S")
-    pdf_bytes = pdf_str.encode("latin-1") if isinstance(pdf_str, str) else pdf_str
+    if st.button("PDF Export starten", key="btn_pdf_generate"):
+        df_sel = df_qm_all[df_qm_all["VA_Nr"] == export_va]
+        if df_sel.empty:
+            st.session_state["pdf_bytes"] = None
+            st.session_state["pdf_filename"] = None
+            st.error("Keine Daten für die ausgewählte VA gefunden.")
+        else:
+            try:
+                row = df_sel.iloc[0]
+                st.session_state["pdf_bytes"] = export_pdf_row_to_bytes(row)
+                st.session_state["pdf_filename"] = f"{export_va}.pdf"
+                st.success("PDF erstellt. Du kannst es jetzt herunterladen.")
+            except Exception as e:
+                st.session_state["pdf_bytes"] = None
+                st.session_state["pdf_filename"] = None
+                st.error(f"PDF konnte nicht erzeugt werden: {e}")
 
-    # Schutz: niemals leere Bytes zurückgeben
-    if not pdf_bytes or len(pdf_bytes) == 0:
-        raise ValueError("PDF-Erzeugung ergab leere Daten.")
-    return pdf_bytes
-
+    if st.session_state["pdf_bytes"]:
+        st.download_button(
+            label="Download PDF",
+            data=st.session_state["pdf_bytes"],
+            file_name=st.session_state["pdf_filename"],
+            mime="application/pdf",
+            key="btn_pdf_download"
+        )
+else
 
 
