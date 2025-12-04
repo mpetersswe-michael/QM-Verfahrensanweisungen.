@@ -65,17 +65,22 @@ return df[columns]
 def to_csv_semicolon(df):
 return df.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
 def export_pdf(df_row):
-pdf = FPDF()
-pdf.add_page()
-pdf.set_font("Arial", size=12)
-pdf.cell(0, 10, "QM-Verfahrensanweisung", ln=True, align="C")
-pdf.ln(5)
-for col in df_row.index:
-val = str(df_row[col])
-pdf.multi_cell(0, 8, f"{col}: {val}")
-pdf.ln(1)
-pdf_str = pdf.output(dest="S")
-pdf_bytes = pdf_str.encode("latin-1") if isinstance(pdf_str, str) else pdf_str return pdf_bytes
+    try:
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        pdf.cell(0, 10, "QM-Verfahrensanweisung", ln=True, align="C")
+        pdf.ln(5)
+        for col in df_row.index:
+            val = str(df_row[col])
+            pdf.multi_cell(0, 8, f"{col}: {val}")
+            pdf.ln(1)
+        pdf_str = pdf.output(dest="S")
+        pdf_bytes = pdf_str.encode("latin-1") if isinstance(pdf_str, str) else pdf_str
+        return pdf_bytes
+    except Exception as e:
+        return None
+
 #		
 #	Login-Block
 #		
