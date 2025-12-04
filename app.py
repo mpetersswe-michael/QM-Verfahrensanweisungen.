@@ -158,29 +158,42 @@ if st.button("Verfahrensanweisung löschen"):
         save_data(DATA_FILE_QM, df_qm_all)
         st.success(f"VA {delete_va} wurde gelöscht.")
 
-# ----------------------------
-# PDF Export
-# ----------------------------
-st.markdown("## 📤 Einzel-PDF Export")
+# ---------- PDF Helfer ----------
+def export_pdf_row_to_bytes(df_row: pd.Series) -> bytes:
+    # Serie absichern
+    if isinstance(df_row, pd.DataFrame):
+        df_row = df_row.iloc[0]
 
-if options_va:
-    export_va = st.selectbox("VA für PDF auswählen", options=options_va)
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=14)
+    pdf.cell(0, 10, "QM-Verfahrensanweisung", ln=True, align="C")
+    pdf.set_font("Arial", size=11)
+    pdf.ln(5)
 
-    if st.button("PDF Export starten"):
-        df_sel = df_qm_all[df_qm_all["VA_Nr"] == export_va]
-        if df_sel.empty:
-            st.error("Keine Daten für die ausgewählte VA gefunden.")
-        else:
-            row = df_sel.iloc[0]
-            pdf_bytes = export_pdf_row_to_bytes(row)
-            st.download_button(
-                label="Download PDF",
-                data=pdf_bytes,
-                file_name=f"{export_va}.pdf",
-                mime="application/pdf"
-            )
-else:
-    st.info("Keine VAs vorhanden. Bitte zuerst eine Verfahrensanweisung speichern.")
+    labels = {
+        "VA_Nr": "VA Nummer",
+        "Titel": "Titel",
+        "Kapitel": "Kapitel",
+        "Unterkapitel": "Unterkapitel",
+        "Revisionsstand": "Revisionsstand",
+        "Erstellt von": "Erstellt von",
+        "Zeitstempel": "Zeitstempel",
+    }
+    for col in QM_COLUMNS:
+        val = df_row[col] if col in df_row.index else ""
+        text = "" if pd.isna(val) else str(val)
+        pdf.multi_cell(0, 8, f"{labels.get(col, col)}: {text}")
+        pdf.ln(1)
+
+    # FPDF liefert String -> sicher in bytes konvertieren
+    pdf_str = pdf.output(dest="S")
+    pdf_bytes = pdf_str.encode("latin-1") if isinstance(pdf_str, str) else pdf_str
+
+    # Schutz: niemals leere Bytes zurückgeben
+    if not pdf_bytes or len(pdf_bytes) == 0:
+        raise ValueError("PDF-Erzeugung ergab leere Daten.")
+    return pdf_bytes
 
 
 
