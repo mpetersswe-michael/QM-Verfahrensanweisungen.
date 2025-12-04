@@ -196,7 +196,8 @@ if st.button("Verfahrensanweisung löschen"):
 st.markdown("## 📤 Einzel-PDF Export")
 
 if options_va:
-    export_va = st.selectbox("VA für PDF auswählen", options=options_va, index=0)
+    export_va = st.selectbox("VA für PDF auswählen", options=options_va)
+
     if st.button("PDF Export starten"):
         df_sel = df_qm_all[df_qm_all["VA_Nr"] == export_va]
         if df_sel.empty:
@@ -212,8 +213,6 @@ if options_va:
             )
 else:
     st.info("Keine VAs vorhanden. Bitte zuerst eine Verfahrensanweisung speichern.")
-
-
 
 
 
