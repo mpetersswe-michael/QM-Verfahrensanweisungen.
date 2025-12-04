@@ -169,6 +169,7 @@ if st.button("Verfahrensanweisung löschen"):
 # ----------------------------
 st.markdown("## 📤 Einzel-PDF Export")
 
+# Session-State initialisieren
 if "pdf_bytes" not in st.session_state:
     st.session_state["pdf_bytes"] = None
 if "pdf_filename" not in st.session_state:
@@ -177,6 +178,7 @@ if "pdf_filename" not in st.session_state:
 if options_va:
     export_va = st.selectbox("VA für PDF auswählen", options=options_va, key="pdf_export_va")
 
+    # Button 1: PDF erzeugen
     if st.button("PDF Export starten", key="btn_pdf_generate"):
         df_sel = df_qm_all[df_qm_all["VA_Nr"] == export_va]
         if df_sel.empty:
@@ -188,13 +190,13 @@ if options_va:
                 row = df_sel.iloc[0]
                 st.session_state["pdf_bytes"] = export_pdf_row_to_bytes(row)
                 st.session_state["pdf_filename"] = f"{export_va}.pdf"
-                st.success("PDF erstellt. Du kannst es jetzt herunterladen.")
+                st.success("PDF erstellt. Jetzt kannst du es herunterladen.")
             except Exception as e:
                 st.session_state["pdf_bytes"] = None
                 st.session_state["pdf_filename"] = None
                 st.error(f"PDF konnte nicht erzeugt werden: {e}")
 
-    # ⬇️ Download-Button erscheint nur bei gültigen Bytes
+    # Button 2: Download nur wenn Bytes vorhanden sind
     if st.session_state["pdf_bytes"]:
         st.download_button(
             label="Download PDF",
