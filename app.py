@@ -3,7 +3,7 @@ import pandas as pd
 from fpdf import FPDF
 
 # ----------------------------
-# Login-Logik ohne rerun
+# Login-Logik ohne Benutzername
 # ----------------------------
 if "logged_in" not in st.session_state:
     st.session_state["logged_in"] = False
@@ -25,10 +25,9 @@ with st.sidebar:
         st.stop()
 
 # ----------------------------
-# Datenimport
+# CSV Import
 # ----------------------------
 CSV_FILE = "qm_va.csv"
-
 try:
     df_qm_all = pd.read_csv(CSV_FILE, sep=";", encoding="utf-8")
 except FileNotFoundError:
@@ -132,4 +131,5 @@ if options_va:
             )
 else:
     st.info("Keine VAs vorhanden. Bitte zuerst eine Verfahrensanweisung speichern.")
+
 
