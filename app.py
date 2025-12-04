@@ -62,17 +62,10 @@ def export_pdf_row_to_bytes(df_row: pd.Series) -> bytes:
     return pdf_bytes.encode("latin-1") if isinstance(pdf_bytes, str) else pdf_bytes
 
 # ----------------------------
-# Login (optional)
+# Login
 # ----------------------------
 if "auth" not in st.session_state:
-    st.session_state["auth"] = True  # setze für jetzt auf True, damit Felder sichtbar sind
-
-with st.sidebar:
-    st.markdown("### Navigation")
-    if st.button("Logout"):
-        st.session_state["auth"] = False
-        st.success("Logout erfolgreich – bitte neu einloggen.")
-        st.stop()
+    st.session_state["auth"] = False
 
 if not st.session_state["auth"]:
     st.markdown("## 🔐 Login QM-Verfahrensanweisungen")
@@ -80,10 +73,17 @@ if not st.session_state["auth"]:
     if st.button("Login"):
         if st.session_state.get("pw", "") == "QM2024":
             st.session_state["auth"] = True
-            st.success("Login erfolgreich.")
+            st.success("Login erfolgreich – du kannst jetzt mit der App arbeiten.")
         else:
             st.error("Falsches Passwort.")
     st.stop()
+
+with st.sidebar:
+    st.markdown("### Navigation")
+    if st.button("Logout"):
+        st.session_state["auth"] = False
+        st.success("Logout erfolgreich – bitte neu einloggen.")
+        st.stop()
 
 # ----------------------------
 # Eingabeformular
@@ -95,7 +95,7 @@ va_title = st.text_input("Titel", key="va_title", placeholder="Kommunikationsweg
 kapitel_num = st.selectbox("Kapitel Nr.", list(range(1, 11)), index=6)
 unterkapitel_num = st.selectbox("Unterkapitel Nr.", list(range(1, 11)), index=2)
 kapitel = f"Kapitel {kapitel_num}"
-unterkapitel = f"Kap. {kapitel_num}-{unterkapitel_num}"  # immer Text, nie Datum
+unterkapitel = f"Kap. {kapitel_num}-{unterkapitel_num}"   # 👉 immer Kap. 7-3 Format
 revision_date = st.date_input("Revisionsstand", value=date.today())
 erstellt_von = st.text_input("Erstellt von (Name + Funktion)", key="erstellt_von",
                              placeholder="z. B. Peters, Michael – Qualitätsbeauftragter")
@@ -181,5 +181,6 @@ if options_va:
             )
 else:
     st.info("Keine VAs vorhanden. Bitte zuerst eine Verfahrensanweisung speichern.")
+
 
 
