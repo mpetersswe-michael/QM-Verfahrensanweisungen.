@@ -6,19 +6,26 @@ from fpdf import FPDF
 # Einstellungen
 # ----------------------------
 CSV_FILE = "qm_va.csv"  # Pfad zur CSV mit Pflichtfeldern
+REQUIRED_COLS = [
+    "VA_Nr", "Titel", "Kapitel", "Unterkapitel",
+    "Revisionsstand", "Erstellt von", "Zeitstempel"
+]
 
 # ----------------------------
-# Login-Logik (ohne Benutzername)
+# Login mit Passworteingabe (einfach, stabil)
 # ----------------------------
 if "logged_in" not in st.session_state:
     st.session_state["logged_in"] = False
 
 if not st.session_state["logged_in"]:
     st.markdown("## 🔒 Login")
+    password = st.text_input("Passwort", type="password")
     if st.button("Login"):
-        st.session_state["logged_in"] = True
-    else:
-        st.stop()
+        if password == "qm2024":  # Festes Passwort
+            st.session_state["logged_in"] = True
+        else:
+            st.error("Falsches Passwort.")
+    st.stop()
 
 # ----------------------------
 # Sidebar mit Logout
@@ -35,19 +42,18 @@ with st.sidebar:
 try:
     df_qm_all = pd.read_csv(CSV_FILE, sep=";", encoding="utf-8")
 except FileNotFoundError:
-    df_qm_all = pd.DataFrame(columns=[
-        "VA_Nr", "Titel", "Kapitel", "Unterkapitel",
-        "Revisionsstand", "Erstellt von", "Zeitstempel"
-    ])
+    df_qm_all = pd.DataFrame(columns=REQUIRED_COLS)
 
-# Sicherstellen, dass die erwarteten Spalten existieren
-required_cols = ["VA_Nr", "Titel", "Kapitel", "Unterkapitel",
-                 "Revisionsstand", "Erstellt von", "Zeitstempel"]
-for c in required_cols:
+# Fehlende Spalten ergänzen, damit die Ansicht stabil bleibt
+for c in REQUIRED_COLS:
     if c not in df_qm_all.columns:
         df_qm_all[c] = ""
 
-options_va = df_qm_all["VA_Nr"].dropna().astype(str).unique().tolist() if not df_qm_all.empty else []
+# VA-Optionen ermitteln
+options_va = (
+    df_qm_all["VA_Nr"].dropna().astype(str).unique().tolist()
+    if not df_qm_all.empty else []
+)
 
 # ----------------------------
 # UI: Formularansicht + PDF Export
@@ -81,7 +87,7 @@ else:
     st.markdown(f"**Erstellt von:** {row['Erstellt von']}")
     st.markdown(f"**Zeitstempel:** {row['Zeitstempel']}")
 
-    # Zusatzfelder (nur Formular/Session, nicht CSV)
+    # Zusatzfelder (nur Formular/Session, nicht CSV gespeichert)
     beschreibung = st.text_area("Beschreibung / Zweck", key="beschreibung")
     geltungsbereich = st.text_area("Geltungsbereich", key="geltungsbereich")
     verantwortlichkeiten = st.text_area("Verantwortlichkeiten", key="verantwortlichkeiten")
@@ -120,20 +126,17 @@ else:
                 text = str(val) if pd.notna(val) else ""
                 pdf.multi_cell(0, 8, f"{label}: {text}")
 
-            # Linie
             pdf.ln(3)
 
-            # Zusatzfelder
+            # Abschnittsfunktion mit latin-1 Fallback
             def section(title, content):
                 pdf.set_font("Arial", style="B", size=12)
                 pdf.multi_cell(0, 8, title)
                 pdf.set_font("Arial", size=11)
                 safe = content if content else ""
-                # FPDF Standard unterstützt nur latin-1; sicherstellen, dass Zeichen darstellbar sind
                 try:
                     pdf.multi_cell(0, 8, safe)
                 except Exception:
-                    # Fallback: problematische Zeichen ersetzen
                     pdf.multi_cell(0, 8, safe.encode("latin-1", "replace").decode("latin-1"))
                 pdf.ln(2)
 
