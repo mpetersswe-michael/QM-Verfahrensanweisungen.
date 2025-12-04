@@ -130,6 +130,26 @@ def load_data(file, columns):
             df[c] = ""
     return df[columns]
 
+def to_csv_semicolon(df):
+    return df.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+
+def export_pdf(df_row):
+    try:
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        pdf.cell(0, 10, "QM-Verfahrensanweisung", ln=True, align="C")
+        pdf.ln(5)
+        for col in df_row.index:
+            val = str(df_row[col])
+            pdf.multi_cell(0, 8, f"{col}: {val}")
+            pdf.ln(1)
+        pdf_str = pdf.output(dest="S")
+        pdf_bytes = pdf_str.encode("latin-1") if isinstance(pdf_str, str) else pdf_str
+        return pdf_bytes
+    except Exception as e:
+        return None
+
 df_qm = load_data(DATA_FILE_QM, QM_COLUMNS)
 options_va = df_qm["VA_Nr"].dropna().astype(str).unique().tolist()
 
@@ -160,97 +180,80 @@ else:
         kommentar = st.text_area("Kommentar", value=row.get("Kommentar", ""), key="kommentar")
         unterlagen = st.text_area("Mitgeltende Unterlagen", value=row.get("Mitgeltende Unterlagen", ""), key="unterlagen")
 
-# Erste Zeile der Auswahl
-row = df_sel.iloc[0]
+        # ----------------------------
+        # PDF Export
+        # ----------------------------
+        st.markdown("### 📤 PDF Export")
 
-# Pflichtfelder anzeigen
-st.markdown(f"**VA Nummer:** {row['VA_Nr']}")
-st.markdown(f"**Titel:** {row['Titel']}")
-st.markdown(f"**Kapitel:** {row['Kapitel']}")
-st.markdown(f"**Unterkapitel:** {row['Unterkapitel']}")
-st.markdown(f"**Revisionsstand:** {row['Revisionsstand']}")
-
-# Zusatzfelder (Formular)
-ziel = st.text_area("Ziel", value=row.get("Ziel", ""), key="ziel")
-geltung = st.text_area("Geltungsbereich", value=row.get("Geltungsbereich", ""), key="geltung")
-vorgehen = st.text_area("Vorgehensweise", value=row.get("Vorgehensweise", ""), key="vorgehen")
-kommentar = st.text_area("Kommentar", value=row.get("Kommentar", ""), key="kommentar")
-unterlagen = st.text_area("Mitgeltende Unterlagen", value=row.get("Mitgeltende Unterlagen", ""), key="unterlagen")
-
-# ----------------------------
-# PDF Export
-# ----------------------------
-st.markdown("### 📤 PDF Export")
-
-if st.button("PDF Export starten", key="btn_pdf_generate"):
-    try:
-        pdf = FPDF()
-        pdf.set_auto_page_break(auto=True, margin=15)
-        pdf.add_page()
-
-        pdf.set_font("Arial", style="", size=16)
-        pdf.cell(0, 10, "QM-Verfahrensanweisung", ln=True, align="C")
-        pdf.ln(5)
-
-        pdf.set_font("Arial", size=11)
-        for col in ["VA_Nr", "Titel", "Kapitel", "Unterkapitel", "Revisionsstand"]:
-            val = str(row[col]) if pd.notna(row[col]) else ""
-            pdf.multi_cell(0, 8, f"{col}: {val}")
-        pdf.ln(3)
-
-        def section(title, content):
-            pdf.set_font("Arial", style="B", size=12)
-            pdf.multi_cell(0, 8, title)
-            pdf.set_font("Arial", size=11)
-            safe = content if content else ""
+        if st.button("PDF Export starten", key="btn_pdf_generate"):
             try:
-                pdf.multi_cell(0, 8, safe)
-            except Exception:
-                pdf.multi_cell(0, 8, safe.encode("latin-1", "replace").decode("latin-1"))
-            pdf.ln(2)
+                pdf = FPDF()
+                pdf.set_auto_page_break(auto=True, margin=15)
+                pdf.add_page()
 
-        section("Ziel", ziel)
-        section("Geltungsbereich", geltung)
-        section("Vorgehensweise", vorgehen)
-        section("Kommentar", kommentar)
-        section("Mitgeltende Unterlagen", unterlagen)
+                pdf.set_font("Arial", style="", size=16)
+                pdf.cell(0, 10, "QM-Verfahrensanweisung", ln=True, align="C")
+                pdf.ln(5)
 
-        pdf.set_y(-30)
-        pdf.set_font("Arial", style="I", size=10)
-        pdf.cell(0, 10, "Erstellt von: Peters, Michael – Qualitätsbeauftragter", ln=True, align="L")
+                pdf.set_font("Arial", size=11)
+                for col in ["VA_Nr", "Titel", "Kapitel", "Unterkapitel", "Revisionsstand"]:
+                    val = str(row[col]) if pd.notna(row[col]) else ""
+                    pdf.multi_cell(0, 8, f"{col}: {val}")
+                pdf.ln(3)
 
-        pdf_raw = pdf.output(dest="S")
-        pdf_bytes = pdf_raw.encode("latin-1") if isinstance(pdf_raw, str) else pdf_raw
+                def section(title, content):
+                    pdf.set_font("Arial", style="B", size=12)
+                    pdf.multi_cell(0, 8, title)
+                    pdf.set_font("Arial", size=11)
+                    safe = content if content else ""
+                    try:
+                        pdf.multi_cell(0, 8, safe)
+                    except Exception:
+                        pdf.multi_cell(0, 8, safe.encode("latin-1", "replace").decode("latin-1"))
+                    pdf.ln(2)
 
-        st.session_state["pdf_bytes"] = pdf_bytes
-        st.session_state["pdf_filename"] = f"{row['VA_Nr']}.pdf"
-        st.success("PDF erstellt. Jetzt kannst du es herunterladen.")
+                section("Ziel", ziel)
+                section("Geltungsbereich", geltung)
+                section("Vorgehensweise", vorgehen)
+                section("Kommentar", kommentar)
+                section("Mitgeltende Unterlagen", unterlagen)
 
-        # Zusatzfelder speichern
-        df_qm.loc[df_qm["VA_Nr"] == row["VA_Nr"], "Ziel"] = ziel
-        df_qm.loc[df_qm["VA_Nr"] == row["VA_Nr"], "Geltungsbereich"] = geltung
-        df_qm.loc[df_qm["VA_Nr"] == row["VA_Nr"], "Vorgehensweise"] = vorgehen
-        df_qm.loc[df_qm["VA_Nr"] == row["VA_Nr"], "Kommentar"] = kommentar
-        df_qm.loc[df_qm["VA_Nr"] == row["VA_Nr"], "Mitgeltende Unterlagen"] = unterlagen
+                pdf.set_y(-30)
+                pdf.set_font("Arial", style="I", size=10)
+                pdf.cell(0, 10, "Erstellt von: Peters, Michael – Qualitätsbeauftragter", ln=True, align="L")
 
-        with open(DATA_FILE_QM, "wb") as f:
-            f.write(to_csv_semicolon(df_qm))
+                pdf_raw = pdf.output(dest="S")
+                pdf_bytes = pdf_raw.encode("latin-1") if isinstance(pdf_raw, str) else pdf_raw
 
-    except Exception as e:
-        st.session_state["pdf_bytes"] = None
-        st.session_state["pdf_filename"] = None
-        st.error(f"PDF konnte nicht erzeugt werden: {e}")
+                st.session_state["pdf_bytes"] = pdf_bytes
+                st.session_state["pdf_filename"] = f"{row['VA_Nr']}.pdf"
+                st.success("PDF erstellt. Jetzt kannst du es herunterladen.")
 
-# ----------------------------
-# Download-Button
-# ----------------------------
-if "pdf_bytes" in st.session_state and st.session_state["pdf_bytes"]:
-    st.download_button(
-        label="Download PDF",
-        data=st.session_state["pdf_bytes"],
-        file_name=st.session_state["pdf_filename"],
-        mime="application/pdf",
-        key="btn_pdf_download"
-    )
-else:
-    st.info("Noch kein PDF exportiert.")
+                # Zusatzfelder speichern
+                df_qm.loc[df_qm["VA_Nr"] == row["VA_Nr"], "Ziel"] = ziel
+                df_qm.loc[df_qm["VA_Nr"] == row["VA_Nr"], "Geltungsbereich"] = geltung
+                df_qm.loc[df_qm["VA_Nr"] == row["VA_Nr"], "Vorgehensweise"] = vorgehen
+                df_qm.loc[df_qm["VA_Nr"] == row["VA_Nr"], "Kommentar"] = kommentar
+                df_qm.loc[df_qm["VA_Nr"] == row["VA_Nr"], "Mitgeltende Unterlagen"] = unterlagen
+
+                with open(DATA_FILE_QM, "wb") as f:
+                    f.write(to_csv_semicolon(df_qm))
+
+            except Exception as e:
+                st.session_state["pdf_bytes"] = None
+                st.session_state["pdf_filename"] = None
+                st.error(f"PDF konnte nicht erzeugt werden: {e}")
+
+        # ----------------------------
+        # Download-Button
+        # ----------------------------
+        if "pdf_bytes" in st.session_state and st.session_state["pdf_bytes"]:
+            st.download_button(
+                label="Download PDF",
+                data=st.session_state["pdf_bytes"],
+                file_name=st.session_state["pdf_filename"],
+                mime="application/pdf",
+                key="btn_pdf_download"
+            )
+        else:
+            st.info("Noch kein PDF exportiert.")
