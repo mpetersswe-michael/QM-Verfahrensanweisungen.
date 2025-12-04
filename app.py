@@ -131,8 +131,41 @@ def load_data(file, columns):
     df = df.dropna(subset=["VA_Nr"])
     return df
 
+# Daten aus qm_va.csv laden
 df_qm = load_data(DATA_FILE_QM, QM_COLUMNS)
 options_va = df_qm["VA_Nr"].dropna().astype(str).unique().tolist()
+
+st.markdown("## 📁 Verfahrensanweisungen anzeigen und exportieren")
+
+if not options_va:
+    st.info("Keine VAs vorhanden. Bitte zuerst eine Verfahrensanweisung speichern.")
+    st.stop()
+
+# Auswahl einer VA
+selected_va = st.selectbox("VA auswählen", options=options_va, key="va_select")
+df_sel = df_qm[df_qm["VA_Nr"].astype(str) == str(selected_va)]
+
+if df_sel.empty:
+    st.error("Für die ausgewählte VA wurden keine Daten gefunden.")
+    st.stop()
+
+# Erste Zeile der Auswahl
+row = df_sel.iloc[0]
+
+# Pflichtfelder anzeigen
+st.markdown(f"**VA Nummer:** {row['VA_Nr']}")
+st.markdown(f"**Titel:** {row['Titel']}")
+st.markdown(f"**Kapitel:** {row['Kapitel']}")
+st.markdown(f"**Unterkapitel:** {row['Unterkapitel']}")
+st.markdown(f"**Revisionsstand:** {row['Revisionsstand']}")
+
+# Zusatzfelder (Formular)
+ziel = st.text_area("Ziel", value=row.get("Ziel", ""), key="ziel")
+geltung = st.text_area("Geltungsbereich", value=row.get("Geltungsbereich", ""), key="geltung")
+vorgehen = st.text_area("Vorgehensweise", value=row.get("Vorgehensweise", ""), key="vorgehen")
+kommentar = st.text_area("Kommentar", value=row.get("Kommentar", ""), key="kommentar")
+unterlagen = st.text_area("Mitgeltende Unterlagen", value=row.get("Mitgeltende Unterlagen", ""), key="unterlagen")
+
 
 # Pflichtfelder anzeigen
 st.markdown(f"**VA Nummer:** {row['VA_Nr']}")
