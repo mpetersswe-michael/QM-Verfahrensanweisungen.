@@ -98,7 +98,8 @@ st.session_state["auth"] = False
 st.stop()
 st.markdown("---")
 # ----------------------------
-# Daten laden
+# ----------------------------
+# Daten laden und VA-Auswahl
 # ----------------------------
 df_qm = load_data(DATA_FILE_QM, QM_COLUMNS)
 options_va = df_qm["VA_Nr"].dropna().astype(str).unique().tolist()
@@ -209,4 +210,3 @@ if "pdf_bytes" in st.session_state and st.session_state["pdf_bytes"]:
     )
 else:
     st.info("Noch kein PDF exportiert.")
-
