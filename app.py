@@ -4,6 +4,31 @@ from fpdf import FPDF
 from pathlib import Path
 
 # ----------------------------
+# Login mit Passwort
+# ----------------------------
+if "logged_in" not in st.session_state:
+    st.session_state["logged_in"] = False
+
+if not st.session_state["logged_in"]:
+    st.markdown("## 🔒 Login")
+    pw = st.text_input("Passwort", type="password")
+    if st.button("Login"):
+        if pw == "qm2024":
+            st.session_state["logged_in"] = True
+        else:
+            st.error("Falsches Passwort.")
+    st.stop()
+
+# ----------------------------
+# Sidebar mit Logout
+# ----------------------------
+with st.sidebar:
+    st.markdown("### Navigation")
+    if st.button("Logout"):
+        st.session_state["logged_in"] = False
+        st.experimental_rerun()
+
+# ----------------------------
 # Einstellungen
 # ----------------------------
 CSV_FILE = "qm_va.csv"
