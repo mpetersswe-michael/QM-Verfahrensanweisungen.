@@ -52,6 +52,7 @@ color: #333333;
 """, unsafe_allow_html=True)
 #		
 #       
+#       
 #   Hilfsfunktionen
 #       
 def load_data(file, columns):
@@ -84,28 +85,30 @@ def export_pdf(df_row):
     except Exception as e:
         return None
 
-#		
-#	Login-Block
-#		
+#       
+#   Login-Block
+#       
 if "auth" not in st.session_state:
-st.session_state["auth"] = False
+    st.session_state["auth"] = False
+
 if not st.session_state["auth"]:
-st.markdown('<div class="login-box">Login QM-Verfahrensanweisungen</div>', unsafe_allow_html=True)
-password = st.text_input("Login Passwort", type="password", key="login_pw")
-if st.button("Login", key="login_btn"):
-if password == "QM2024":
-st.session_state["auth"] = True
-st.success("Willkommen - du bist eingeloggt. Bitte oben rechts 'Rerun' starten.")
-else:
-st.error("Falsches Passwort.")
-st.stop()
+    st.markdown('<div class="login-box">Login QM-Verfahrensanweisungen</div>', unsafe_allow_html=True)
+    password = st.text_input("Login Passwort", type="password", key="login_pw")
+    if st.button("Login", key="login_btn"):
+        if password == "QM2024":
+            st.session_state["auth"] = True
+            st.success("Willkommen - du bist eingeloggt. Bitte oben rechts 'Rerun' starten.")
+        else:
+            st.error("Falsches Passwort.")
+    st.stop()
+
 with st.sidebar:
-st.markdown("### Navigation")
-if st.button("Logout", key="logout_btn"):
-st.session_state["auth"] = False
-st.stop()
-st.markdown("---")
-# ----------------------------
+    st.markdown("### Navigation")
+    if st.button("Logout", key="logout_btn"):
+        st.session_state["auth"] = False
+        st.stop()
+    st.markdown("---")
+
 # ----------------------------
 # Daten laden und VA-Auswahl
 # ----------------------------
