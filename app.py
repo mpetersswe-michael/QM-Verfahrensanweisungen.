@@ -16,6 +16,22 @@ QM_COLUMNS = [
 # ----------------------------
 # Hilfsfunktionen
 # ----------------------------
+def load_data(file: str, columns: list) -> pd.DataFrame:
+    try:
+        df = pd.read_csv(file, sep=";", encoding="utf-8-sig")
+    except Exception:
+        df = pd.DataFrame(columns=columns)
+    for c in columns:
+        if c not in df.columns:
+            df[c] = ""
+    return df[columns]
+
+def save_data(file: str, df: pd.DataFrame) -> None:
+    df.to_csv(file, sep=";", index=False, encoding="utf-8-sig")
+
+def to_csv_semicolon(df: pd.DataFrame) -> bytes:
+    return df.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+
 def export_pdf_row_to_bytes(df_row):
     if isinstance(df_row, pd.DataFrame):
         df_row = df_row.iloc[0]
@@ -43,7 +59,7 @@ def export_pdf_row_to_bytes(df_row):
         pdf.ln(1)
 
     pdf_str = pdf.output(dest="S")
-    return pdf_str.encode("latin-1") if isinstance(pdf_str, str) else pdf_str
+    return pdf_str.encode("latin-1") if isinstance(pdf_str, str) else b""
 
 # ----------------------------
 # Login
@@ -168,4 +184,5 @@ if options_va:
             )
 else:
     st.info("Keine VAs vorhanden. Bitte zuerst eine Verfahrensanweisung speichern.")
+
 
