@@ -4,7 +4,7 @@ from fpdf import FPDF
 from pathlib import Path
 
 # ----------------------------
-# Login mit Passwort
+# Login (unverändert)
 # ----------------------------
 if "logged_in" not in st.session_state:
     st.session_state["logged_in"] = False
@@ -19,9 +19,6 @@ if not st.session_state["logged_in"]:
             st.error("Falsches Passwort.")
     st.stop()
 
-# ----------------------------
-# Sidebar mit Logout
-# ----------------------------
 with st.sidebar:
     st.markdown("### Navigation")
     if st.button("Logout"):
@@ -29,7 +26,7 @@ with st.sidebar:
         st.experimental_rerun()
 
 # ----------------------------
-# Einstellungen
+# CSV laden (Spalten A–J)
 # ----------------------------
 CSV_FILE = "qm_va.csv"
 REQUIRED_COLS = [
@@ -38,7 +35,6 @@ REQUIRED_COLS = [
     "Ziel", "Geltungsbereich", "Vorgehensweise", "Kommentar", "Mitgeltende Unterlagen"
 ]
 
-from pathlib import Path
 if Path(CSV_FILE).exists():
     df_qm_all = pd.read_csv(CSV_FILE, sep=";", encoding="utf-8")
 else:
@@ -49,26 +45,6 @@ for col in REQUIRED_COLS:
         df_qm_all[col] = ""
 
 options_va = df_qm_all["VA_Nr"].dropna().astype(str).unique().tolist()
-
-# ----------------------------
-# CSV laden (inkl. Zusatzfelder F:J)
-# ----------------------------
-REQUIRED_COLS = [
-    "VA_Nr", "Titel", "Kapitel", "Unterkapitel",
-    "Revisionsstand", "Erstellt von", "Zeitstempel",
-    "Ziel", "Geltungsbereich", "Vorgehensweise", "Kommentar", "Mitgeltende Unterlagen"
-]
-
-if Path(CSV_FILE).exists():
-    df_qm_all = pd.read_csv(CSV_FILE, sep=";", encoding="utf-8")
-else:
-    df_qm_all = pd.DataFrame(columns=REQUIRED_COLS)
-
-# Fehlende Spalten ergänzen
-for col in REQUIRED_COLS:
-    if col not in df_qm_all.columns:
-        df_qm_all[col] = ""
-
 
 # ----------------------------
 # VA-Auswahl und Anzeige
@@ -98,11 +74,11 @@ st.markdown(f"**Erstellt von:** {row['Erstellt von']}")
 st.markdown(f"**Zeitstempel:** {row['Zeitstempel']}")
 
 # Zusatzfelder (Formular)
-beschreibung = st.text_area("Ziel", key="beschreibung")
-geltungsbereich = st.text_area("Geltungsbereich", key="geltungsbereich")
-durchfuehrung = st.text_area("Vorgehensweise", key="durchfuehrung")
-verantwortlichkeiten = st.text_area("Kommentar", key="verantwortlichkeiten")
-nachweise = st.text_area("Mitgeltende Unterlagen", key="nachweise")
+beschreibung = st.text_area("Ziel", value=row.get("Ziel", ""), key="beschreibung")
+geltungsbereich = st.text_area("Geltungsbereich", value=row.get("Geltungsbereich", ""), key="geltungsbereich")
+durchfuehrung = st.text_area("Vorgehensweise", value=row.get("Vorgehensweise", ""), key="durchfuehrung")
+verantwortlichkeiten = st.text_area("Kommentar", value=row.get("Kommentar", ""), key="verantwortlichkeiten")
+nachweise = st.text_area("Mitgeltende Unterlagen", value=row.get("Mitgeltende Unterlagen", ""), key="nachweise")
 
 # ----------------------------
 # PDF Export
@@ -137,7 +113,7 @@ if st.button("PDF Export starten", key="btn_pdf_generate"):
             pdf.multi_cell(0, 8, f"{label}: {text}")
         pdf.ln(3)
 
-        # Zusatzfelder mit fettgedruckten Überschriften
+        # Zusatzfelder
         def section(title, content):
             pdf.set_font("Arial", style="B", size=12)
             pdf.multi_cell(0, 8, title)
@@ -168,17 +144,14 @@ if st.button("PDF Export starten", key="btn_pdf_generate"):
         st.session_state["pdf_filename"] = f"{row['VA_Nr']}.pdf"
         st.success("PDF erstellt. Jetzt kannst du es herunterladen.")
 
-        # Zusatzfelder in CSV speichern
+        # Zusatzfelder speichern
         df_qm_all.loc[df_qm_all["VA_Nr"] == row["VA_Nr"], "Ziel"] = beschreibung
         df_qm_all.loc[df_qm_all["VA_Nr"] == row["VA_Nr"], "Geltungsbereich"] = geltungsbereich
         df_qm_all.loc[df_qm_all["VA_Nr"] == row["VA_Nr"], "Vorgehensweise"] = durchfuehrung
         df_qm_all.loc[df_qm_all["VA_Nr"] == row["VA_Nr"], "Kommentar"] = verantwortlichkeiten
         df_qm_all.loc[df_qm_all["VA_Nr"] == row["VA_Nr"], "Mitgeltende Unterlagen"] = nachweise
 
-        try:
-            df_qm_all.to_csv(CSV_FILE, sep=";", index=False, encoding="utf-8")
-        except Exception:
-            df_qm_all.to_csv(CSV_FILE, sep=";", index=False, encoding="latin-1")
+        df_qm_all.to_csv(CSV_FILE, sep=";", index=False, encoding="utf-8")
 
     except Exception as e:
         st.session_state["pdf_bytes"] = None
@@ -211,5 +184,6 @@ if st.button("VA löschen", key="btn_va_delete"):
         st.experimental_rerun()
     except Exception as e:
         st.error(f"Löschen fehlgeschlagen: {e}")
+
 
 
