@@ -14,24 +14,8 @@ QM_COLUMNS = [
 ]
 
 # ----------------------------
-# Hilfsfunktionen
+# PDF-Helferfunktion
 # ----------------------------
-def load_data(file: str, columns: list) -> pd.DataFrame:
-    try:
-        df = pd.read_csv(file, sep=";", encoding="utf-8-sig")
-    except Exception:
-        df = pd.DataFrame(columns=columns)
-    for c in columns:
-        if c not in df.columns:
-            df[c] = ""
-    return df[columns]
-
-def save_data(file: str, df: pd.DataFrame) -> None:
-    df.to_csv(file, sep=";", index=False, encoding="utf-8-sig")
-
-def to_csv_semicolon(df: pd.DataFrame) -> bytes:
-    return df.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
-
 def export_pdf_row_to_bytes(df_row: pd.Series) -> bytes:
     if isinstance(df_row, pd.DataFrame):
         df_row = df_row.iloc[0]
@@ -63,6 +47,25 @@ def export_pdf_row_to_bytes(df_row: pd.Series) -> bytes:
     if not pdf_bytes or len(pdf_bytes) == 0:
         raise ValueError("PDF-Erzeugung ergab leere Daten.")
     return pdf_bytes
+
+# ----------------------------
+# Hilfsfunktionen
+# ----------------------------
+def load_data(file: str, columns: list) -> pd.DataFrame:
+    try:
+        df = pd.read_csv(file, sep=";", encoding="utf-8-sig")
+    except Exception:
+        df = pd.DataFrame(columns=columns)
+    for c in columns:
+        if c not in df.columns:
+            df[c] = ""
+    return df[columns]
+
+def save_data(file: str, df: pd.DataFrame) -> None:
+    df.to_csv(file, sep=";", index=False, encoding="utf-8-sig")
+
+def to_csv_semicolon(df: pd.DataFrame) -> bytes:
+    return df.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
 
 # ----------------------------
 # Login
@@ -191,14 +194,14 @@ if options_va:
                 st.session_state["pdf_filename"] = None
                 st.error(f"PDF konnte nicht erzeugt werden: {e}")
 
-    if st.session_state["pdf_bytes"]:
-        st.download_button(
-            label="Download PDF",
-            data=st.session_state["pdf_bytes"],
-            file_name=st.session_state["pdf_filename"],
-            mime="application/pdf",
-            key="btn_pdf_download"
-        )
-else
+   if st.session_state["pdf_bytes"]:
+    st.download_button(
+        label="Download PDF",
+        data=st.session_state["pdf_bytes"],
+        file_name=st.session_state["pdf_filename"],
+        mime="application/pdf",
+        key="btn_pdf_download"
+    )
+
 
 
