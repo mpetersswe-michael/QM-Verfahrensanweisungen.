@@ -112,23 +112,27 @@ with st.sidebar:
 # ----------------------------
 # Daten laden und VA-Auswahl
 # ----------------------------
+DATA_FILE_QM = "qm_va.csv"  # bleibt wie vereinbart
+
+QM_COLUMNS = [
+    "VA_Nr", "Titel", "Kapitel", "Unterkapitel", "Revisionsstand",
+    "Ziel", "Geltungsbereich", "Vorgehensweise", "Kommentar", "Mitgeltende Unterlagen"
+]
+
+def load_data(file, columns):
+    try:
+        df = pd.read_csv(file, sep=";", encoding="utf-8-sig")
+    except:
+        df = pd.DataFrame(columns=columns)
+    for c in columns:
+        if c not in df.columns:
+            df[c] = ""
+    df = df[columns]
+    df = df.dropna(subset=["VA_Nr"])
+    return df
+
 df_qm = load_data(DATA_FILE_QM, QM_COLUMNS)
 options_va = df_qm["VA_Nr"].dropna().astype(str).unique().tolist()
-
-st.markdown("## 📁 Verfahrensanweisungen anzeigen und exportieren")
-
-if not options_va:
-    st.info("Keine VAs vorhanden. Bitte zuerst eine Verfahrensanweisung speichern.")
-    st.stop()
-
-selected_va = st.selectbox("VA auswählen", options=options_va, key="va_select")
-df_sel = df_qm[df_qm["VA_Nr"].astype(str) == str(selected_va)]
-
-if df_sel.empty:
-    st.error("Für die ausgewählte VA wurden keine Daten gefunden.")
-    st.stop()
-
-row = df_sel.iloc[0]
 
 # Pflichtfelder anzeigen
 st.markdown(f"**VA Nummer:** {row['VA_Nr']}")
