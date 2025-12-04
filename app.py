@@ -164,47 +164,7 @@ csv_qm = to_csv_semicolon(df_filtered)
 st.download_button("CSV herunterladen", data=csv_qm, file_name=f"qm_va_{dt.date.today()}.csv", mime="text/csv")
 
 # ----------------------------
-# PDF Export
-# ----------------------------
-import tempfile, os
-from fpdf import FPDF
-
-def export_pdf_row_to_bytes(df_row):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-
-    pdf.cell(0, 10, "QM-Verfahrensanweisung", ln=True, align="C")
-    pdf.ln(5)
-
-    for col in df_row.index:
-        val = str(df_row[col])
-        pdf.multi_cell(0, 8, f"{col}: {val}")
-        pdf.ln(1)
-
-    # Primärer Weg: Ausgabe als String oder Bytes
-    out = pdf.output(dest="S")
-    if isinstance(out, bytes):
-        return out
-    elif isinstance(out, str):
-        return out.encode("latin-1")
-    else:
-        # Fallback: Datei schreiben und wieder einlesen
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            tmp_path = tmp.name
-        try:
-            pdf.output(tmp_path, dest="F")
-            with open(tmp_path, "rb") as f:
-                data = f.read()
-            return data
-        finally:
-            try:
-                os.remove(tmp_path)
-            except:
-                pass
-
-# ----------------------------
-# PDF Export (komplett)
+# PDF Export (robust, vollständig, formatiert)
 # ----------------------------
 if st.button("PDF Export starten", key="btn_pdf_generate"):
     try:
@@ -269,8 +229,10 @@ if st.button("PDF Export starten", key="btn_pdf_generate"):
         st.session_state["pdf_filename"] = None
         st.error(f"PDF konnte nicht erzeugt werden: {e}")
 
-# Download-Button
-if st.session_state["pdf_bytes"]:
+# ----------------------------
+# Download-Button (robust)
+# ----------------------------
+if "pdf_bytes" in st.session_state and st.session_state["pdf_bytes"]:
     st.download_button(
         label="Download PDF",
         data=st.session_state["pdf_bytes"],
@@ -279,18 +241,4 @@ if st.session_state["pdf_bytes"]:
         key="btn_pdf_download"
     )
 else:
-    st.button("Download PDF (noch nicht verfügbar)", disabled=True)
-
-# ----------------------------
-# VA löschen (optional)
-# ----------------------------
-if st.button("VA löschen", key="btn_va_delete"):
-    try:
-        df_qm_all = df_qm_all[df_qm_all["VA_Nr"].astype(str) != str(selected_va)]
-        df_qm_all.to_csv(CSV_FILE, sep=";", index=False, encoding="utf-8")
-        st.success(f"VA {selected_va} wurde gelöscht.")
-        st.session_state["va_select"] = None
-        st.experimental_rerun()
-    except Exception as e:
-        st.error(f"Löschen fehlgeschlagen: {e}")
-
+    st.info("Noch kein PDF exportiert.")
