@@ -91,6 +91,9 @@ def export_pdf(df_row):
 if "auth" not in st.session_state:
     st.session_state["auth"] = False
 
+if "auth" not in st.session_state:
+    st.session_state["auth"] = False
+
 if not st.session_state["auth"]:
     st.markdown('<div class="login-box">Login QM-Verfahrensanweisungen</div>', unsafe_allow_html=True)
     password = st.text_input("Login Passwort", type="password", key="login_pw")
@@ -100,7 +103,10 @@ if not st.session_state["auth"]:
             st.success("Willkommen - du bist eingeloggt. Bitte oben rechts 'Rerun' starten.")
         else:
             st.error("Falsches Passwort.")
-    st.stop()
+            st.stop()  # Nur hier stoppen — bei falschem Passwort
+    else:
+        st.stop()  # Nur stoppen, wenn Login noch nicht versucht wurde
+
 
 with st.sidebar:
     st.markdown("### Navigation")
