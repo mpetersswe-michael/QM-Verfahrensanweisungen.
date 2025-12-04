@@ -3,7 +3,7 @@ import pandas as pd
 from fpdf import FPDF
 
 # ----------------------------
-# Login-Logik ohne Benutzername
+# Login-Logik ohne rerun
 # ----------------------------
 if "logged_in" not in st.session_state:
     st.session_state["logged_in"] = False
@@ -12,8 +12,8 @@ if not st.session_state["logged_in"]:
     st.markdown("## 🔐 Login")
     if st.button("Login"):
         st.session_state["logged_in"] = True
-        st.experimental_rerun()
-    st.stop()
+    else:
+        st.stop()
 
 # ----------------------------
 # Sidebar mit Logout
@@ -22,7 +22,8 @@ with st.sidebar:
     st.markdown("### Navigation")
     if st.button("Logout"):
         st.session_state["logged_in"] = False
-        st.experimental_rerun()
+        st.stop()
+
 # ----------------------------
 # Datenimport
 # ----------------------------
