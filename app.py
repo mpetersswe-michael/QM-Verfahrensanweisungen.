@@ -204,7 +204,7 @@ def export_pdf_row_to_bytes(df_row):
                 pass
 
 # ----------------------------
-# PDF Export (robust und modular)
+# PDF Export (komplett)
 # ----------------------------
 if st.button("PDF Export starten", key="btn_pdf_generate"):
     try:
@@ -234,7 +234,7 @@ if st.button("PDF Export starten", key="btn_pdf_generate"):
             pdf.multi_cell(0, 8, f"{label}: {text}")
         pdf.ln(3)
 
-        # Zusatzfelder aus Formular
+        # Zusatzfelder mit fettgedruckten Überschriften
         def section(title, content):
             pdf.set_font("Arial", style="B", size=12)
             pdf.multi_cell(0, 8, title)
@@ -246,11 +246,16 @@ if st.button("PDF Export starten", key="btn_pdf_generate"):
                 pdf.multi_cell(0, 8, safe.encode("latin-1", "replace").decode("latin-1"))
             pdf.ln(2)
 
-        section("Beschreibung / Zweck", beschreibung)
+        section("Ziel", beschreibung)
         section("Geltungsbereich", geltungsbereich)
-        section("Verantwortlichkeiten", verantwortlichkeiten)
-        section("Durchführung", durchfuehrung)
-        section("Dokumentation / Nachweise", nachweise)
+        section("Vorgehensweise", durchfuehrung)
+        section("Kommentar", verantwortlichkeiten)
+        section("Mitgeltende Unterlagen", nachweise)
+
+        # Fußzeile
+        pdf.set_y(-30)
+        pdf.set_font("Arial", style="I", size=10)
+        pdf.cell(0, 10, "Erstellt von: Peters, Michael – Qualitätsbeauftragter", ln=True, align="L")
 
         # PDF-Bytes erzeugen
         pdf_raw = pdf.output(dest="S")
@@ -275,3 +280,17 @@ if st.session_state["pdf_bytes"]:
     )
 else:
     st.button("Download PDF (noch nicht verfügbar)", disabled=True)
+
+# ----------------------------
+# VA löschen (optional)
+# ----------------------------
+if st.button("VA löschen", key="btn_va_delete"):
+    try:
+        df_qm_all = df_qm_all[df_qm_all["VA_Nr"].astype(str) != str(selected_va)]
+        df_qm_all.to_csv(CSV_FILE, sep=";", index=False, encoding="utf-8")
+        st.success(f"VA {selected_va} wurde gelöscht.")
+        st.session_state["va_select"] = None
+        st.experimental_rerun()
+    except Exception as e:
+        st.error(f"Löschen fehlgeschlagen: {e}")
+
