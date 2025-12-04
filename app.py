@@ -4,7 +4,7 @@ import datetime as dt
 from fpdf import FPDF
 
 # ----------------------------
-# Basis-Konfiguration
+# Konfiguration
 # ----------------------------
 st.set_page_config(page_title="QM-Verfahrensanweisungen", layout="wide")
 DATA_FILE_QM = "qm_verfahrensanweisungen.csv"
@@ -58,16 +58,8 @@ def export_pdf_row_to_bytes(df_row: pd.Series) -> bytes:
         pdf.multi_cell(0, 8, f"{labels.get(col, col)}: {text}")
         pdf.ln(1)
 
-    try:
-        pdf_str = pdf.output(dest="S")
-        if isinstance(pdf_str, str):
-            return pdf_str.encode("latin-1")
-        elif isinstance(pdf_str, bytes):
-            return pdf_str
-        else:
-            return b""
-    except Exception:
-        return b""
+    pdf_str = pdf.output(dest="S")
+    return pdf_str.encode("latin-1") if isinstance(pdf_str, str) else pdf_str
 
 # ----------------------------
 # Login
@@ -94,81 +86,39 @@ with st.sidebar:
         st.stop()
 
 # ----------------------------
-# Session-State nur initialisieren (nie überschreiben)
-# ----------------------------
-defaults = {
-    "va_nr": "",
-    "va_title": "",
-    "ziel": "",
-    "geltung": "",
-    "vorgehen": "",
-    "kommentar": "",
-    "unterlagen": "",
-    "erstellt_von": "",
-    "kapitel_num": 7,
-    "unterkapitel_num": 3,
-    "revision_date": dt.date.today(),
-}
-for k, v in defaults.items():
-    if k not in st.session_state:
-        st.session_state[k] = v
-
-# ----------------------------
-# Eingabeformular (Form sichert konsistente Werte)
+# Eingabeformular
 # ----------------------------
 st.markdown("## 📝 Neue Verfahrensanweisung erfassen")
 
-with st.form("va_form", clear_on_submit=False):
-    col1, col2 = st.columns(2)
-    with col1:
-        st.text_input("VA Nummer", key="va_nr", placeholder="z. B. VA003")
-        st.selectbox("Kapitel Nr.", list(range(1, 11)),
-                     index=st.session_state["kapitel_num"] - 1, key="kapitel_num")
-        st.date_input("Revisionsstand", value=st.session_state["revision_date"], key="revision_date")
-        st.text_input("Erstellt von (Name + Funktion)", key="erstellt_von",
-                      placeholder="z. B. Peters, Michael – Qualitätsbeauftragter")
-    with col2:
-        st.text_input("Titel", key="va_title", placeholder="Kommunikationswege im Pflegedienst")
-        st.selectbox("Unterkapitel Nr.", list(range(1, 11)),
-                     index=st.session_state["unterkapitel_num"] - 1, key="unterkapitel_num")
+va_nr = st.text_input("VA Nummer", key="va_nr", placeholder="z. B. VA003")
+va_title = st.text_input("Titel", key="va_title", placeholder="Kommunikationswege im Pflegedienst")
+kapitel_num = st.selectbox("Kapitel Nr.", list(range(1, 11)), index=6)
+unterkapitel_num = st.selectbox("Unterkapitel Nr.", list(range(1, 11)), index=2)
+kapitel = f"Kapitel {kapitel_num}"
+unterkapitel = f"Kap. {kapitel_num}-{unterkapitel_num}"   # 👉 immer Kap. 7-3 Format
+revision_date = st.date_input("Revisionsstand", value=dt.date.today())
+erstellt_von = st.text_input("Erstellt von (Name + Funktion)", key="erstellt_von",
+                             placeholder="z. B. Peters, Michael – Qualitätsbeauftragter")
 
-    # Sichtbare, nicht persistierte Felder (werden nicht gespeichert)
-    st.text_area("Ziel", key="ziel", height=100)
-    st.text_area("Geltungsbereich", key="geltung", height=80)
-    st.text_area("Vorgehensweise", key="vorgehen", height=150)
-    st.text_area("Kommentar", key="kommentar", height=80)
-    st.text_area("Mitgeltende Unterlagen", key="unterlagen", height=80)
-
-    # Unterkapitel immer im sicheren 7-3 Format als String
-    kapitel_label = f"Kapitel {st.session_state['kapitel_num']}"
-    unterkapitel_label = f"{st.session_state['kapitel_num']}-{st.session_state['unterkapitel_num']}"
-    st.caption(f"Unterkapitel wird gespeichert als: {unterkapitel_label}")
-
-    submit = st.form_submit_button("Verfahrensanweisung speichern")
-    reset_clicked = st.form_submit_button("🧹 Eingabe zurücksetzen")
-
-# Reset: nur vorhandene Keys leeren (in der Form)
-if reset_clicked:
-    for key in ["va_nr", "va_title", "ziel", "geltung", "vorgehen", "kommentar", "unterlagen", "erstellt_von"]:
+# Reset-Button
+if st.button("🧹 Eingabe zurücksetzen"):
+    for key in ["va_nr", "va_title", "erstellt_von"]:
         if key in st.session_state:
             st.session_state[key] = ""
     st.success("Eingaben zurückgesetzt.")
 
-# Speichern nach Formular-Submit
-if submit:
-    va_nr_val = st.session_state["va_nr"].strip()
-    va_title_val = st.session_state["va_title"].strip()
-    erstellt_von_val = st.session_state["erstellt_von"].strip()
-    if not va_nr_val or not va_title_val:
+# Speichern
+if st.button("Verfahrensanweisung speichern"):
+    if not va_nr.strip() or not va_title.strip():
         st.warning("VA Nummer und Titel sind Pflicht.")
     else:
         new_va = pd.DataFrame([{
-            "VA_Nr": va_nr_val,
-            "Titel": va_title_val,
-            "Kapitel": kapitel_label,
-            "Unterkapitel": str(unterkapitel_label),  # sicher: String & 7-3
-            "Revisionsstand": st.session_state["revision_date"].strftime("%Y-%m-%d"),
-            "Erstellt von": erstellt_von_val,
+            "VA_Nr": va_nr.strip(),
+            "Titel": va_title.strip(),
+            "Kapitel": kapitel,
+            "Unterkapitel": str(unterkapitel),
+            "Revisionsstand": revision_date.strftime("%Y-%m-%d"),
+            "Erstellt von": erstellt_von.strip(),
             "Zeitstempel": dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }])
         try:
@@ -178,7 +128,7 @@ if submit:
         df_old = df_old.reindex(columns=QM_COLUMNS, fill_value="")
         df_new = pd.concat([df_old, new_va.reindex(columns=QM_COLUMNS)], ignore_index=True)
         save_data(DATA_FILE_QM, df_new)
-        st.success(f"VA {va_nr_val} gespeichert.")
+        st.success(f"VA {va_nr} gespeichert.")
 
 # ----------------------------
 # Anzeige & CSV Export
@@ -212,7 +162,7 @@ if st.button("Verfahrensanweisung löschen"):
         st.success(f"VA {delete_va} wurde gelöscht.")
 
 # ----------------------------
-# PDF Export (robust, eine Zeile)
+# PDF Export
 # ----------------------------
 st.markdown("## 📤 Einzel-PDF Export")
 
@@ -225,17 +175,15 @@ if options_va:
         else:
             row = df_sel.iloc[0]
             pdf_bytes = export_pdf_row_to_bytes(row)
-            if isinstance(pdf_bytes, (bytes, bytearray)) and len(pdf_bytes) > 0:
-                st.download_button(
-                    label="Download PDF",
-                    data=pdf_bytes,
-                    file_name=f"{export_va}.pdf",
-                    mime="application/pdf"
-                )
-            else:
-                st.error("PDF konnte nicht erzeugt werden – interne Fehler.")
+            st.download_button(
+                label="Download PDF",
+                data=pdf_bytes,
+                file_name=f"{export_va}.pdf",
+                mime="application/pdf"
+            )
 else:
     st.info("Keine VAs vorhanden. Bitte zuerst eine Verfahrensanweisung speichern.")
+
 
 
 
