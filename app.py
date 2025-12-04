@@ -7,8 +7,23 @@ from pathlib import Path
 # Einstellungen
 # ----------------------------
 CSV_FILE = "qm_va.csv"
-REQUIRED_COLS = ["VA_Nr", "Titel", "Kapitel", "Unterkapitel",
-                 "Revisionsstand", "Erstellt von", "Zeitstempel"]
+REQUIRED_COLS = [
+    "VA_Nr", "Titel", "Kapitel", "Unterkapitel",
+    "Revisionsstand", "Erstellt von", "Zeitstempel",
+    "Ziel", "Geltungsbereich", "Vorgehensweise", "Kommentar", "Mitgeltende Unterlagen"
+]
+
+from pathlib import Path
+if Path(CSV_FILE).exists():
+    df_qm_all = pd.read_csv(CSV_FILE, sep=";", encoding="utf-8")
+else:
+    df_qm_all = pd.DataFrame(columns=REQUIRED_COLS)
+
+for col in REQUIRED_COLS:
+    if col not in df_qm_all.columns:
+        df_qm_all[col] = ""
+
+options_va = df_qm_all["VA_Nr"].dropna().astype(str).unique().tolist()
 
 # ----------------------------
 # CSV laden (inkl. Zusatzfelder F:J)
