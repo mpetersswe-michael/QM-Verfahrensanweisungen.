@@ -110,6 +110,7 @@ with st.sidebar:
     st.markdown("---")
 
 # ----------------------------
+# ----------------------------
 # Daten laden und VA-Auswahl
 # ----------------------------
 DATA_FILE_QM = "qm_va.csv"  # bleibt wie vereinbart
@@ -151,21 +152,6 @@ if df_sel.empty:
 
 # Erste Zeile der Auswahl
 row = df_sel.iloc[0]
-
-# Pflichtfelder anzeigen
-st.markdown(f"**VA Nummer:** {row['VA_Nr']}")
-st.markdown(f"**Titel:** {row['Titel']}")
-st.markdown(f"**Kapitel:** {row['Kapitel']}")
-st.markdown(f"**Unterkapitel:** {row['Unterkapitel']}")
-st.markdown(f"**Revisionsstand:** {row['Revisionsstand']}")
-
-# Zusatzfelder (Formular)
-ziel = st.text_area("Ziel", value=row.get("Ziel", ""), key="ziel")
-geltung = st.text_area("Geltungsbereich", value=row.get("Geltungsbereich", ""), key="geltung")
-vorgehen = st.text_area("Vorgehensweise", value=row.get("Vorgehensweise", ""), key="vorgehen")
-kommentar = st.text_area("Kommentar", value=row.get("Kommentar", ""), key="kommentar")
-unterlagen = st.text_area("Mitgeltende Unterlagen", value=row.get("Mitgeltende Unterlagen", ""), key="unterlagen")
-
 
 # Pflichtfelder anzeigen
 st.markdown(f"**VA Nummer:** {row['VA_Nr']}")
