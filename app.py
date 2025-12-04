@@ -1,5 +1,11 @@
+#------------------------- 
+#Import
 ------------------------- 
-import streamlit as st import pandas as pd import datetime as dt from fpdf import FPDF 
+import streamlit as 
+st import pandas as
+pd import datetime as
+dt from fpdf import FPDF 
+
 # ---------------------------- 
 # Konfiguration # ---------------------------- 
 st.set_page_config(page_title="QM-Verfahrensanweisungen", layout="wide") DATA_FILE_QM = "qm_verfahrensanweisungen.csv" 
