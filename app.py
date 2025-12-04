@@ -32,9 +32,38 @@ def save_data(file: str, df: pd.DataFrame) -> None:
 def to_csv_semicolon(df: pd.DataFrame) -> bytes:
     return df.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
 
-def export_pdf_row_to_bytes(df_row: pd.Series) -> bytes:
+from fpdf import FPDF
+
+def export_pdf_row_to_bytes(df_row):
     if isinstance(df_row, pd.DataFrame):
         df_row = df_row.iloc[0]
+
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    pdf.cell(0, 10, "QM-Verfahrensanweisung", ln=True, align="C")
+    pdf.ln(5)
+
+    for col in df_row.index:
+        val = str(df_row[col]) if pd.notna(df_row[col]) else ""
+        pdf.multi_cell(0, 8, f"{col}: {val}")
+        pdf.ln(1)
+
+    pdf_str = pdf.output(dest="S")
+    return pdf_str.encode("latin-1") if isinstance(pdf_str, str) else b""
+
+# PDF Export direkt
+df_sel = df_qm_all[df_qm_all["VA_Nr"] == export_va]
+row = df_sel.iloc[0]
+pdf_bytes = export_pdf_row_to_bytes(row)
+
+st.download_button(
+    label="Download PDF",
+    data=pdf_bytes,
+    file_name=f"{export_va}.pdf",
+    mime="application/pdf"
+)
+
 
     pdf = FPDF()
     pdf.add_page()
