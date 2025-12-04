@@ -232,7 +232,9 @@ if options_va:
                 pdf.multi_cell(0, 8, f"Dokumentation / Nachweise:\n{nachweise}")
                 pdf.ln(1)
 
-                pdf_bytes = pdf.output(dest="S").encode("latin-1")
+                # PDF-Bytes erzeugen (robust)
+                pdf_raw = pdf.output(dest="S")
+                pdf_bytes = pdf_raw.encode("latin-1") if isinstance(pdf_raw, str) else pdf_raw
                 st.session_state["pdf_bytes"] = pdf_bytes
                 st.session_state["pdf_filename"] = f"{export_va}.pdf"
                 st.success("PDF erstellt. Jetzt kannst du es herunterladen.")
