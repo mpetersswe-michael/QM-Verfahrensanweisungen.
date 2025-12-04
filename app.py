@@ -165,9 +165,16 @@ if st.button("Verfahrensanweisung löschen"):
         st.success(f"VA {delete_va} wurde gelöscht.")
 
 # ----------------------------
-# PDF Export mit session_state
+# PDF Export mit session_state (Variante 4)
 # ----------------------------
 st.markdown("## 📤 Einzel-PDF Export")
+
+# Zusätzliche Textfelder (nicht in CSV gespeichert)
+extra_f1 = st.text_area("Beschreibung / Zweck", key="extra_f1")
+extra_f2 = st.text_area("Geltungsbereich", key="extra_f2")
+extra_f3 = st.text_area("Verantwortlichkeiten", key="extra_f3")
+extra_f4 = st.text_area("Durchführung", key="extra_f4")
+extra_f5 = st.text_area("Dokumentation / Nachweise", key="extra_f5")
 
 # Session-State initialisieren
 if "pdf_bytes" not in st.session_state:
@@ -175,35 +182,54 @@ if "pdf_bytes" not in st.session_state:
 if "pdf_filename" not in st.session_state:
     st.session_state["pdf_filename"] = None
 
-if options_va:
-    export_va = st.selectbox("VA für PDF auswählen", options=options_va, key="pdf_export_va")
+# Button 1: PDF erzeugen (zieht Pflichtfelder aus Tabelle + Textfelder aus Session)
+if st.button("PDF Export starten", key="btn_pdf_generate"):
+    try:
+        # Pflichtfelder aus Tabelle holen
+        df_sel = df_qm_all[df_qm_all["VA_Nr"] == filter_va] if filter_va else None
+        row = df_sel.iloc[0] if df_sel is not None and not df_sel.empty else None
 
-    # Button 1: PDF erzeugen
-    if st.button("PDF Export starten", key="btn_pdf_generate"):
-        df_sel = df_qm_all[df_qm_all["VA_Nr"] == export_va]
-        if df_sel.empty:
-            st.session_state["pdf_bytes"] = None
-            st.session_state["pdf_filename"] = None
-            st.error("Keine Daten für die ausgewählte VA gefunden.")
-        else:
-            try:
-                row = df_sel.iloc[0]
-                st.session_state["pdf_bytes"] = export_pdf_row_to_bytes(row)
-                st.session_state["pdf_filename"] = f"{export_va}.pdf"
-                st.success("PDF erstellt. Jetzt kannst du es herunterladen.")
-            except Exception as e:
-                st.session_state["pdf_bytes"] = None
-                st.session_state["pdf_filename"] = None
-                st.error(f"PDF konnte nicht erzeugt werden: {e}")
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=14)
+        pdf.cell(0, 10, "QM-Verfahrensanweisung", ln=True, align="C")
+        pdf.set_font("Arial", size=11)
+        pdf.ln(5)
 
-    # Button 2: Download nur wenn Bytes vorhanden sind
-    if st.session_state["pdf_bytes"]:
-        st.download_button(
-            label="Download PDF",
-            data=st.session_state["pdf_bytes"],
-            file_name=st.session_state["pdf_filename"],
-            mime="application/pdf",
-            key="btn_pdf_download"
-        )
-else:
-    st.info("Keine VAs vorhanden. Bitte zuerst eine Verfahrensanweisung speichern.")
+        # Pflichtfelder
+        if row is not None:
+            pdf.multi_cell(0, 8, f"VA Nummer: {row['VA_Nr']}")
+            pdf.multi_cell(0, 8, f"Titel: {row['Titel']}")
+            pdf.multi_cell(0, 8, f"Kapitel: {row['Kapitel']}")
+            pdf.multi_cell(0, 8, f"Unterkapitel: {row['Unterkapitel']}")
+            pdf.multi_cell(0, 8, f"Revisionsstand: {row['Revisionsstand']}")
+            pdf.multi_cell(0, 8, f"Erstellt von: {row['Erstellt von']}")
+            pdf.multi_cell(0, 8, f"Zeitstempel: {row['Zeitstempel']}")
+
+        pdf.ln(5)
+
+        # Zusatzfelder (nur im PDF, nicht in CSV)
+        pdf.multi_cell(0, 8, f"Beschreibung / Zweck: {extra_f1}")
+        pdf.multi_cell(0, 8, f"Geltungsbereich: {extra_f2}")
+        pdf.multi_cell(0, 8, f"Verantwortlichkeiten: {extra_f3}")
+        pdf.multi_cell(0, 8, f"Durchführung: {extra_f4}")
+        pdf.multi_cell(0, 8, f"Dokumentation / Nachweise: {extra_f5}")
+
+        pdf_bytes = pdf.output(dest="S").encode("latin-1")
+        st.session_state["pdf_bytes"] = pdf_bytes
+        st.session_state["pdf_filename"] = f"{filter_va or 'VA'}.pdf"
+        st.success("PDF erstellt. Jetzt kannst du es herunterladen.")
+    except Exception as e:
+        st.session_state["pdf_bytes"] = None
+        st.session_state["pdf_filename"] = None
+        st.error(f"PDF konnte nicht erzeugt werden: {e}")
+
+# Button 2: Download nur wenn Bytes vorhanden sind
+if st.session_state["pdf_bytes"]:
+    st.download_button(
+        label="Download PDF",
+        data=st.session_state["pdf_bytes"],
+        file_name=st.session_state["pdf_filename"],
+        mime="application/pdf",
+        key="btn_pdf_download"
+    )
