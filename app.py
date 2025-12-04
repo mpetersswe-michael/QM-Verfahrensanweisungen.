@@ -194,6 +194,7 @@ if options_va:
                 st.session_state["pdf_filename"] = None
                 st.error(f"PDF konnte nicht erzeugt werden: {e}")
 
+    # ⬇️ Download-Button erscheint nur bei gültigen Bytes
     if st.session_state["pdf_bytes"]:
         st.download_button(
             label="Download PDF",
