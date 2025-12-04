@@ -3,13 +3,18 @@ import pandas as pd
 from fpdf import FPDF
 
 # ----------------------------
-# Login-Logik ohne Benutzername
+# Einstellungen
+# ----------------------------
+CSV_FILE = "qm_va.csv"  # Pfad zur CSV mit Pflichtfeldern
+
+# ----------------------------
+# Login-Logik (ohne Benutzername)
 # ----------------------------
 if "logged_in" not in st.session_state:
     st.session_state["logged_in"] = False
 
 if not st.session_state["logged_in"]:
-    st.markdown("## 🔐 Login")
+    st.markdown("## 🔒 Login")
     if st.button("Login"):
         st.session_state["logged_in"] = True
     else:
@@ -25,9 +30,8 @@ with st.sidebar:
         st.stop()
 
 # ----------------------------
-# CSV Import
+# CSV Import (Pflichtfelder)
 # ----------------------------
-CSV_FILE = "qm_va.csv"
 try:
     df_qm_all = pd.read_csv(CSV_FILE, sep=";", encoding="utf-8")
 except FileNotFoundError:
@@ -36,100 +40,132 @@ except FileNotFoundError:
         "Revisionsstand", "Erstellt von", "Zeitstempel"
     ])
 
-options_va = df_qm_all["VA_Nr"].unique().tolist() if not df_qm_all.empty else []
+# Sicherstellen, dass die erwarteten Spalten existieren
+required_cols = ["VA_Nr", "Titel", "Kapitel", "Unterkapitel",
+                 "Revisionsstand", "Erstellt von", "Zeitstempel"]
+for c in required_cols:
+    if c not in df_qm_all.columns:
+        df_qm_all[c] = ""
+
+options_va = df_qm_all["VA_Nr"].dropna().astype(str).unique().tolist() if not df_qm_all.empty else []
 
 # ----------------------------
-# Formularansicht einer VA
+# UI: Formularansicht + PDF Export
 # ----------------------------
 st.markdown("## 📄 Verfahrensanweisung anzeigen")
 
-if options_va:
-    selected_va = st.selectbox("VA auswählen", options=options_va, key="va_select")
-    df_sel = df_qm_all[df_qm_all["VA_Nr"] == selected_va]
+# Session-State für PDF
+if "pdf_bytes" not in st.session_state:
+    st.session_state["pdf_bytes"] = None
+if "pdf_filename" not in st.session_state:
+    st.session_state["pdf_filename"] = None
 
-    if not df_sel.empty:
-        row = df_sel.iloc[0]
-
-        # Pflichtfelder sichtbar machen
-        st.markdown(f"**VA Nummer:** {row['VA_Nr']}")
-        st.markdown(f"**Titel:** {row['Titel']}")
-        st.markdown(f"**Kapitel:** {row['Kapitel']}")
-        st.markdown(f"**Unterkapitel:** {row['Unterkapitel']}")
-        st.markdown(f"**Revisionsstand:** {row['Revisionsstand']}")
-        st.markdown(f"**Erstellt von:** {row['Erstellt von']}")
-        st.markdown(f"**Zeitstempel:** {row['Zeitstempel']}")
-
-        # Zusatzfelder (nicht in CSV gespeichert, nur Session)
-        beschreibung = st.text_area("Beschreibung / Zweck", key="beschreibung")
-        geltungsbereich = st.text_area("Geltungsbereich", key="geltungsbereich")
-        verantwortlichkeiten = st.text_area("Verantwortlichkeiten", key="verantwortlichkeiten")
-        durchfuehrung = st.text_area("Durchführung", key="durchfuehrung")
-        nachweise = st.text_area("Dokumentation / Nachweise", key="nachweise")
-
-        # ----------------------------
-        # PDF Export mit zwei Buttons
-        # ----------------------------
-        if "pdf_bytes" not in st.session_state:
-            st.session_state["pdf_bytes"] = None
-        if "pdf_filename" not in st.session_state:
-            st.session_state["pdf_filename"] = None
-
-        # Button 1: PDF erzeugen
-        if st.button("PDF Export starten", key="btn_pdf_generate"):
-            try:
-                pdf = FPDF()
-                pdf.add_page()
-                pdf.set_font("Arial", size=14)
-                pdf.cell(0, 10, "QM-Verfahrensanweisung", ln=True, align="C")
-                pdf.set_font("Arial", size=11)
-                pdf.ln(5)
-
-                # Pflichtfelder
-                labels = {
-                    "VA_Nr": "VA Nummer",
-                    "Titel": "Titel",
-                    "Kapitel": "Kapitel",
-                    "Unterkapitel": "Unterkapitel",
-                    "Revisionsstand": "Revisionsstand",
-                    "Erstellt von": "Erstellt von",
-                    "Zeitstempel": "Zeitstempel",
-                }
-                for col in labels:
-                    val = row.get(col, "")
-                    text = str(val) if pd.notna(val) else ""
-                    pdf.multi_cell(0, 8, f"{labels[col]}: {text}")
-                    pdf.ln(1)
-
-                # Zusatzfelder
-                pdf.ln(5)
-                pdf.multi_cell(0, 8, f"Beschreibung / Zweck:\n{beschreibung}")
-                pdf.multi_cell(0, 8, f"Geltungsbereich:\n{geltungsbereich}")
-                pdf.multi_cell(0, 8, f"Verantwortlichkeiten:\n{verantwortlichkeiten}")
-                pdf.multi_cell(0, 8, f"Durchführung:\n{durchfuehrung}")
-                pdf.multi_cell(0, 8, f"Dokumentation / Nachweise:\n{nachweise}")
-
-                # PDF-Bytes robust erzeugen
-                pdf_raw = pdf.output(dest="S")
-                pdf_bytes = pdf_raw.encode("latin-1") if isinstance(pdf_raw, str) else pdf_raw
-
-                st.session_state["pdf_bytes"] = pdf_bytes
-                st.session_state["pdf_filename"] = f"{row['VA_Nr']}.pdf"
-                st.success("PDF erstellt. Jetzt kannst du es herunterladen.")
-            except Exception as e:
-                st.session_state["pdf_bytes"] = None
-                st.session_state["pdf_filename"] = None
-                st.error(f"PDF konnte nicht erzeugt werden: {e}")
-
-        # Button 2: Download nur wenn PDF vorhanden
-        if st.session_state["pdf_bytes"]:
-            st.download_button(
-                label="Download PDF",
-                data=st.session_state["pdf_bytes"],
-                file_name=st.session_state["pdf_filename"],
-                mime="application/pdf",
-                key="btn_pdf_download"
-            )
-else:
+if not options_va:
     st.info("Keine VAs vorhanden. Bitte zuerst eine Verfahrensanweisung speichern.")
+else:
+    selected_va = st.selectbox("VA auswählen", options=options_va, key="va_select")
+
+    df_sel = df_qm_all[df_qm_all["VA_Nr"].astype(str) == str(selected_va)]
+    if df_sel.empty:
+        st.error("Für die ausgewählte VA wurden keine Daten gefunden.")
+        st.stop()
+
+    row = df_sel.iloc[0]
+
+    # Pflichtfelder sichtbar machen
+    st.markdown(f"**VA Nummer:** {row['VA_Nr']}")
+    st.markdown(f"**Titel:** {row['Titel']}")
+    st.markdown(f"**Kapitel:** {row['Kapitel']}")
+    st.markdown(f"**Unterkapitel:** {row['Unterkapitel']}")
+    st.markdown(f"**Revisionsstand:** {row['Revisionsstand']}")
+    st.markdown(f"**Erstellt von:** {row['Erstellt von']}")
+    st.markdown(f"**Zeitstempel:** {row['Zeitstempel']}")
+
+    # Zusatzfelder (nur Formular/Session, nicht CSV)
+    beschreibung = st.text_area("Beschreibung / Zweck", key="beschreibung")
+    geltungsbereich = st.text_area("Geltungsbereich", key="geltungsbereich")
+    verantwortlichkeiten = st.text_area("Verantwortlichkeiten", key="verantwortlichkeiten")
+    durchfuehrung = st.text_area("Durchführung", key="durchfuehrung")
+    nachweise = st.text_area("Dokumentation / Nachweise", key="nachweise")
+
+    # ----------------------------
+    # PDF Export
+    # ----------------------------
+    st.markdown("### 📤 PDF Export")
+
+    if st.button("PDF Export starten", key="btn_pdf_generate"):
+        try:
+            pdf = FPDF()
+            pdf.set_auto_page_break(auto=True, margin=15)
+            pdf.add_page()
+
+            # Kopf
+            pdf.set_font("Arial", style="", size=16)
+            pdf.cell(0, 10, "QM-Verfahrensanweisung", ln=True, align="C")
+            pdf.ln(5)
+
+            # Pflichtfelder
+            pdf.set_font("Arial", size=11)
+            labels = {
+                "VA_Nr": "VA Nummer",
+                "Titel": "Titel",
+                "Kapitel": "Kapitel",
+                "Unterkapitel": "Unterkapitel",
+                "Revisionsstand": "Revisionsstand",
+                "Erstellt von": "Erstellt von",
+                "Zeitstempel": "Zeitstempel",
+            }
+            for col, label in labels.items():
+                val = row[col] if col in row else ""
+                text = str(val) if pd.notna(val) else ""
+                pdf.multi_cell(0, 8, f"{label}: {text}")
+
+            # Linie
+            pdf.ln(3)
+
+            # Zusatzfelder
+            def section(title, content):
+                pdf.set_font("Arial", style="B", size=12)
+                pdf.multi_cell(0, 8, title)
+                pdf.set_font("Arial", size=11)
+                safe = content if content else ""
+                # FPDF Standard unterstützt nur latin-1; sicherstellen, dass Zeichen darstellbar sind
+                try:
+                    pdf.multi_cell(0, 8, safe)
+                except Exception:
+                    # Fallback: problematische Zeichen ersetzen
+                    pdf.multi_cell(0, 8, safe.encode("latin-1", "replace").decode("latin-1"))
+                pdf.ln(2)
+
+            section("Beschreibung / Zweck", beschreibung)
+            section("Geltungsbereich", geltungsbereich)
+            section("Verantwortlichkeiten", verantwortlichkeiten)
+            section("Durchführung", durchfuehrung)
+            section("Dokumentation / Nachweise", nachweise)
+
+            # PDF-Bytes robust erzeugen
+            pdf_raw = pdf.output(dest="S")
+            pdf_bytes = pdf_raw.encode("latin-1") if isinstance(pdf_raw, str) else pdf_raw
+
+            st.session_state["pdf_bytes"] = pdf_bytes
+            st.session_state["pdf_filename"] = f"{row['VA_Nr']}.pdf"
+            st.success("PDF erstellt. Jetzt kannst du es herunterladen.")
+        except Exception as e:
+            st.session_state["pdf_bytes"] = None
+            st.session_state["pdf_filename"] = None
+            st.error(f"PDF konnte nicht erzeugt werden: {e}")
+
+    # Download-Button
+    if st.session_state["pdf_bytes"]:
+        st.download_button(
+            label="Download PDF",
+            data=st.session_state["pdf_bytes"],
+            file_name=st.session_state["pdf_filename"],
+            mime="application/pdf",
+            key="btn_pdf_download"
+        )
+    else:
+        st.button("Download PDF (noch nicht verfügbar)", disabled=True)
+
 
 
