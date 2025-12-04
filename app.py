@@ -11,8 +11,14 @@ REQUIRED_COLS = ["VA_Nr", "Titel", "Kapitel", "Unterkapitel",
                  "Revisionsstand", "Erstellt von", "Zeitstempel"]
 
 # ----------------------------
-# CSV laden (nur lesen, nicht überschreiben)
+# CSV laden (inkl. Zusatzfelder F:J)
 # ----------------------------
+REQUIRED_COLS = [
+    "VA_Nr", "Titel", "Kapitel", "Unterkapitel",
+    "Revisionsstand", "Erstellt von", "Zeitstempel",
+    "Ziel", "Geltungsbereich", "Vorgehensweise", "Kommentar", "Mitgeltende Unterlagen"
+]
+
 if Path(CSV_FILE).exists():
     df_qm_all = pd.read_csv(CSV_FILE, sep=";", encoding="utf-8")
 else:
@@ -23,7 +29,6 @@ for col in REQUIRED_COLS:
     if col not in df_qm_all.columns:
         df_qm_all[col] = ""
 
-options_va = df_qm_all["VA_Nr"].dropna().astype(str).unique().tolist()
 
 # ----------------------------
 # VA-Auswahl und Anzeige
