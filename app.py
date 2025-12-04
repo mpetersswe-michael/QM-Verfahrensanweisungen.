@@ -4,7 +4,7 @@ import datetime as dt
 from fpdf import FPDF
 
 # ----------------------------
-# Konfiguration
+# Basis-Konfiguration
 # ----------------------------
 st.set_page_config(page_title="QM-Verfahrensanweisungen", layout="wide")
 DATA_FILE_QM = "qm_verfahrensanweisungen.csv"
@@ -21,7 +21,6 @@ def load_data(file: str, columns: list) -> pd.DataFrame:
         df = pd.read_csv(file, sep=";", encoding="utf-8-sig")
     except Exception:
         df = pd.DataFrame(columns=columns)
-    # fehlende Spalten ergänzen und Reihenfolge sichern
     for c in columns:
         if c not in df.columns:
             df[c] = ""
@@ -34,7 +33,6 @@ def to_csv_semicolon(df: pd.DataFrame) -> bytes:
     return df.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
 
 def export_pdf_row_to_bytes(df_row: pd.Series) -> bytes:
-    # Series sicherstellen
     if isinstance(df_row, pd.DataFrame):
         df_row = df_row.iloc[0]
 
@@ -96,9 +94,9 @@ with st.sidebar:
         st.stop()
 
 # ----------------------------
-# Session-State initialisieren
+# Session-State nur initialisieren (nie überschreiben)
 # ----------------------------
-initial_keys = {
+defaults = {
     "va_nr": "",
     "va_title": "",
     "ziel": "",
@@ -111,49 +109,53 @@ initial_keys = {
     "unterkapitel_num": 3,
     "revision_date": dt.date.today(),
 }
-for k, v in initial_keys.items():
-    st.session_state.setdefault(k, v)
+for k, v in defaults.items():
+    if k not in st.session_state:
+        st.session_state[k] = v
 
 # ----------------------------
-# Eingabeformular (sichtbar; Speicherung reduziert)
+# Eingabeformular (Form sichert konsistente Werte)
 # ----------------------------
 st.markdown("## 📝 Neue Verfahrensanweisung erfassen")
 
-st.text_input("VA Nummer", key="va_nr", placeholder="z. B. VA003")
-st.text_input("Titel", key="va_title", placeholder="Kommunikationswege im Pflegedienst")
+with st.form("va_form", clear_on_submit=False):
+    col1, col2 = st.columns(2)
+    with col1:
+        st.text_input("VA Nummer", key="va_nr", placeholder="z. B. VA003")
+        st.selectbox("Kapitel Nr.", list(range(1, 11)),
+                     index=st.session_state["kapitel_num"] - 1, key="kapitel_num")
+        st.date_input("Revisionsstand", value=st.session_state["revision_date"], key="revision_date")
+        st.text_input("Erstellt von (Name + Funktion)", key="erstellt_von",
+                      placeholder="z. B. Peters, Michael – Qualitätsbeauftragter")
+    with col2:
+        st.text_input("Titel", key="va_title", placeholder="Kommunikationswege im Pflegedienst")
+        st.selectbox("Unterkapitel Nr.", list(range(1, 11)),
+                     index=st.session_state["unterkapitel_num"] - 1, key="unterkapitel_num")
 
-st.selectbox("Kapitel Nr.", list(range(1, 11)),
-             index=st.session_state["kapitel_num"] - 1, key="kapitel_num")
-st.selectbox("Unterkapitel Nr.", list(range(1, 11)),
-             index=st.session_state["unterkapitel_num"] - 1, key="unterkapitel_num")
+    # Sichtbare, nicht persistierte Felder (werden nicht gespeichert)
+    st.text_area("Ziel", key="ziel", height=100)
+    st.text_area("Geltungsbereich", key="geltung", height=80)
+    st.text_area("Vorgehensweise", key="vorgehen", height=150)
+    st.text_area("Kommentar", key="kommentar", height=80)
+    st.text_area("Mitgeltende Unterlagen", key="unterlagen", height=80)
 
-kapitel = f"Kapitel {st.session_state['kapitel_num']}"
-unterkapitel = f"{st.session_state['kapitel_num']}-{st.session_state['unterkapitel_num']}"  # immer 7-3 Format
+    # Unterkapitel immer im sicheren 7-3 Format als String
+    kapitel_label = f"Kapitel {st.session_state['kapitel_num']}"
+    unterkapitel_label = f"{st.session_state['kapitel_num']}-{st.session_state['unterkapitel_num']}"
+    st.caption(f"Unterkapitel wird gespeichert als: {unterkapitel_label}")
 
-st.date_input("Revisionsstand", value=st.session_state["revision_date"], key="revision_date")
+    submit = st.form_submit_button("Verfahrensanweisung speichern")
+    reset_clicked = st.form_submit_button("🧹 Eingabe zurücksetzen")
 
-# Sichtbare, nicht persistierte Felder (werden nicht gespeichert)
-st.text_area("Ziel", key="ziel", height=100)
-st.text_area("Geltungsbereich", key="geltung", height=80)
-st.text_area("Vorgehensweise", key="vorgehen", height=150)
-st.text_area("Kommentar", key="kommentar", height=80)
-st.text_area("Mitgeltende Unterlagen", key="unterlagen", height=80)
-st.text_input("Erstellt von (Name + Funktion)", key="erstellt_von",
-              placeholder="z. B. Peters, Michael – Qualitätsbeauftragter")
-
-# Reset-Button (robust)
-if st.button("🧹 Eingabe zurücksetzen"):
-    reset_keys = [
-        "va_nr", "va_title", "ziel", "geltung", "vorgehen",
-        "kommentar", "unterlagen", "erstellt_von"
-    ]
-    for key in reset_keys:
+# Reset: nur vorhandene Keys leeren (in der Form)
+if reset_clicked:
+    for key in ["va_nr", "va_title", "ziel", "geltung", "vorgehen", "kommentar", "unterlagen", "erstellt_von"]:
         if key in st.session_state:
             st.session_state[key] = ""
     st.success("Eingaben zurückgesetzt.")
 
-# Speichern: nur reduzierte Spalten
-if st.button("Verfahrensanweisung speichern"):
+# Speichern nach Formular-Submit
+if submit:
     va_nr_val = st.session_state["va_nr"].strip()
     va_title_val = st.session_state["va_title"].strip()
     erstellt_von_val = st.session_state["erstellt_von"].strip()
@@ -163,8 +165,8 @@ if st.button("Verfahrensanweisung speichern"):
         new_va = pd.DataFrame([{
             "VA_Nr": va_nr_val,
             "Titel": va_title_val,
-            "Kapitel": kapitel,
-            "Unterkapitel": str(unterkapitel),  # immer String und 7-3
+            "Kapitel": kapitel_label,
+            "Unterkapitel": str(unterkapitel_label),  # sicher: String & 7-3
             "Revisionsstand": st.session_state["revision_date"].strftime("%Y-%m-%d"),
             "Erstellt von": erstellt_von_val,
             "Zeitstempel": dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -210,7 +212,7 @@ if st.button("Verfahrensanweisung löschen"):
         st.success(f"VA {delete_va} wurde gelöscht.")
 
 # ----------------------------
-# PDF Export (robust)
+# PDF Export (robust, eine Zeile)
 # ----------------------------
 st.markdown("## 📤 Einzel-PDF Export")
 
@@ -234,6 +236,7 @@ if options_va:
                 st.error("PDF konnte nicht erzeugt werden – interne Fehler.")
 else:
     st.info("Keine VAs vorhanden. Bitte zuerst eine Verfahrensanweisung speichern.")
+
 
 
 
