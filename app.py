@@ -3,43 +3,26 @@ import pandas as pd
 from fpdf import FPDF
 
 # ----------------------------
-# Login-Logik
+# Login-Logik ohne Benutzername
 # ----------------------------
 if "logged_in" not in st.session_state:
     st.session_state["logged_in"] = False
 
 if not st.session_state["logged_in"]:
     st.markdown("## 🔐 Login")
-    username = st.text_input("Benutzername")
-    password = st.text_input("Passwort", type="password")
     if st.button("Login"):
-        if username == "admin" and password == "qm2024":
-            st.session_state["logged_in"] = True
-            st.success("Login erfolgreich.")
-        else:
-            st.error("Login fehlgeschlagen.")
+        st.session_state["logged_in"] = True
+        st.experimental_rerun()
     st.stop()
 
 # ----------------------------
-# Logout-Button
+# Sidebar mit Logout
 # ----------------------------
 with st.sidebar:
     st.markdown("### Navigation")
     if st.button("Logout"):
         st.session_state["logged_in"] = False
         st.experimental_rerun()
-
-# ----------------------------
-# App-Inhalte (z. B. VA-Anzeige + PDF Export)
-# ----------------------------
-st.markdown("## 📄 QM-Verfahrensanweisungen")
-# → Hier kommt dein VA-Auswahl- und Exportblock
-
-
-
-
-
-
 # ----------------------------
 # Datenimport
 # ----------------------------
