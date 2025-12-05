@@ -234,11 +234,11 @@ if st.button("Speichern", type="primary"):
     except:
             df_existing = pd.DataFrame(columns=QM_COLUMNS)
 
-        df_existing = df_existing[df_existing["VA_Nr"].astype(str).str.strip() != va_nr]
-        df_new = pd.DataFrame([new_entry])
-        df_combined = pd.concat([df_existing, df_new], ignore_index=True)
-        df_combined.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-        st.success(f"VA {va_nr} gespeichert.")
+            df_existing = df_existing[df_existing["VA_Nr"].astype(str).str.strip() != va_nr]
+            df_new = pd.DataFrame([new_entry])
+            df_combined = pd.concat([df_existing, df_new], ignore_index=True)
+            df_combined.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
+            st.success(f"VA {va_nr} gespeichert.")
 
     # ----------------------------
     # Verwaltung: Anzeige, Download, Löschen, PDF
