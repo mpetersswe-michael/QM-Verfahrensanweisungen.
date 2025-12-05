@@ -154,7 +154,9 @@ if st.button("Speichern", type="primary"):
         "Kommentar": kommentar,
         "Mitgeltende Unterlagen": mitgeltende_unterlagen
     }
-    df_neu = pd.DataFrame([neuer_eintrag])[QM_COLUMNS]
+
+    df_neu = pd.DataFrame([neuer_eintrag])
+    df_neu = df_neu.reindex(columns=QM_COLUMNS)
 
     if os.path.exists(DATA_FILE_QM):
         try:
@@ -164,17 +166,17 @@ if st.button("Speichern", type="primary"):
 
         maske = df_alt["VA_Nr"].astype(str).str.strip() == va_nr
         if maske.any():
-            # VA existiert → aktualisieren und gesamte Datei neu schreiben
+            # VA existiert → aktualisieren
             df_alt.loc[maske, QM_COLUMNS] = df_neu.iloc[0][QM_COLUMNS].values
             df_alt.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
             st.success(f"VA {va_nr} aktualisiert.")
         else:
-            # VA neu → nur anhängen, Datei bleibt erhalten
+            # VA neu → anhängen
             df_neu.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig",
                           mode="a", header=False)
             st.success(f"VA {va_nr} hinzugefügt.")
     else:
-        # Datei existiert noch nicht → neu anlegen mit Kopfzeile
+        # Datei existiert nicht → neu anlegen
         df_neu.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
         st.success(f"VA {va_nr} gespeichert (neue Datei erstellt).")
 
