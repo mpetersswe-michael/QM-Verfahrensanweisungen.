@@ -174,8 +174,9 @@ else:
         st.warning("Bitte zuerst eine VA auswählen, um sie zu löschen.")
 
     # ----------------------------
-    # PDF-Funktion mit Unicode-Bereinigung
+    # PDF-Funktion mit Unicode-Bereinigung und Bytes-Buffer
     # ----------------------------
+    import io
     from fpdf import FPDF
 
     def clean_text(text):
@@ -220,14 +221,10 @@ else:
         add_section("Kommentar", row.get("Kommentar", ""))
         add_section("Mitgeltende Unterlagen", row.get("Mitgeltende Unterlagen", ""))
 
-        # PDF als Bytes zurückgeben
-        out = pdf.output(dest="S")
-        if isinstance(out, bytes):
-            return out
-        elif isinstance(out, str):
-            return out.encode("latin-1")
-        else:
-            return b""
+        # Schreibe PDF in Bytes-Buffer
+        buffer = io.BytesIO()
+        pdf.output(buffer)
+        return buffer.getvalue()
 
     # ----------------------------
     # PDF-Export-Button
@@ -246,4 +243,5 @@ else:
                 )
     else:
         st.warning("Bitte zuerst eine VA auswählen, um PDF zu erzeugen.")
+
 
