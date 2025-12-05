@@ -232,22 +232,30 @@ if st.session_state.logged_in:
             st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
 
 # -----------------------------------
+# Sidebar-Hinweis "Aktuelles"
+# -----------------------------------
+st.sidebar.markdown("### Aktuelles")
+if not df_all.empty:
+    # Beispiel: letzte VA als "neu"
+    letzte_va = df_all.iloc[-1]
+    st.sidebar.info(f"Neue VA verfügbar: **{letzte_va['VA_Nr']} – {letzte_va['Titel']}**")
+else:
+    st.sidebar.info("Keine neuen Verfahrensanweisungen vorhanden.")
+
+# -----------------------------------
 # Kenntnisnahme durch Mitarbeiter
 # -----------------------------------
 st.markdown("## Kenntnisnahme bestätigen")
 
-# Eingabefelder für Mitarbeiter
 name = st.text_input("Name")
 email = st.text_input("E-Mail")
 
-# Auswahl der VA (aus vorhandenen Daten)
 if not df_all.empty:
     va_auswahl = st.selectbox("VA auswählen", options=sorted(df_all["VA_Nr"].unique()))
 else:
     va_auswahl = None
     st.info("Noch keine Verfahrensanweisungen vorhanden.")
 
-# Button zur Bestätigung
 if st.button("Zur Kenntnis genommen"):
     if name and email and va_auswahl:
         eintrag = {
@@ -258,7 +266,6 @@ if st.button("Zur Kenntnis genommen"):
         }
         df_kenntnis = pd.DataFrame([eintrag])
 
-        # Speichern in separater Datei (kenntnisnahmen.csv)
         if os.path.exists("kenntnisnahmen.csv"):
             df_kenntnis.to_csv(
                 "kenntnisnahmen.csv",
@@ -279,4 +286,3 @@ if st.button("Zur Kenntnis genommen"):
         st.success(f"Kenntnisnahme für VA {va_auswahl} gespeichert.")
     else:
         st.error("Bitte Name, E-Mail und VA auswählen.")
-
