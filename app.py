@@ -143,14 +143,15 @@ except:
 if df_all.empty:
     st.info("Noch keine Verfahrensanweisungen gespeichert.")
 else:
+    # Auswahlfeld
     selected_va = st.selectbox(
         "VA auswählen zur Anzeige oder Löschung",
         options=[""] + sorted(df_all["VA_Nr"].dropna().astype(str).unique()),
         index=0
     )
 
+    # Gefilterte Anzeige
     df_filtered = df_all[df_all["VA_Nr"].astype(str) == selected_va] if selected_va else df_all
-
     st.dataframe(df_filtered, use_container_width=True)
 
     # CSV-Download
@@ -172,7 +173,9 @@ else:
     else:
         st.warning("Bitte zuerst eine VA auswählen, um sie zu löschen.")
 
+    # ----------------------------
     # PDF-Funktion mit Unicode-Bereinigung
+    # ----------------------------
     from fpdf import FPDF
 
     def clean_text(text):
@@ -225,7 +228,9 @@ else:
         else:
             return b""
 
+    # ----------------------------
     # PDF-Export-Button
+    # ----------------------------
     st.markdown("### PDF erzeugen")
     if selected_va:
         if st.button("PDF erzeugen für ausgewählte VA"):
