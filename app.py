@@ -11,7 +11,12 @@ from fpdf import FPDF
 # App-Titel
 # ----------------------------
 st.set_page_config(page_title="Verfahrensanweisungen (Auszug aus dem QMH)")
-st.markdown("# Verfahrensanweisungen (Auszug aus dem QMH)")
+st.markdown(
+    """
+    <h5 style='text-align:center; color:#444;'>Verfahrensanweisungen (Auszug aus dem QMH)</h5>
+    """,
+    unsafe_allow_html=True
+)
 
 # ----------------------------
 # Konfiguration
