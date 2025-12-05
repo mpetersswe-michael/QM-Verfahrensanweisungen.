@@ -256,12 +256,14 @@ st.markdown(
     }
 
     /* Speichern & Kenntnisnahme: Grün */
-    div.stButton > button:has-text("Speichern") {
+    div.stButton > button:has-text("Speichern"),
+    div.stButton > button:has-text("Zur Kenntnis genommen") {
         background-color: #4CAF50 !important;
         color: white !important;
     }
-    div.stButton > button:has-text("Zur Kenntnis genommen") {
-        background-color: #4CAF50 !important;
+    div.stButton > button:has-text("Speichern"):hover,
+    div.stButton > button:has-text("Zur Kenntnis genommen"):hover {
+        background-color: #45a049 !important;
         color: white !important;
     }
 
@@ -279,14 +281,6 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-
-
-
-
-
-
-
-
 
 # -----------------------------------
 # Kenntnisnahme durch Mitarbeiter
