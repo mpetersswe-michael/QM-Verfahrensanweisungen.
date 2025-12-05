@@ -162,11 +162,15 @@ if st.session_state["auth"]:
             mime="text/csv"
         )
 
-        # Lösch-Button
-        if selected_va and st.button("Ausgewählte VA löschen"):
-            df_remaining = df_all[df_all["VA_Nr"].astype(str) != selected_va]
-            df_remaining.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-            st.success(f"VA {selected_va} wurde gelöscht. Bitte Seite neu laden (oben rechts 'Rerun').")
+       st.markdown("### VA löschen")
+
+  if selected_va:
+    if st.button("Ausgewählte VA löschen", type="secondary"):
+        df_remaining = df_all[df_all["VA_Nr"].astype(str) != selected_va]
+        df_remaining.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
+        st.success(f"VA {selected_va} wurde gelöscht. Bitte Seite neu laden.")
+    else:
+        st.warning("Bitte zuerst eine VA auswählen, um sie zu löschen.")
 
 
 
