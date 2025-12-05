@@ -203,7 +203,7 @@ st.download_button(
 
 
  # Löschfunktion
- st.markdown("### VA löschen")
+   st.markdown("### VA löschen")
         if selected_va:
             if st.button("Ausgewählte VA löschen", type="secondary"):
                 df_remaining = df_all[df_all["VA_Nr"].astype(str).str.strip() != selected_va]
