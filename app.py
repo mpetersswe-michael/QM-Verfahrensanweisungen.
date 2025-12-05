@@ -231,7 +231,7 @@ if st.button("Speichern", type="primary"):
 
     try:
             df_existing = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
-        except:
+    except:
             df_existing = pd.DataFrame(columns=QM_COLUMNS)
 
         df_existing = df_existing[df_existing["VA_Nr"].astype(str).str.strip() != va_nr]
