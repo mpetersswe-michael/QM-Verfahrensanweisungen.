@@ -156,6 +156,29 @@ if st.button("Speichern", type="primary"):
     }
     df_neu = pd.DataFrame([neuer_eintrag])[QM_COLUMNS]
 
+    if os.path.exists(DATA_FILE_QM):
+        try:
+            df_alt = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
+        except:
+            df_alt = pd.DataFrame(columns=QM_COLUMNS)
+
+        maske = df_alt["VA_Nr"].astype(str).str.strip() == va_nr
+        if maske.any():
+            # VA existiert → aktualisieren und gesamte Datei neu schreiben
+            df_alt.loc[maske, QM_COLUMNS] = df_neu.iloc[0][QM_COLUMNS].values
+            df_alt.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
+            st.success(f"VA {va_nr} aktualisiert.")
+        else:
+            # VA neu → nur anhängen, Datei bleibt erhalten
+            df_neu.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig",
+                          mode="a", header=False)
+            st.success(f"VA {va_nr} hinzugefügt.")
+    else:
+        # Datei existiert noch nicht → neu anlegen mit Kopfzeile
+        df_neu.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
+        st.success(f"VA {va_nr} gespeichert (neue Datei erstellt).")
+
+
     # Prüfen, ob Datei existiert
     if os.path.exists(DATA_FILE_QM):
         try:
