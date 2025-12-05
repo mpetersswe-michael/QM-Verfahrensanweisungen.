@@ -170,6 +170,52 @@ if st.session_state["auth"]:
         else:
             st.warning("Bitte zuerst eine VA auswählen, um sie zu löschen.")
 
+from fpdf import FPDF
+
+def export_va_to_pdf(row):
+    pdf = FPDF()
+    pdf.add_page()
+
+    # Kopfzeile
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, f"QM-Verfahrensanweisung – {row['VA_Nr']}", ln=True, align="C")
+    pdf.ln(5)
+
+    # Hilfsfunktion für Abschnitte
+    def add_section(title, content):
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 8, title, ln=True)
+        pdf.set_font("Arial", "", 12)
+        pdf.multi_cell(0, 8, content if content else "–")
+        pdf.ln(3)
+
+    # Abschnitte
+    add_section("Titel", row["Titel"])
+    add_section("Kapitel", row["Kapitel"])
+    add_section("Unterkapitel", row["Unterkapitel"])
+    add_section("Revisionsstand", row["Revisionsstand"])
+    add_section("Ziel", row["Ziel"])
+    add_section("Geltungsbereich", row["Geltungsbereich"])
+    add_section("Vorgehensweise", row["Vorgehensweise"])
+    add_section("Kommentar", row["Kommentar"])
+    add_section("Mitgeltende Unterlagen", row["Mitgeltende Unterlagen"])
+
+    return pdf.output(dest="S").encode("latin-1")
+
+# ----------------------------
+# PDF-Export-Block unter der Tabelle
+# ----------------------------
+if not df_all.empty and selected_va:
+    if st.button("PDF erzeugen für ausgewählte VA"):
+        df_sel = df_all[df_all["VA_Nr"].astype(str) == selected_va]
+        if not df_sel.empty:
+            pdf_bytes = export_va_to_pdf(df_sel.iloc[0])
+            st.download_button(
+                label="Download PDF",
+                data=pdf_bytes,
+                file_name=f"{selected_va}.pdf",
+                mime="application/pdf"
+            )
 
 
 
