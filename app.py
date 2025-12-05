@@ -142,6 +142,7 @@ import os
 
 if st.button("Speichern", type="primary"):
     va_nr = va_nr.strip()
+
     neuer_eintrag = {
         "VA_Nr": va_nr,
         "Titel": titel,
@@ -165,6 +166,7 @@ if st.button("Speichern", type="primary"):
             df_alt = pd.DataFrame(columns=QM_COLUMNS)
 
         maske = df_alt["VA_Nr"].astype(str).str.strip() == va_nr
+
         if maske.any():
             # VA existiert → aktualisieren
             df_alt.loc[maske, QM_COLUMNS] = df_neu.iloc[0][QM_COLUMNS].values
@@ -172,8 +174,14 @@ if st.button("Speichern", type="primary"):
             st.success(f"VA {va_nr} aktualisiert.")
         else:
             # VA neu → anhängen
-            df_neu.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig",
-                          mode="a", header=False)
+            df_neu.to_csv(
+                DATA_FILE_QM,
+                sep=";",
+                index=False,
+                encoding="utf-8-sig",
+                mode="a",
+                header=False
+            )
             st.success(f"VA {va_nr} hinzugefügt.")
     else:
         # Datei existiert nicht → neu anlegen
