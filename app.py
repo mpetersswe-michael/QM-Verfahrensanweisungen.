@@ -114,7 +114,7 @@ def export_va_to_pdf(row):
 if st.session_state.logged_in:
     st.markdown("## Neue Verfahrensanweisung eingeben")
 
-    va_nr = st.text_input("VA-Nr")
+    va_nr = st.text_input("VA-Nr").strip()
     titel = st.text_input("Titel")
     kapitel = st.text_input("Kapitel")
     unterkapitel = st.text_input("Unterkapitel")
@@ -125,7 +125,7 @@ if st.session_state.logged_in:
     kommentar = st.text_area("Kommentar")
     mitgeltende_unterlagen = st.text_area("Mitgeltende Unterlagen")
 
-    if st.button("Speichern"):
+    if st.button("Speichern", type="primary"):
         new_entry = {
             "VA_Nr": va_nr,
             "Titel": titel,
@@ -144,8 +144,8 @@ if st.session_state.logged_in:
         except:
             df_existing = pd.DataFrame(columns=QM_COLUMNS)
 
-        # Alte Version mit gleicher VA_Nr entfernen
-        df_existing = df_existing[df_existing["VA_Nr"].astype(str) != va_nr]
+        # Alte Version mit gleicher VA_Nr entfernen (inkl. Trim)
+        df_existing = df_existing[df_existing["VA_Nr"].astype(str).str.strip() != va_nr]
 
         # Neue VA anhängen
         df_new = pd.DataFrame([new_entry])
@@ -169,11 +169,11 @@ if st.session_state.logged_in:
     else:
         selected_va = st.selectbox(
             "VA auswählen zur Anzeige oder PDF-Erzeugung",
-            options=[""] + sorted(df_all["VA_Nr"].dropna().astype(str).unique()),
+            options=[""] + sorted(df_all["VA_Nr"].dropna().astype(str).str.strip().unique()),
             index=0
         )
 
-        df_filtered = df_all[df_all["VA_Nr"].astype(str) == selected_va] if selected_va else df_all
+        df_filtered = df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va] if selected_va else df_all
         st.dataframe(df_filtered, use_container_width=True)
 
         # CSV-Download
@@ -182,14 +182,15 @@ if st.session_state.logged_in:
             label="CSV herunterladen",
             data=csv_data,
             file_name=f"qm_va_{dt.date.today()}.csv",
-            mime="text/csv"
+            mime="text/csv",
+            type="primary"
         )
 
         # Löschfunktion
         st.markdown("### VA löschen")
         if selected_va:
             if st.button("Ausgewählte VA löschen", type="secondary"):
-                df_remaining = df_all[df_all["VA_Nr"].astype(str) != selected_va]
+                df_remaining = df_all[df_all["VA_Nr"].astype(str).str.strip() != selected_va]
                 df_remaining.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
                 st.success(f"VA {selected_va} wurde gelöscht. Bitte Seite neu laden.")
         else:
@@ -198,17 +199,17 @@ if st.session_state.logged_in:
         # PDF-Export
         st.markdown("### PDF erzeugen")
         if selected_va:
-            if st.button("PDF erzeugen für ausgewählte VA"):
-                df_sel = df_all[df_all["VA_Nr"].astype(str) == selected_va]
+            if st.button("PDF erzeugen für ausgewählte VA", type="primary"):
+                df_sel = df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va]
                 if not df_sel.empty:
                     pdf_bytes = export_va_to_pdf(df_sel.iloc[0])
                     st.download_button(
                         label="Download PDF",
                         data=pdf_bytes,
                         file_name=f"{selected_va}.pdf",
-                        mime="application/pdf"
+                        mime="application/pdf",
+                        type="primary"
                     )
         else:
             st.warning("Bitte zuerst eine VA auswählen, um PDF zu erzeugen.")
-else:
-    st.warning("Bitte Passwort eingeben, um die Verwaltung zu nutzen.")
+
