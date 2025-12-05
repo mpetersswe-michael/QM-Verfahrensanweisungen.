@@ -130,46 +130,51 @@ if st.session_state["auth"]:
 
             st.success(f"Verfahrensanweisung {va_nr} wurde gespeichert.")
 
-    # ----------------------------
-    # Verwaltung: Anzeige, Auswahl, Download, Löschen
-    # ----------------------------
-    st.markdown("## Verfahrensanweisungen anzeigen und verwalten")
+# ----------------------------
+# Verwaltung: Anzeige, Auswahl, Download, Löschen
+# ----------------------------
+st.markdown("## Verfahrensanweisungen anzeigen und verwalten")
 
-    try:
-        df_all = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
-    except:
-        df_all = pd.DataFrame(columns=QM_COLUMNS)
+try:
+    df_all = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
+except:
+    df_all = pd.DataFrame(columns=QM_COLUMNS)
 
-    if df_all.empty:
-        st.info("Noch keine Verfahrensanweisungen gespeichert.")
+if df_all.empty:
+    st.info("Noch keine Verfahrensanweisungen gespeichert.")
+else:
+    selected_va = st.selectbox(
+        "VA auswählen zur Anzeige oder Löschung",
+        options=[""] + sorted(df_all["VA_Nr"].dropna().astype(str).unique()),
+        index=0
+    )
+
+    df_filtered = df_all[df_all["VA_Nr"].astype(str) == selected_va] if selected_va else df_all
+
+    st.dataframe(df_filtered, use_container_width=True)
+
+    # CSV-Download
+    csv_data = df_filtered.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+    st.download_button(
+        label="CSV herunterladen",
+        data=csv_data,
+        file_name=f"qm_va_{dt.date.today()}.csv",
+        mime="text/csv"
+    )
+
+    # Lösch-Button
+    st.markdown("### VA löschen")
+    if selected_va:
+        if st.button("Ausgewählte VA löschen", type="secondary"):
+            df_remaining = df_all[df_all["VA_Nr"].astype(str) != selected_va]
+            df_remaining.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
+            st.success(f"VA {selected_va} wurde gelöscht. Bitte Seite neu laden.")
     else:
-        selected_va = st.selectbox(
-            "VA auswählen zur Anzeige oder Löschung",
-            options=[""] + sorted(df_all["VA_Nr"].dropna().astype(str).unique()),
-            index=0
-        )
+        st.warning("Bitte zuerst eine VA auswählen, um sie zu löschen.")
 
-        df_filtered = df_all[df_all["VA_Nr"].astype(str) == selected_va] if selected_va else df_all
-
-        st.dataframe(df_filtered, use_container_width=True)
-
-        csv_data = df_filtered.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
-        st.download_button(
-            label="CSV herunterladen",
-            data=csv_data,
-            file_name=f"qm_va_{dt.date.today()}.csv",
-            mime="text/csv"
-        )
-
-        st.markdown("### VA löschen")
-        if selected_va:
-            if st.button("Ausgewählte VA löschen", type="secondary"):
-                df_remaining = df_all[df_all["VA_Nr"].astype(str) != selected_va]
-                df_remaining.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-                st.success(f"VA {selected_va} wurde gelöscht. Bitte Seite neu laden.")
-        else:
-            st.warning("Bitte zuerst eine VA auswählen, um sie zu löschen.")
-
+# ----------------------------
+# PDF-Funktion
+# ----------------------------
 from fpdf import FPDF
 
 def export_va_to_pdf(row):
@@ -215,27 +220,4 @@ if not df_all.empty and selected_va:
                 data=pdf_bytes,
                 file_name=f"{selected_va}.pdf",
                 mime="application/pdf"
-            
-# ----------------------------
-# PDF-Export-Block
-# ----------------------------
-if not df_all.empty and selected_va:
-    if st.button("PDF erzeugen für ausgewählte VA"):
-        df_sel = df_all[df_all["VA_Nr"].astype(str) == selected_va]
-        if not df_sel.empty:
-            pdf_bytes = export_va_to_pdf(df_sel.iloc[0])
-            st.download_button(
-                label="Download PDF",
-                data=pdf_bytes,
-                file_name=f"{selected_va}.pdf",
-                mime="application/pdf"
             )
-
-
-            
-
-
-
-
-
-
