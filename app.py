@@ -184,10 +184,13 @@ else:
         def footer(self):
             self.set_y(-15)  # 15 mm vom unteren Rand
             self.set_font("Arial", "I", 10)
-            self.cell(
-                0, 10,
-                f"Erstellt von Peters, Michael – Qualitätsbeauftragter am {dt.date.today().strftime('%d.%m.%Y')}",
-                align="C"
+            class CustomPDF(FPDF):
+        def footer(self):
+            self.set_y(-15)
+            self.set_font("Arial", "I", 10)
+            text = f"Erstellt von Peters, Michael – Qualitätsbeauftragter am {dt.date.today().strftime('%d.%m.%Y')}"
+            self.cell(0, 10, clean_text(text), align="C")
+
             )
 
     def clean_text(text):
