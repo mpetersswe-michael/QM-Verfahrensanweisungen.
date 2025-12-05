@@ -1,22 +1,9 @@
-# ----------------------------
-# Imports
-# ----------------------------
 import streamlit as st
 import pandas as pd
 import datetime as dt
 import io
+import os
 from fpdf import FPDF
-
-# ----------------------------
-# App-Titel
-# ----------------------------
-st.set_page_config(page_title="Verfahrensanweisungen (Auszug aus dem QMH)")
-st.markdown(
-    """
-    <h5 style='text-align:center; color:#444;'>Verfahrensanweisungen (Auszug aus dem QMH)</h5>
-    """,
-    unsafe_allow_html=True
-)
 
 # ----------------------------
 # Konfiguration
@@ -28,7 +15,16 @@ QM_COLUMNS = [
 ]
 
 # ----------------------------
-# Login mittig mit gelbem Hintergrund
+# App-Titel
+# ----------------------------
+st.set_page_config(page_title="Verfahrensanweisungen (Auszug aus dem QMH)")
+st.markdown(
+    "<h5 style='text-align:center; color:#444;'>Verfahrensanweisungen (Auszug aus dem QMH)</h5>",
+    unsafe_allow_html=True
+)
+
+# ----------------------------
+# Login
 # ----------------------------
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
@@ -36,11 +32,8 @@ if "logged_in" not in st.session_state:
 if not st.session_state.logged_in:
     st.markdown("## Login")
     st.markdown(
-        """
-        <div style="background-color:#fff9c4; padding:20px; border-radius:8px;">
-            <h4 style="text-align:center;">Bitte Passwort eingeben</h4>
-        </div>
-        """,
+        "<div style='background-color:#fff9c4; padding:20px; border-radius:8px;'>"
+        "<h4 style='text-align:center;'>Bitte Passwort eingeben</h4></div>",
         unsafe_allow_html=True
     )
     password = st.text_input("Passwort", type="password")
@@ -106,15 +99,9 @@ def export_va_to_pdf(row):
         pdf.multi_cell(0, 8, clean_text(content if content else "-"))
         pdf.ln(3)
 
-    add_section("Titel", row.get("Titel", ""))
-    add_section("Kapitel", row.get("Kapitel", ""))
-    add_section("Unterkapitel", row.get("Unterkapitel", ""))
-    add_section("Revisionsstand", row.get("Revisionsstand", ""))
-    add_section("Ziel", row.get("Ziel", ""))
-    add_section("Geltungsbereich", row.get("Geltungsbereich", ""))
-    add_section("Vorgehensweise", row.get("Vorgehensweise", ""))
-    add_section("Kommentar", row.get("Kommentar", ""))
-    add_section("Mitgeltende Unterlagen", row.get("Mitgeltende Unterlagen", ""))
+    for feld in ["Titel","Kapitel","Unterkapitel","Revisionsstand","Ziel",
+                 "Geltungsbereich","Vorgehensweise","Kommentar","Mitgeltende Unterlagen"]:
+        add_section(feld, row.get(feld, ""))
 
     buffer = io.BytesIO()
     pdf.output(buffer)
@@ -137,116 +124,42 @@ if st.session_state.logged_in:
     kommentar = st.text_area("Kommentar")
     mitgeltende_unterlagen = st.text_area("Mitgeltende Unterlagen")
 
+    # ----------------------------
+    # Speichern-Block (robust)
+    # ----------------------------
+    if st.button("Speichern", type="primary"):
+        neuer_eintrag = {
+            "VA_Nr": va_nr,
+            "Titel": titel,
+            "Kapitel": kapitel,
+            "Unterkapitel": unterkapitel,
+            "Revisionsstand": revisionsstand,
+            "Ziel": ziel,
+            "Geltungsbereich": geltungsbereich,
+            "Vorgehensweise": vorgehensweise,
+            "Kommentar": kommentar,
+            "Mitgeltende Unterlagen": mitgeltende_unterlagen
+        }
+        df_neu = pd.DataFrame([neuer_eintrag]).reindex(columns=QM_COLUMNS)
 
-import os
+        if os.path.exists(DATA_FILE_QM):
+            try:
+                df_alt = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
+            except:
+                df_alt = pd.DataFrame(columns=QM_COLUMNS)
 
-if st.button("Speichern", type="primary"):
-    va_nr = va_nr.strip()
-
-    neuer_eintrag = {
-        "VA_Nr": va_nr,
-        "Titel": titel,
-        "Kapitel": kapitel,
-        "Unterkapitel": unterkapitel,
-        "Revisionsstand": revisionsstand,
-        "Ziel": ziel,
-        "Geltungsbereich": geltungsbereich,
-        "Vorgehensweise": vorgehensweise,
-        "Kommentar": kommentar,
-        "Mitgeltende Unterlagen": mitgeltende_unterlagen
-    }
-
-    df_neu = pd.DataFrame([neuer_eintrag])
-    df_neu = df_neu.reindex(columns=QM_COLUMNS)
-
-    if os.path.exists(DATA_FILE_QM):
-        try:
-            df_alt = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
-        except:
-            df_alt = pd.DataFrame(columns=QM_COLUMNS)
-
-        maske = df_alt["VA_Nr"].astype(str).str.strip() == va_nr
-
-        if maske.any():
-            # VA existiert → aktualisieren
-            df_alt.loc[maske, QM_COLUMNS] = df_neu.iloc[0][QM_COLUMNS].values
-            df_alt.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-            st.success(f"VA {va_nr} aktualisiert.")
+            maske = df_alt["VA_Nr"].astype(str).str.strip() == va_nr
+            if maske.any():
+                df_alt.loc[maske, QM_COLUMNS] = df_neu.iloc[0][QM_COLUMNS].values
+                df_alt.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
+                st.success(f"VA {va_nr} aktualisiert.")
+            else:
+                df_neu.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig",
+                              mode="a", header=False)
+                st.success(f"VA {va_nr} hinzugefügt.")
         else:
-            # VA neu → anhängen
-            df_neu.to_csv(
-                DATA_FILE_QM,
-                sep=";",
-                index=False,
-                encoding="utf-8-sig",
-                mode="a",
-                header=False
-            )
-            st.success(f"VA {va_nr} hinzugefügt.")
-    else:
-        # Datei existiert nicht → neu anlegen
-        df_neu.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-        st.success(f"VA {va_nr} gespeichert (neue Datei erstellt).")
-
-
-    # Prüfen, ob Datei existiert
-    if os.path.exists(DATA_FILE_QM):
-        try:
-            df_alt = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
-        except:
-            df_alt = pd.DataFrame(columns=QM_COLUMNS)
-
-        # Prüfen, ob VA_Nr schon existiert
-        maske = df_alt["VA_Nr"].astype(str).str.strip() == va_nr
-        if maske.any():
-            # Bestehenden Eintrag aktualisieren
-            df_alt.loc[maske, QM_COLUMNS] = df_neu.iloc[0][QM_COLUMNS].values
-            df_alt.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-        else:
-            # Neue VA anhängen
-            df_alt = pd.concat([df_alt, df_neu], ignore_index=True)
-            df_alt.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-    else:
-        # Erste Speicherung mit Kopfzeile
-        df_neu.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-
-    st.success(f"VA {va_nr} gespeichert (bestehende Einträge bleiben erhalten).")
-
-
-    # Prüfen, ob Datei existiert
-    if os.path.exists(DATA_FILE_QM):
-        try:
-            df_alt = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
-        except:
-            df_alt = pd.DataFrame(columns=QM_COLUMNS)
-
-        # Prüfen, ob VA_Nr schon existiert
-        maske = df_alt["VA_Nr"].astype(str).str.strip() == va_nr
-        if maske.any():
-            # Bestehenden Eintrag aktualisieren
-            df_alt.loc[maske, QM_COLUMNS] = df_neu.iloc[0][QM_COLUMNS].values
-            df_alt.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-        else:
-            # Neue VA anhängen
-            df_neu.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig",
-                          mode="a", header=False)
-    else:
-        # Erste Speicherung mit Kopfzeile
-        df_neu.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-
-    st.success(f"VA {va_nr} gespeichert (bestehende Einträge bleiben erhalten).")
-
-
-    try:
-            df_existing = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
-    except:
-            df_existing = pd.DataFrame(columns=QM_COLUMNS)
-
-            df_existing = df_existing[df_existing["VA_Nr"].astype(str).str.strip() != va_nr]
-            df_new = pd.DataFrame([new_entry])
-            df_combined = pd.concat([df_existing, df_new], ignore_index=True)
-            df_combined.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-            st.success(f"VA {va_nr} gespeichert.")
+            df_neu.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
+            st.success(f"VA {va_nr} gespeichert (neue Datei erstellt).")
 
     # ----------------------------
     # Verwaltung: Anzeige, Download, Löschen, PDF
@@ -271,6 +184,7 @@ if st.button("Speichern", type="primary"):
         df_filtered = df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va] if selected_va else df_all
         st.dataframe(df_filtered, use_container_width=True)
 
+        # CSV-Download
         csv_data = df_filtered.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
         st.download_button(
             label="CSV herunterladen",
@@ -280,6 +194,7 @@ if st.button("Speichern", type="primary"):
             type="primary"
         )
 
+        # Löschfunktion
         st.markdown("### VA löschen")
         if selected_va:
             if st.button("Ausgewählte VA löschen", type="secondary"):
@@ -289,17 +204,7 @@ if st.button("Speichern", type="primary"):
         else:
             st.warning("Bitte zuerst eine VA auswählen, um sie zu löschen.")
 
+        # PDF-Export
         st.markdown("### PDF erzeugen")
         if selected_va:
-            if st.button("PDF erzeugen für ausgewählte VA", type="primary"):
-                df_sel = df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va]
-                if not df_sel.empty:
-                    pdf_bytes = export_va_to_pdf(df_sel.iloc[0])
-                    st.download_button(
-                        label="Download PDF",
-                        data=pdf_bytes,
-                        file_name=f"{selected_va}.pdf",
-                        mime="application/pdf",
-                        type="primary"
-         )
-
+            if st.button("
