@@ -240,6 +240,43 @@ if st.session_state.logged_in:
         st.sidebar.info("Noch keine VA-Datei vorhanden.")
 
 # -----------------------------------
+# Button-Farben anpassen (CSS)
+# -----------------------------------
+st.markdown(
+    """
+    <style>
+    /* Standard-Buttons: Blau */
+    div.stButton > button {
+        background-color: #2196F3; /* Blau */
+        color: white;
+    }
+    div.stButton > button:hover {
+        background-color: #1976D2; /* Dunkleres Blau beim Hover */
+        color: white;
+    }
+
+    /* Kenntnisnahme-Button: Grün */
+    div.stButton > button[kind="primary"] {
+        background-color: #4CAF50 !important; /* Grün */
+        color: white !important;
+    }
+    div.stButton > button[kind="primary"]:hover {
+        background-color: #45a049 !important; /* Dunkleres Grün beim Hover */
+        color: white !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+
+
+
+
+
+
+
+# -----------------------------------
 # Kenntnisnahme durch Mitarbeiter
 # -----------------------------------
 if st.session_state.logged_in:
