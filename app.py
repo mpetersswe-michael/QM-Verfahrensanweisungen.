@@ -17,39 +17,33 @@ QM_COLUMNS = [
 ]
 
 # ----------------------------
-# Login mittig auf der Startseite
+# Login mittig mit gelbem Hintergrund
 # ----------------------------
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
 if not st.session_state.logged_in:
     st.markdown("## Login")
-
-    # Gelber Hintergrund für den Login-Bereich
-    login_container = st.container()
-    with login_container:
-        st.markdown(
-            """
-            <div style="background-color:#fff9c4; padding:20px; border-radius:8px;">
-                <h4 style="text-align:center;">Bitte Passwort eingeben</h4>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-        password = st.text_input("Passwort", type="password")
-        if st.button("Login", type="primary"):
-            if password == "qm2025":
-                st.session_state.logged_in = True
-                st.success("Login erfolgreich!")
-            else:
-                st.error("Falsches Passwort.")
+    st.markdown(
+        """
+        <div style="background-color:#fff9c4; padding:20px; border-radius:8px;">
+            <h4 style="text-align:center;">Bitte Passwort eingeben</h4>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    password = st.text_input("Passwort", type="password")
+    if st.button("Login", type="primary"):
+        if password == "qm2025":
+            st.session_state.logged_in = True
+            st.success("Login erfolgreich!")
+        else:
+            st.error("Falsches Passwort.")
 else:
-    # Logout in der Sidebar
     st.sidebar.success("Eingeloggt")
     if st.sidebar.button("Logout", type="secondary"):
         st.session_state.logged_in = False
         st.sidebar.info("Logout erfolgreich.")
-
 
 # ----------------------------
 # Hilfsfunktionen für PDF
@@ -77,16 +71,10 @@ class CustomPDF(FPDF):
     def footer(self):
         self.set_y(-15)
         self.set_font("Arial", "I", 10)
-
-        # Linke Seite: VA-Name
         va_name = getattr(self, "va_name", "")
         self.cell(60, 10, clean_text(va_name), align="L")
-
-        # Mitte: Ersteller
         text = f"Erstellt von Peters, Michael - Qualitaetsbeauftragter am {dt.date.today().strftime('%d.%m.%Y')}"
         self.cell(70, 10, clean_text(text), align="C")
-
-        # Rechte Seite: Seitenzahl
         page_text = f"Seite {self.page_no()} von {{nb}}"
         self.cell(0, 10, clean_text(page_text), align="R")
 
@@ -122,7 +110,7 @@ def export_va_to_pdf(row):
     return buffer.getvalue()
 
 # ----------------------------
-# Eingabeformular für neue VA
+# Eingabeformular + Verwaltung
 # ----------------------------
 if st.session_state.logged_in:
     st.markdown("## Neue Verfahrensanweisung eingeben")
@@ -157,18 +145,14 @@ if st.session_state.logged_in:
         except:
             df_existing = pd.DataFrame(columns=QM_COLUMNS)
 
-        # Alte Version mit gleicher VA_Nr entfernen (inkl. Trim)
         df_existing = df_existing[df_existing["VA_Nr"].astype(str).str.strip() != va_nr]
-
-        # Neue VA anhängen
         df_new = pd.DataFrame([new_entry])
         df_combined = pd.concat([df_existing, df_new], ignore_index=True)
-
         df_combined.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
         st.success(f"VA {va_nr} gespeichert.")
 
     # ----------------------------
-    # Verwaltung: Anzeigen, Download, Löschen, PDF
+    # Verwaltung: Anzeige, Download, Löschen, PDF
     # ----------------------------
     st.markdown("## Verfahrensanweisungen anzeigen und verwalten")
 
@@ -180,16 +164,16 @@ if st.session_state.logged_in:
     if df_all.empty:
         st.info("Noch keine Verfahrensanweisungen gespeichert.")
     else:
-        selected_va = st.selectbox(
+        df_all["VA_Anzeige"] = df_all["VA_Nr"].astype(str).str.strip() + " – " + df_all["Titel"].astype(str).str.strip()
+        selected_va_display = st.selectbox(
             "VA auswählen zur Anzeige oder PDF-Erzeugung",
-            options=[""] + sorted(df_all["VA_Nr"].dropna().astype(str).str.strip().unique()),
+            options=[""] + sorted(df_all["VA_Anzeige"].dropna().unique()),
             index=0
         )
-
+        selected_va = selected_va_display.split(" – ")[0] if selected_va_display else ""
         df_filtered = df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va] if selected_va else df_all
         st.dataframe(df_filtered, use_container_width=True)
 
-        # CSV-Download
         csv_data = df_filtered.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
         st.download_button(
             label="CSV herunterladen",
@@ -199,7 +183,6 @@ if st.session_state.logged_in:
             type="primary"
         )
 
-        # Löschfunktion
         st.markdown("### VA löschen")
         if selected_va:
             if st.button("Ausgewählte VA löschen", type="secondary"):
@@ -209,7 +192,6 @@ if st.session_state.logged_in:
         else:
             st.warning("Bitte zuerst eine VA auswählen, um sie zu löschen.")
 
-        # PDF-Export
         st.markdown("### PDF erzeugen")
         if selected_va:
             if st.button("PDF erzeugen für ausgewählte VA", type="primary"):
@@ -222,7 +204,5 @@ if st.session_state.logged_in:
                         file_name=f"{selected_va}.pdf",
                         mime="application/pdf",
                         type="primary"
-                    )
-        else:
-            st.warning("Bitte zuerst eine VA auswählen, um PDF zu erzeugen.")
+         )
 
