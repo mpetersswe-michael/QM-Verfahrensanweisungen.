@@ -131,7 +131,7 @@ if st.session_state["auth"]:
             st.success(f"Verfahrensanweisung {va_nr} wurde gespeichert.")
 
 # ----------------------------
-# Verwaltung: Anzeige, Auswahl, Download, Löschen
+# Verwaltung: Anzeige, Auswahl, Download, Löschen, PDF
 # ----------------------------
 st.markdown("## Verfahrensanweisungen anzeigen und verwalten")
 
@@ -172,52 +172,64 @@ else:
     else:
         st.warning("Bitte zuerst eine VA auswählen, um sie zu löschen.")
 
-# ----------------------------
-# PDF-Funktion
-# ----------------------------
-from fpdf import FPDF
+    # PDF-Funktion mit Unicode-Bereinigung
+    from fpdf import FPDF
 
-def export_va_to_pdf(row):
-    pdf = FPDF()
-    pdf.add_page()
+    def clean_text(text):
+        if not text:
+            return "-"
+        return (
+            str(text)
+            .replace("–", "-")
+            .replace("•", "*")
+            .replace("“", '"')
+            .replace("”", '"')
+            .replace("’", "'")
+            .replace("€", "EUR")
+            .replace("ä", "ae")
+            .replace("ö", "oe")
+            .replace("ü", "ue")
+            .replace("ß", "ss")
+        )
 
-    # Kopfzeile
-    pdf.set_font("Arial", "B", 16)
-    pdf.cell(0, 10, f"QM-Verfahrensanweisung – {row['VA_Nr']}", ln=True, align="C")
-    pdf.ln(5)
+    def export_va_to_pdf(row):
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", "B", 16)
+        pdf.cell(0, 10, clean_text(f"QM-Verfahrensanweisung - {row['VA_Nr']}"), ln=True, align="C")
+        pdf.ln(5)
 
-    # Hilfsfunktion für Abschnitte
-    def add_section(title, content):
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, title, ln=True)
-        pdf.set_font("Arial", "", 12)
-        pdf.multi_cell(0, 8, content if content else "–")
-        pdf.ln(3)
+        def add_section(title, content):
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(0, 8, clean_text(title), ln=True)
+            pdf.set_font("Arial", "", 12)
+            pdf.multi_cell(0, 8, clean_text(content))
+            pdf.ln(3)
 
-    # Abschnitte
-    add_section("Titel", row["Titel"])
-    add_section("Kapitel", row["Kapitel"])
-    add_section("Unterkapitel", row["Unterkapitel"])
-    add_section("Revisionsstand", row["Revisionsstand"])
-    add_section("Ziel", row["Ziel"])
-    add_section("Geltungsbereich", row["Geltungsbereich"])
-    add_section("Vorgehensweise", row["Vorgehensweise"])
-    add_section("Kommentar", row["Kommentar"])
-    add_section("Mitgeltende Unterlagen", row["Mitgeltende Unterlagen"])
+        add_section("Titel", row["Titel"])
+        add_section("Kapitel", row["Kapitel"])
+        add_section("Unterkapitel", row["Unterkapitel"])
+        add_section("Revisionsstand", row["Revisionsstand"])
+        add_section("Ziel", row["Ziel"])
+        add_section("Geltungsbereich", row["Geltungsbereich"])
+        add_section("Vorgehensweise", row["Vorgehensweise"])
+        add_section("Kommentar", row["Kommentar"])
+        add_section("Mitgeltende Unterlagen", row["Mitgeltende Unterlagen"])
 
-    return pdf.output(dest="S").encode("latin-1")
+        return pdf.output(dest="S").encode("latin-1")
 
-# ----------------------------
-# PDF-Export-Block
-# ----------------------------
-if not df_all.empty and selected_va:
-    if st.button("PDF erzeugen für ausgewählte VA"):
-        df_sel = df_all[df_all["VA_Nr"].astype(str) == selected_va]
-        if not df_sel.empty:
-            pdf_bytes = export_va_to_pdf(df_sel.iloc[0])
-            st.download_button(
-                label="Download PDF",
-                data=pdf_bytes,
-                file_name=f"{selected_va}.pdf",
-                mime="application/pdf"
-            )
+    # PDF-Export-Button
+    st.markdown("### PDF erzeugen")
+    if selected_va:
+        if st.button("PDF erzeugen für ausgewählte VA"):
+            df_sel = df_all[df_all["VA_Nr"].astype(str) == selected_va]
+            if not df_sel.empty:
+                pdf_bytes = export_va_to_pdf(df_sel.iloc[0])
+                st.download_button(
+                    label="Download PDF",
+                    data=pdf_bytes,
+                    file_name=f"{selected_va}.pdf",
+                    mime="application/pdf"
+                )
+    else:
+        st.warning("Bitte zuerst eine VA auswählen, um PDF zu erzeugen.")
