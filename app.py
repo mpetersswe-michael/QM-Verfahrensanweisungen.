@@ -234,55 +234,54 @@ if st.session_state.logged_in:
 # -----------------------------------
 # Sidebar-Hinweis "Aktuelles"
 # -----------------------------------
-st.sidebar.markdown("### Aktuelles")
-if not df_all.empty:
-    # Beispiel: letzte VA als "neu"
-    letzte_va = df_all.iloc[-1]
-    st.sidebar.info(f"Neue VA verfügbar: **{letzte_va['VA_Nr']} – {letzte_va['Titel']}**")
-else:
-    st.sidebar.info("Keine neuen Verfahrensanweisungen vorhanden.")
+if st.session_state.logged_in:
+    st.sidebar.markdown("### Aktuelles")
+    try:
+        df_all_sidebar = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
+        if not df_all_sidebar.empty:
+            letzte_va = df_all_sidebar.iloc[-1]
+            st.sidebar.info(f"Neue VA verfügbar: **{letzte_va['VA_Nr']} – {letzte_va['Titel']}**")
+        else:
+            st.sidebar.info("Keine neuen Verfahrensanweisungen vorhanden.")
+    except:
+        st.sidebar.info("Noch keine VA-Datei vorhanden.")
 
 # -----------------------------------
 # Kenntnisnahme durch Mitarbeiter
 # -----------------------------------
-st.markdown("## Kenntnisnahme bestätigen")
+if st.session_state.logged_in:
+    st.markdown("## Kenntnisnahme bestätigen")
 
-name = st.text_input("Name")
-email = st.text_input("E-Mail")
+    name = st.text_input("Name")
+    email = st.text_input("E-Mail")
 
-if not df_all.empty:
-    va_auswahl = st.selectbox("VA auswählen", options=sorted(df_all["VA_Nr"].unique()))
-else:
-    va_auswahl = None
-    st.info("Noch keine Verfahrensanweisungen vorhanden.")
-
-if st.button("Zur Kenntnis genommen"):
-    if name and email and va_auswahl:
-        eintrag = {
-            "Name": name,
-            "E-Mail": email,
-            "VA_Nr": va_auswahl,
-            "Zeitpunkt": dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        }
-        df_kenntnis = pd.DataFrame([eintrag])
-
-        if os.path.exists("kenntnisnahmen.csv"):
-            df_kenntnis.to_csv(
-                "kenntnisnahmen.csv",
-                sep=";",
-                index=False,
-                mode="a",
-                header=False,
-                encoding="utf-8-sig"
-            )
+    try:
+        df_all_kenntnis = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
+        if not df_all_kenntnis.empty:
+            va_auswahl = st.selectbox("VA auswählen", options=sorted(df_all_kenntnis["VA_Nr"].dropna().unique()))
         else:
-            df_kenntnis.to_csv(
-                "kenntnisnahmen.csv",
-                sep=";",
-                index=False,
-                encoding="utf-8-sig"
-            )
+            va_auswahl = None
+            st.info("Noch keine Verfahrensanweisungen vorhanden.")
+    except:
+        va_auswahl = None
+        st.info("VA-Datei konnte nicht geladen werden.")
 
-        st.success(f"Kenntnisnahme für VA {va_auswahl} gespeichert.")
-    else:
-        st.error("Bitte Name, E-Mail und VA auswählen.")
+    if st.button("Zur Kenntnis genommen"):
+        if name and email and va_auswahl:
+            eintrag = {
+                "Name": name,
+                "E-Mail": email,
+                "VA_Nr": va_auswahl,
+                "Zeitpunkt": dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+            df_kenntnis = pd.DataFrame([eintrag])
+            if os.path.exists("kenntnisnahmen.csv"):
+                df_kenntnis.to_csv("kenntnisnahmen.csv", sep=";", index=False,
+                                   mode="a", header=False, encoding="utf-8-sig")
+            else:
+                df_kenntnis.to_csv("kenntnisnahmen.csv", sep=";", index=False,
+                                   encoding="utf-8-sig")
+            st.success(f"Kenntnisnahme für VA {va_auswahl} gespeichert.")
+        else:
+            st.error("Bitte Name, E-Mail und VA auswählen.")
+
