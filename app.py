@@ -191,7 +191,7 @@ else:
             text = f"Erstellt von Peters, Michael – Qualitätsbeauftragter am {dt.date.today().strftime('%d.%m.%Y')}"
             self.cell(0, 10, clean_text(text), align="C")
 
-            )
+        )
 
     def clean_text(text):
         if not text:
