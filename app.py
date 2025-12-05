@@ -174,10 +174,21 @@ else:
         st.warning("Bitte zuerst eine VA auswählen, um sie zu löschen.")
 
     # ----------------------------
-    # PDF-Funktion mit Unicode-Bereinigung und Bytes-Buffer
+    # PDF-Funktion mit CustomPDF-Klasse für Fußzeile
     # ----------------------------
     import io
     from fpdf import FPDF
+    import datetime as dt
+
+    class CustomPDF(FPDF):
+        def footer(self):
+            self.set_y(-15)  # 15 mm vom unteren Rand
+            self.set_font("Arial", "I", 10)
+            self.cell(
+                0, 10,
+                f"Erstellt von Peters, Michael – Qualitätsbeauftragter am {dt.date.today().strftime('%d.%m.%Y')}",
+                align="C"
+            )
 
     def clean_text(text):
         if not text:
@@ -197,17 +208,12 @@ else:
         )
 
     def export_va_to_pdf(row):
-        pdf = FPDF()
+        pdf = CustomPDF()
         pdf.add_page()
         pdf.set_auto_page_break(auto=True, margin=15)
         pdf.set_font("Arial", "B", 16)
         pdf.cell(0, 10, clean_text(f"QM-Verfahrensanweisung - {row['VA_Nr']}"), ln=True, align="C")
         pdf.ln(5)
-   
-    # Fußzeile
-        pdf.set_y(-20)
-        pdf.set_font("Arial", "I", 10)
-        pdf.cell(0, 10, clean_text(f"Erstellt von Peters, Michael – Qualitätsbeauftragter am {dt.date.today().strftime('%d.%m.%Y')}"), align="C")
 
         def add_section(title, content):
             pdf.set_font("Arial", "B", 12)
@@ -248,5 +254,6 @@ else:
                 )
     else:
         st.warning("Bitte zuerst eine VA auswählen, um PDF zu erzeugen.")
+
 
 
