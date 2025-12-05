@@ -17,32 +17,27 @@ QM_COLUMNS = [
 ]
 
 # ----------------------------
-# Login / Logout Bereich
+# Login / Logout Bereich (nur Passwort)
 # ----------------------------
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
-if "username" not in st.session_state:
-    st.session_state.username = ""
 
-st.sidebar.title("Benutzerbereich")
+st.sidebar.title("Login")
 
 if not st.session_state.logged_in:
-    username = st.sidebar.text_input("Benutzername")
     password = st.sidebar.text_input("Passwort", type="password")
     if st.sidebar.button("Login"):
-        # Beispiel: feste Zugangsdaten
-        if username == "admin" and password == "qm2025":
+        # Beispiel: festes Passwort
+        if password == "qm2025":
             st.session_state.logged_in = True
-            st.session_state.username = username
             st.success("Login erfolgreich!")
         else:
-            st.error("Falsche Zugangsdaten.")
+            st.error("Falsches Passwort.")
 else:
-    st.sidebar.write(f"Angemeldet als: {st.session_state.username}")
+    st.sidebar.success("Eingeloggt")
     if st.sidebar.button("Logout"):
         st.session_state.logged_in = False
-        st.session_state.username = ""
-        st.sidebar.success("Logout erfolgreich.")
+        st.sidebar.info("Logout erfolgreich.")
 
 # ----------------------------
 # Hilfsfunktionen für PDF
@@ -172,7 +167,7 @@ if st.session_state.logged_in:
         else:
             st.warning("Bitte zuerst eine VA auswählen, um PDF zu erzeugen.")
 else:
-    st.warning("Bitte zuerst einloggen, um die Verwaltung zu nutzen.")
+    st.warning("Bitte Passwort eingeben, um die Verwaltung zu nutzen.")
 
 
 
