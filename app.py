@@ -8,6 +8,12 @@ import io
 from fpdf import FPDF
 
 # ----------------------------
+# App-Titel
+# ----------------------------
+st.set_page_config(page_title="Verfahrensanweisungen (Auszug aus dem QMH)")
+st.markdown("# Verfahrensanweisungen (Auszug aus dem QMH)")
+
+# ----------------------------
 # Konfiguration
 # ----------------------------
 DATA_FILE_QM = "qm_verfahrensanweisungen.csv"
