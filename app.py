@@ -4,11 +4,12 @@
 import streamlit as st
 import pandas as pd
 import datetime as dt
+import io
+from fpdf import FPDF
 
 # ----------------------------
 # Konfiguration
 # ----------------------------
-st.set_page_config(page_title="QM-Verfahrensanweisungen", layout="wide")
 DATA_FILE_QM = "qm_verfahrensanweisungen.csv"
 QM_COLUMNS = [
     "VA_Nr", "Titel", "Kapitel", "Unterkapitel", "Revisionsstand",
@@ -16,119 +17,71 @@ QM_COLUMNS = [
 ]
 
 # ----------------------------
-# Styles
+# Hilfsfunktionen
 # ----------------------------
-st.markdown("""
-<style>
-.stButton>button {
-    background-color: #4CAF50;
-    color: white;
-    border-radius: 8px;
-    padding: 0.5em 1em;
-    font-weight: bold;
-    border: none;
-}
-.stButton>button:hover {
-    background-color: #45a049;
-}
-.logout-button > button {
-    background-color: #e74c3c;
-    color: white;
-    border-radius: 8px;
-    padding: 0.5em 1em;
-    font-weight: bold;
-}
-.logout-button > button:hover {
-    background-color: #c0392b;
-}
-.login-box {
-    background-color: #fff8cc;
-    padding: 1.2em;
-    border-radius: 10px;
-    text-align: center;
-    margin-bottom: 2em;
-    font-size: 1.4em;
-    font-weight: bold;
-    color: #333333;
-}
-</style>
-""", unsafe_allow_html=True)
+def clean_text(text):
+    if not text:
+        return "-"
+    return (
+        str(text)
+        .encode("latin-1", errors="ignore")
+        .decode("latin-1")
+        .replace("–", "-")
+        .replace("•", "*")
+        .replace("“", '"')
+        .replace("”", '"')
+        .replace("’", "'")
+        .replace("€", "EUR")
+        .replace("ä", "ae")
+        .replace("ö", "oe")
+        .replace("ü", "ue")
+        .replace("ß", "ss")
+    )
 
-# ----------------------------
-# Login-Block
-# ----------------------------
-if "auth" not in st.session_state:
-    st.session_state["auth"] = False
+class CustomPDF(FPDF):
+    def footer(self):
+        self.set_y(-15)
+        self.set_font("Arial", "I", 10)
 
-if not st.session_state["auth"]:
-    st.markdown('<div class="login-box">Login QM-Verfahrensanweisungen</div>', unsafe_allow_html=True)
-    password = st.text_input("Login Passwort", type="password", key="login_pw")
-    if st.button("Login", key="login_btn"):
-        if password == "QM2024":
-            st.session_state["auth"] = True
-            st.success("Login erfolgreich. Eingabefelder sind jetzt sichtbar.")
-        else:
-            st.error("Falsches Passwort.")
-            st.stop()
-    else:
-        st.stop()
+        # Linke Seite: VA-Name
+        va_name = getattr(self, "va_name", "")
+        self.cell(0, 10, clean_text(va_name), align="L")
 
-# ----------------------------
-# Nach Login: Eingabeformular + Verwaltung
-# ----------------------------
-if st.session_state["auth"]:
-    with st.sidebar:
-        st.markdown("### Navigation")
-        if st.button("Logout", key="logout_btn"):
-            st.session_state["auth"] = False
-        st.markdown("---")
+        # Rechte Seite: Seitenzahl
+        self.set_x(-50)
+        page_text = f"Seite {self.page_no()} von {{nb}}"
+        self.cell(0, 10, clean_text(page_text), align="R")
 
-    # Eingabeformular
-    st.markdown("## Neue Verfahrensanweisung erfassen")
+def export_va_to_pdf(row):
+    pdf = CustomPDF()
+    pdf.alias_nb_pages()  # Gesamtseitenzahl aktivieren
+    pdf.va_name = f"VA {row['VA_Nr']}"  # VA-Name für Fußzeile
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, clean_text(f"QM-Verfahrensanweisung - {row['VA_Nr']}"), ln=True, align="C")
+    pdf.ln(5)
 
-    va_nr = st.text_input("VA Nummer", placeholder="z. B. VA003")
-    va_title = st.text_input("Titel", placeholder="Kommunikationswege im Pflegedienst")
+    def add_section(title, content):
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 8, clean_text(title), ln=True)
+        pdf.set_font("Arial", "", 12)
+        pdf.multi_cell(0, 8, clean_text(content if content else "-"))
+        pdf.ln(3)
 
-    kapitel_num = st.selectbox("Kapitel Nr.", list(range(1, 11)), index=6)
-    kapitel = f"Kapitel {kapitel_num}"
+    add_section("Titel", row.get("Titel", ""))
+    add_section("Kapitel", row.get("Kapitel", ""))
+    add_section("Unterkapitel", row.get("Unterkapitel", ""))
+    add_section("Revisionsstand", row.get("Revisionsstand", ""))
+    add_section("Ziel", row.get("Ziel", ""))
+    add_section("Geltungsbereich", row.get("Geltungsbereich", ""))
+    add_section("Vorgehensweise", row.get("Vorgehensweise", ""))
+    add_section("Kommentar", row.get("Kommentar", ""))
+    add_section("Mitgeltende Unterlagen", row.get("Mitgeltende Unterlagen", ""))
 
-    unterkapitel = st.text_input("Unterkapitel", placeholder=f"Kap. {kapitel_num}-3")
-
-    revision_date = st.date_input("Revisionsstand", value=dt.date.today())
-    revision_str = revision_date.strftime("%d.%m.%Y")
-
-    ziel = st.text_area("Ziel", height=100)
-    geltung = st.text_area("Geltungsbereich", height=80)
-    vorgehen = st.text_area("Vorgehensweise", height=150)
-    kommentar = st.text_area("Kommentar", height=80)
-    unterlagen = st.text_area("Mitgeltende Unterlagen", height=80)
-
-    if st.button("Verfahrensanweisung speichern", type="primary"):
-        if not va_nr.strip() or not va_title.strip():
-            st.warning("Bitte VA Nummer und Titel eingeben.")
-        else:
-            new_va = pd.DataFrame([{
-                "VA_Nr": va_nr.strip(),
-                "Titel": va_title.strip(),
-                "Kapitel": kapitel,
-                "Unterkapitel": unterkapitel.strip(),
-                "Revisionsstand": revision_str,
-                "Ziel": ziel.strip(),
-                "Geltungsbereich": geltung.strip(),
-                "Vorgehensweise": vorgehen.strip(),
-                "Kommentar": kommentar.strip(),
-                "Mitgeltende Unterlagen": unterlagen.strip()
-            }])
-
-            try:
-                df_existing = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
-            except:
-                df_existing = pd.DataFrame(columns=QM_COLUMNS)
-
-            df_combined = pd.concat([df_existing, new_va], ignore_index=True)
-            df_combined.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-
-            st.success(f"Verfahrensanweisung {va_nr} wurde gespeichert.")
+    buffer = io.BytesIO()
+    pdf.output(buffer)
+    return buffer.getvalue()
 
 # ----------------------------
 # Verwaltung: Anzeige, Auswahl, Download, Löschen, PDF
@@ -171,68 +124,6 @@ else:
     else:
         st.warning("Bitte zuerst eine VA auswählen, um sie zu löschen.")
 
-    # ----------------------------
-    # PDF-Funktion mit Fußzeile und Unicode-Bereinigung
-    # ----------------------------
-    import io
-    from fpdf import FPDF
-    import datetime as dt
-
-    def clean_text(text):
-        if not text:
-            return "-"
-        return (
-            str(text)
-            .encode("latin-1", errors="ignore")
-            .decode("latin-1")
-            .replace("–", "-")
-            .replace("•", "*")
-            .replace("“", '"')
-            .replace("”", '"')
-            .replace("’", "'")
-            .replace("€", "EUR")
-            .replace("ä", "ae")
-            .replace("ö", "oe")
-            .replace("ü", "ue")
-            .replace("ß", "ss")
-        )
-
-    class CustomPDF(FPDF):
-        def footer(self):
-            self.set_y(-15)
-            self.set_font("Arial", "I", 10)
-            text = f"Erstellt von Peters, Michael - Qualitaetsbeauftragter am {dt.date.today().strftime('%d.%m.%Y')}"
-            self.cell(0, 10, clean_text(text), align="C")
-
-    def export_va_to_pdf(row):
-        pdf = CustomPDF()
-        pdf.add_page()
-        pdf.set_auto_page_break(auto=True, margin=15)
-        pdf.set_font("Arial", "B", 16)
-        pdf.cell(0, 10, clean_text(f"QM-Verfahrensanweisung - {row['VA_Nr']}"), ln=True, align="C")
-        pdf.ln(5)
-
-        def add_section(title, content):
-            pdf.set_font("Arial", "B", 12)
-            pdf.cell(0, 8, clean_text(title), ln=True)
-            pdf.set_font("Arial", "", 12)
-            pdf.multi_cell(0, 8, clean_text(content if content else "-"))
-            pdf.ln(3)
-
-        add_section("Titel", row.get("Titel", ""))
-        add_section("Kapitel", row.get("Kapitel", ""))
-        add_section("Unterkapitel", row.get("Unterkapitel", ""))
-        add_section("Revisionsstand", row.get("Revisionsstand", ""))
-        add_section("Ziel", row.get("Ziel", ""))
-        add_section("Geltungsbereich", row.get("Geltungsbereich", ""))
-        add_section("Vorgehensweise", row.get("Vorgehensweise", ""))
-        add_section("Kommentar", row.get("Kommentar", ""))
-        add_section("Mitgeltende Unterlagen", row.get("Mitgeltende Unterlagen", ""))
-
-        buffer = io.BytesIO()
-        pdf.output(buffer)
-        return buffer.getvalue()
-
     # PDF-Export
     st.markdown("### PDF erzeugen")
     if selected_va:
@@ -248,6 +139,7 @@ else:
                 )
     else:
         st.warning("Bitte zuerst eine VA auswählen, um PDF zu erzeugen.")
+
 
 
 
