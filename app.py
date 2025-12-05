@@ -131,6 +131,48 @@ if st.session_state["auth"]:
 
             st.success(f"Verfahrensanweisung {va_nr} wurde gespeichert.")
 
+# ----------------------------
+# VA-Tabelle anzeigen + Auswahl
+# ----------------------------
+st.markdown("## Verfahrensanweisungen anzeigen und verwalten")
+
+try:
+    df_all = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
+except:
+    df_all = pd.DataFrame(columns=QM_COLUMNS)
+
+if df_all.empty:
+    st.info("Noch keine Verfahrensanweisungen gespeichert.")
+else:
+    selected_va = st.selectbox(
+        "VA auswählen zur Anzeige oder Löschung",
+        options=[""] + sorted(df_all["VA_Nr"].dropna().astype(str).unique()),
+        index=0
+    )
+
+    df_filtered = df_all[df_all["VA_Nr"].astype(str) == selected_va] if selected_va else df_all
+
+    st.dataframe(df_filtered, use_container_width=True)
+
+    # ----------------------------
+    # Download-Button
+    # ----------------------------
+    csv_data = df_filtered.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+    st.download_button(
+        label="CSV herunterladen",
+        data=csv_data,
+        file_name=f"qm_va_{dt.date.today()}.csv",
+        mime="text/csv"
+    )
+
+    # ----------------------------
+    # Lösch-Button
+    # ----------------------------
+    if selected_va and st.button("Ausgewählte VA löschen"):
+        df_remaining = df_all[df_all["VA_Nr"].astype(str) != selected_va]
+        df_remaining.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
+        st.success(f"VA {selected_va} wurde gelöscht.")
+        st.experimental_rerun()
 
 
 
