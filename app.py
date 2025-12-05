@@ -68,9 +68,9 @@ if not st.session_state["auth"]:
           st.session_state["auth"] = True
           st.experimental_rerun()
 
-        else:
-            st.error("Falsches Passwort.")
-            st.stop()
+    else:
+        st.error("Falsches Passwort.")
+        st.stop()
     else:
         st.stop()
 
