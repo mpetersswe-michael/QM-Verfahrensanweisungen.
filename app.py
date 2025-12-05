@@ -222,23 +222,24 @@ if st.session_state.logged_in:
         else:
             st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
 
+
 # -----------------------------------
-# Sidebar-Hinweis "Aktuelles" (nur eingeloggt, separat und fehlertolerant)
+# Sidebar-Hinweis "Aktuelles"
 # -----------------------------------
 if st.session_state.logged_in:
     st.sidebar.markdown("### Aktuelles")
     try:
-        df_all_sidebar = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
+        df_all_sidebar = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig")
         if not df_all_sidebar.empty:
             letzte_va = df_all_sidebar.iloc[-1]
             st.sidebar.info(f"Neue VA verfügbar: **{letzte_va['VA_Nr']} – {letzte_va['Titel']}**")
         else:
             st.sidebar.info("Keine neuen Verfahrensanweisungen vorhanden.")
-    except Exception:
-        st.sidebar.info("Noch keine VA-Datei vorhanden.")
+    except:
+        st.sidebar.info("VA-Datei konnte nicht geladen werden.")
 
 # -----------------------------------
-# Kenntnisnahme durch Mitarbeiter (separat, Append-only)
+# Kenntnisnahme durch Mitarbeiter
 # -----------------------------------
 if st.session_state.logged_in:
     st.markdown("## Kenntnisnahme bestätigen")
@@ -248,16 +249,12 @@ if st.session_state.logged_in:
     email = st.text_input("E-Mail")
 
     try:
-        df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
-        if not df_va.empty:
-            va_list = sorted(df_va["VA_Nr"].dropna().astype(str).unique())
-            va_auswahl = st.selectbox("VA auswählen", options=va_list)
-        else:
-            va_auswahl = None
-            st.info("Noch keine Verfahrensanweisungen vorhanden.")
-    except Exception:
+        df_va = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig")
+        va_list = sorted(df_va["VA_Nr"].dropna().astype(str).unique())
+        va_auswahl = st.selectbox("VA auswählen", options=va_list)
+    except:
         va_auswahl = None
-        st.info("VA-Datei konnte nicht geladen werden.")
+        st.info("VA-Datei konnte nicht geladen werden oder enthält keine gültigen Einträge.")
 
     if st.button("Zur Kenntnis genommen", type="primary"):
         if name.strip() and email.strip() and va_auswahl:
@@ -267,21 +264,34 @@ if st.session_state.logged_in:
                 "VA_Nr": va_auswahl,
                 "Zeitpunkt": dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
-            df_kenntnis = pd.DataFrame([eintrag])
+            df_kenntnis = pd.DataFrame([eintrag], columns=["Name", "E-Mail", "VA_Nr", "Zeitpunkt"])
 
-            # Append-only Speicherung der Kenntnisnahmen
-            if os.path.exists(DATA_FILE_KENNTNIS):
-                df_kenntnis.to_csv(
-                    DATA_FILE_KENNTNIS, sep=";", index=False,
-                    mode="a", header=False, encoding="utf-8-sig"
-                )
+            if os.path.exists("kenntnisnahmen.csv") and os.path.getsize("kenntnisnahmen.csv") > 0:
+                df_kenntnis.to_csv("kenntnisnahmen.csv", sep=";", index=False,
+                                   mode="a", header=False, encoding="utf-8-sig")
             else:
-                df_kenntnis.to_csv(
-                    DATA_FILE_KENNTNIS, sep=";", index=False,
-                    encoding="utf-8-sig"
-                )
+                df_kenntnis.to_csv("kenntnisnahmen.csv", sep=";", index=False,
+                                   header=True, encoding="utf-8-sig")
 
             st.success(f"Kenntnisnahme für VA {va_auswahl} gespeichert.")
         else:
             st.error("Bitte Name, E-Mail und VA auswählen.")
+
+# -----------------------------------
+# Kenntnisnahmen anzeigen und exportieren
+# -----------------------------------
+if st.session_state.logged_in:
+    st.markdown("## Kenntnisnahmen anzeigen")
+    try:
+        df_k = pd.read_csv("kenntnisnahmen.csv", sep=";", encoding="utf-8-sig", dtype=str)
+        st.dataframe(df_k, use_container_width=True)
+        st.download_button(
+            label="Kenntnisnahmen als CSV herunterladen",
+            data=df_k.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig"),
+            file_name=f"kenntnisnahmen_{dt.date.today()}.csv",
+            mime="text/csv",
+            type="secondary"
+        )
+    except:
+        st.info("Noch keine Kenntnisnahmen vorhanden oder Datei nicht lesbar.")
 
