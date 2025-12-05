@@ -64,9 +64,10 @@ if not st.session_state["auth"]:
     st.markdown('<div class="login-box">Login QM-Verfahrensanweisungen</div>', unsafe_allow_html=True)
     password = st.text_input("Login Passwort", type="password", key="login_pw")
     if st.button("Login", key="login_btn"):
-        if password == "QM2024":
-            st.session_state["auth"] = True
-            st.success("Willkommen - du bist eingeloggt. Bitte oben rechts 'Rerun' starten.")
+       if password == "QM2024":
+          st.session_state["auth"] = True
+          st.experimental_rerun()
+
         else:
             st.error("Falsches Passwort.")
             st.stop()
