@@ -124,6 +124,80 @@ else:
     else:
         st.warning("Bitte zuerst eine VA auswählen, um sie zu löschen.")
 
+    # ----------------------------
+    # PDF-Funktion mit dreiteiliger Fußzeile
+    # ----------------------------
+    import io
+    from fpdf import FPDF
+    import datetime as dt
+
+    def clean_text(text):
+        if not text:
+            return "-"
+        return (
+            str(text)
+            .encode("latin-1", errors="ignore")
+            .decode("latin-1")
+            .replace("–", "-")
+            .replace("•", "*")
+            .replace("“", '"')
+            .replace("”", '"')
+            .replace("’", "'")
+            .replace("€", "EUR")
+            .replace("ä", "ae")
+            .replace("ö", "oe")
+            .replace("ü", "ue")
+            .replace("ß", "ss")
+        )
+
+    class CustomPDF(FPDF):
+        def footer(self):
+            self.set_y(-15)
+            self.set_font("Arial", "I", 10)
+
+            # Linke Seite: VA-Name
+            va_name = getattr(self, "va_name", "")
+            self.cell(60, 10, clean_text(va_name), align="L")
+
+            # Mitte: Ersteller
+            text = f"Erstellt von Peters, Michael - Qualitaetsbeauftragter am {dt.date.today().strftime('%d.%m.%Y')}"
+            self.cell(70, 10, clean_text(text), align="C")
+
+            # Rechte Seite: Seitenzahl
+            page_text = f"Seite {self.page_no()} von {{nb}}"
+            self.cell(0, 10, clean_text(page_text), align="R")
+
+    def export_va_to_pdf(row):
+        pdf = CustomPDF()
+        pdf.alias_nb_pages()  # Gesamtseitenzahl aktivieren
+        pdf.va_name = f"VA {row['VA_Nr']}"  # VA-Name für Fußzeile
+        pdf.add_page()
+        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.set_font("Arial", "B", 16)
+        pdf.cell(0, 10, clean_text(f"QM-Verfahrensanweisung - {row['VA_Nr']}"), ln=True, align="C")
+        pdf.ln(5)
+
+        def add_section(title, content):
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(0, 8, clean_text(title), ln=True)
+            pdf.set_font("Arial", "", 12)
+            pdf.multi_cell(0, 8, clean_text(content if content else "-"))
+            pdf.ln(3)
+
+        add_section("Titel", row.get("Titel", ""))
+        add_section("Kapitel", row.get("Kapitel", ""))
+        add_section("Unterkapitel", row.get("Unterkapitel", ""))
+        add_section("Revisionsstand", row.get("Revisionsstand", ""))
+        add_section("Ziel", row.get("Ziel", ""))
+        add_section("Geltungsbereich", row.get("Geltungsbereich", ""))
+        add_section("Vorgehensweise", row.get("Vorgehensweise", ""))
+        add_section("Kommentar", row.get("Kommentar", ""))
+        add_section("Mitgeltende Unterlagen", row.get("Mitgeltende Unterlagen", ""))
+
+        buffer = io.BytesIO()
+        pdf.output(buffer)
+        return buffer.getvalue()
+
     # PDF-Export
     st.markdown("### PDF erzeugen")
     if selected_va:
@@ -139,6 +213,7 @@ else:
                 )
     else:
         st.warning("Bitte zuerst eine VA auswählen, um PDF zu erzeugen.")
+
 
 
 
