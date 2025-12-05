@@ -143,14 +143,12 @@ except:
 if df_all.empty:
     st.info("Noch keine Verfahrensanweisungen gespeichert.")
 else:
-    # Auswahlfeld
     selected_va = st.selectbox(
         "VA auswählen zur Anzeige oder PDF-Erzeugung",
         options=[""] + sorted(df_all["VA_Nr"].dropna().astype(str).unique()),
         index=0
     )
 
-    # Gefilterte Anzeige
     df_filtered = df_all[df_all["VA_Nr"].astype(str) == selected_va] if selected_va else df_all
     st.dataframe(df_filtered, use_container_width=True)
 
@@ -174,24 +172,11 @@ else:
         st.warning("Bitte zuerst eine VA auswählen, um sie zu löschen.")
 
     # ----------------------------
-    # PDF-Funktion mit CustomPDF-Klasse für Fußzeile
+    # PDF-Funktion mit Fußzeile und Unicode-Bereinigung
     # ----------------------------
     import io
     from fpdf import FPDF
     import datetime as dt
-
-    class CustomPDF(FPDF):
-        def footer(self):
-            self.set_y(-15)  # 15 mm vom unteren Rand
-            self.set_font("Arial", "I", 10)
-            class CustomPDF(FPDF):
-        def footer(self):
-            self.set_y(-15)
-            self.set_font("Arial", "I", 10)
-            text = f"Erstellt von Peters, Michael – Qualitätsbeauftragter am {dt.date.today().strftime('%d.%m.%Y')}"
-            self.cell(0, 10, clean_text(text), align="C")
-
-        )
 
     def clean_text(text):
         if not text:
@@ -209,6 +194,13 @@ else:
             .replace("ü", "ue")
             .replace("ß", "ss")
         )
+
+    class CustomPDF(FPDF):
+        def footer(self):
+            self.set_y(-15)
+            self.set_font("Arial", "I", 10)
+            text = f"Erstellt von Peters, Michael - Qualitaetsbeauftragter am {dt.date.today().strftime('%d.%m.%Y')}"
+            self.cell(0, 10, clean_text(text), align="C")
 
     def export_va_to_pdf(row):
         pdf = CustomPDF()
@@ -235,14 +227,11 @@ else:
         add_section("Kommentar", row.get("Kommentar", ""))
         add_section("Mitgeltende Unterlagen", row.get("Mitgeltende Unterlagen", ""))
 
-        # Schreibe PDF in Bytes-Buffer
         buffer = io.BytesIO()
         pdf.output(buffer)
         return buffer.getvalue()
 
-    # ----------------------------
-    # PDF-Export-Button
-    # ----------------------------
+    # PDF-Export
     st.markdown("### PDF erzeugen")
     if selected_va:
         if st.button("PDF erzeugen für ausgewählte VA"):
