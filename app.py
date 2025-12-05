@@ -176,7 +176,8 @@ if st.session_state.logged_in:
         df_all = pd.DataFrame(columns=QM_COLUMNS)
 
         if df_all.empty:
-        st.info("Noch keine Verfahrensanweisungen gespeichert.")
+             st.info("Noch keine Verfahrensanweisungen gespeichert.")
+
     else:
         # Anzeigeauswahl „VA-Nr – Titel“
         df_all["VA_Anzeige"] = df_all["VA_Nr"].astype(str).str.strip() + " – " + df_all["Titel"].astype(str).str.strip()
