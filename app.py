@@ -64,13 +64,12 @@ if not st.session_state["auth"]:
     st.markdown('<div class="login-box">Login QM-Verfahrensanweisungen</div>', unsafe_allow_html=True)
     password = st.text_input("Login Passwort", type="password", key="login_pw")
     if st.button("Login", key="login_btn"):
-       if password == "QM2024":
-          st.session_state["auth"] = True
-          st.experimental_rerun()
-
-    else:
-        st.error("Falsches Passwort.")
-        st.stop()
+        if password == "QM2024":
+            st.session_state["auth"] = True
+            st.experimental_rerun()
+        else:
+            st.error("Falsches Passwort.")
+            st.stop()
     else:
         st.stop()
 
@@ -78,7 +77,7 @@ with st.sidebar:
     st.markdown("### Navigation")
     if st.button("Logout", key="logout_btn"):
         st.session_state["auth"] = False
-        st.stop()
+        st.experimental_rerun()
     st.markdown("---")
 
 # ----------------------------
@@ -89,12 +88,13 @@ st.markdown("## Neue Verfahrensanweisung erfassen")
 va_nr = st.text_input("VA Nummer", placeholder="z. B. VA003")
 va_title = st.text_input("Titel", placeholder="Kommunikationswege im Pflegedienst")
 
-kapitel_num = st.selectbox("Kapitel Nr.", list(range(1, 11)), index=6)  # Standard: Kapitel 7
+kapitel_num = st.selectbox("Kapitel Nr.", list(range(1, 11)), index=6)
 kapitel = f"Kapitel {kapitel_num}"
 
 unterkapitel = st.text_input("Unterkapitel", placeholder=f"Kap. {kapitel_num}-3")
 
 revision_date = st.date_input("Revisionsstand", value=dt.date.today())
+revision_str = revision_date.strftime("%d.%m.%Y")  # Format wie in deiner Tabelle
 
 ziel = st.text_area("Ziel", height=100)
 geltung = st.text_area("Geltungsbereich", height=80)
@@ -105,7 +105,7 @@ unterlagen = st.text_area("Mitgeltende Unterlagen", height=80)
 # ----------------------------
 # Speichern in CSV
 # ----------------------------
-if st.button("Verfahrensanweisung speichern"):
+if st.button("Verfahrensanweisung speichern", type="primary"):
     if not va_nr.strip() or not va_title.strip():
         st.warning("Bitte VA Nummer und Titel eingeben.")
     else:
@@ -114,7 +114,7 @@ if st.button("Verfahrensanweisung speichern"):
             "Titel": va_title.strip(),
             "Kapitel": kapitel,
             "Unterkapitel": unterkapitel.strip(),
-            "Revisionsstand": revision_date.strftime("%d.%m.%Y"),  # Format wie in deiner Tabelle
+            "Revisionsstand": revision_str,
             "Ziel": ziel.strip(),
             "Geltungsbereich": geltung.strip(),
             "Vorgehensweise": vorgehen.strip(),
@@ -123,14 +123,15 @@ if st.button("Verfahrensanweisung speichern"):
         }])
 
         try:
-            existing_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
+            df_existing = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
         except:
-            existing_va = pd.DataFrame(columns=QM_COLUMNS)
+            df_existing = pd.DataFrame(columns=QM_COLUMNS)
 
-        updated_va = pd.concat([existing_va, new_va], ignore_index=True)
-        updated_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
+        df_combined = pd.concat([df_existing, new_va], ignore_index=True)
+        df_combined.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
 
-        st.success(f"Verfahrensanweisung {va_nr} gespeichert.")
+        st.success(f"Verfahrensanweisung {va_nr} wurde gespeichert.")
+
 
 
 
