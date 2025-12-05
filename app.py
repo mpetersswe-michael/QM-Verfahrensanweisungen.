@@ -9,6 +9,7 @@ from fpdf import FPDF
 # Konfiguration
 # -----------------------------------
 DATA_FILE_QM = "qm_verfahrensanweisungen.csv"
+DATA_FILE_KENNTNIS = "kenntnisnahmen.csv"
 QM_COLUMNS = [
     "VA_Nr", "Titel", "Kapitel", "Unterkapitel", "Revisionsstand",
     "Ziel", "Geltungsbereich", "Vorgehensweise", "Kommentar", "Mitgeltende Unterlagen"
@@ -109,15 +110,23 @@ def export_va_to_pdf(row):
     return buffer.getvalue()
 
 # -----------------------------------
-# Eingabe + Verwaltung (nur wenn eingeloggt)
+# Eingabe + Anzeige/Export (nur wenn eingeloggt)
 # -----------------------------------
 if st.session_state.logged_in:
-    # Eingabeformular
+    # -----------------------------
+    # Eingabeformular (Append-only)
+    # -----------------------------
     st.markdown("## Neue Verfahrensanweisung eingeben")
+
+    # Numerische Auswahl für Kapitel/Unterkapitel
+    kapitel_nr = st.selectbox("Kapitel-Nr", options=list(range(1, 21)), index=0)
+    unterkap_nr = st.selectbox("Unterkapitel-Nr", options=list(range(1, 21)), index=0)
+
+    # Ableitung Felder
     va_nr = st.text_input("VA-Nr").strip()
     titel = st.text_input("Titel")
-    kapitel = st.text_input("Kapitel")
-    unterkapitel = st.text_input("Unterkapitel")
+    kapitel = str(kapitel_nr)  # bewusst numerisch als String
+    unterkapitel = f"Kap. {kapitel_nr}-{unterkap_nr}"  # garantiertes Format "Kap. X-Y"
     revisionsstand = st.text_input("Revisionsstand")
     ziel = st.text_area("Ziel")
     geltungsbereich = st.text_area("Geltungsbereich")
@@ -125,8 +134,8 @@ if st.session_state.logged_in:
     kommentar = st.text_area("Kommentar")
     mitgeltende_unterlagen = st.text_area("Mitgeltende Unterlagen")
 
-    # Speichern-Block (robust: anlegen/anhängen/aktualisieren)
-    if st.button("Speichern", type="primary"):
+    if st.button("Speichern (Append-only)", type="primary"):
+        # neuer Eintrag in definierter Spaltenreihenfolge
         neuer_eintrag = {
             "VA_Nr": va_nr,
             "Titel": titel,
@@ -141,43 +150,35 @@ if st.session_state.logged_in:
         }
         df_neu = pd.DataFrame([neuer_eintrag]).reindex(columns=QM_COLUMNS)
 
+        # Anhängen nur, wenn VA_Nr noch nicht existiert
         if os.path.exists(DATA_FILE_QM):
             try:
                 df_alt = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
             except Exception:
                 df_alt = pd.DataFrame(columns=QM_COLUMNS)
 
-            maske = df_alt["VA_Nr"].astype(str).str.strip() == va_nr
-            if maske.any():
-                df_alt.loc[maske, QM_COLUMNS] = df_neu.iloc[0][QM_COLUMNS].values
-                df_alt.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-                st.success(f"VA {va_nr} aktualisiert.")
+            if not df_alt.empty and df_alt["VA_Nr"].astype(str).str.strip().eq(va_nr).any():
+                st.error(f"VA {va_nr} existiert bereits. Append-only: kein Überschreiben, bitte neue VA-Nr wählen.")
             else:
-                # Anhängen ohne Überschreiben
-                df_neu.to_csv(
-                    DATA_FILE_QM,
-                    sep=";",
-                    index=False,
-                    encoding="utf-8-sig",
-                    mode="a",
-                    header=False
-                )
-                st.success(f"VA {va_nr} hinzugefügt.")
+                df_neu.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig",
+                              mode="a", header=not os.path.exists(DATA_FILE_QM) or os.path.getsize(DATA_FILE_QM) == 0)
+                st.success(f"VA {va_nr} hinzugefügt (Append-only).")
         else:
             # Erste Speicherung mit Kopfzeile
             df_neu.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-            st.success(f"VA {va_nr} gespeichert (neue Datei erstellt).")
+            st.success(f"VA {va_nr} gespeichert (neue Datei erstellt, Append-only).")
 
-    # Verwaltung
-    st.markdown("## Verfahrensanweisungen anzeigen und verwalten")
+    # -----------------------------
+    # Verwaltung/Anzeige
+    # -----------------------------
+    st.markdown("## Verfahrensanweisungen anzeigen und exportieren")
     try:
         df_all = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
     except Exception:
         df_all = pd.DataFrame(columns=QM_COLUMNS)
 
-        if df_all.empty:
-             st.info("Noch keine Verfahrensanweisungen gespeichert.")
-
+    if df_all.empty:
+        st.info("Noch keine Verfahrensanweisungen gespeichert.")
     else:
         # Anzeigeauswahl „VA-Nr – Titel“
         df_all["VA_Anzeige"] = df_all["VA_Nr"].astype(str).str.strip() + " – " + df_all["Titel"].astype(str).str.strip()
@@ -188,7 +189,7 @@ if st.session_state.logged_in:
         )
         selected_va = selected_va_display.split(" – ")[0] if selected_va_display else ""
 
-        # Tabelle
+        # Tabelle (gefiltert oder komplett)
         df_filtered = df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va] if selected_va else df_all
         st.dataframe(df_filtered, use_container_width=True)
 
@@ -202,17 +203,7 @@ if st.session_state.logged_in:
             type="primary"
         )
 
-        # Löschfunktion
-        st.markdown("### VA löschen")
-        if selected_va:
-            if st.button("Ausgewählte VA löschen", type="secondary"):
-                df_remaining = df_all[df_all["VA_Nr"].astype(str).str.strip() != selected_va]
-                df_remaining.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-                st.success(f"VA {selected_va} wurde gelöscht. Bitte Seite neu laden.")
-        else:
-            st.warning("Bitte zuerst eine VA auswählen, um sie zu löschen.")
-
-        # PDF-Export
+        # PDF-Export nur für ausgewählte VA
         st.markdown("### PDF erzeugen")
         if selected_va:
             if st.button("PDF erzeugen für ausgewählte VA", type="primary"):
@@ -232,7 +223,7 @@ if st.session_state.logged_in:
             st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
 
 # -----------------------------------
-# Sidebar-Hinweis "Aktuelles"
+# Sidebar-Hinweis "Aktuelles" (nur eingeloggt, separat und fehlertolerant)
 # -----------------------------------
 if st.session_state.logged_in:
     st.sidebar.markdown("### Aktuelles")
@@ -243,44 +234,53 @@ if st.session_state.logged_in:
             st.sidebar.info(f"Neue VA verfügbar: **{letzte_va['VA_Nr']} – {letzte_va['Titel']}**")
         else:
             st.sidebar.info("Keine neuen Verfahrensanweisungen vorhanden.")
-    except:
+    except Exception:
         st.sidebar.info("Noch keine VA-Datei vorhanden.")
 
 # -----------------------------------
-# Kenntnisnahme durch Mitarbeiter
+# Kenntnisnahme durch Mitarbeiter (separat, Append-only)
 # -----------------------------------
 if st.session_state.logged_in:
     st.markdown("## Kenntnisnahme bestätigen")
+    st.markdown("Bitte bestätigen Sie, dass Sie die ausgewählte VA gelesen haben.")
 
     name = st.text_input("Name")
     email = st.text_input("E-Mail")
 
     try:
-        df_all_kenntnis = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
-        if not df_all_kenntnis.empty:
-            va_auswahl = st.selectbox("VA auswählen", options=sorted(df_all_kenntnis["VA_Nr"].dropna().unique()))
+        df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
+        if not df_va.empty:
+            va_list = sorted(df_va["VA_Nr"].dropna().astype(str).unique())
+            va_auswahl = st.selectbox("VA auswählen", options=va_list)
         else:
             va_auswahl = None
             st.info("Noch keine Verfahrensanweisungen vorhanden.")
-    except:
+    except Exception:
         va_auswahl = None
         st.info("VA-Datei konnte nicht geladen werden.")
 
-    if st.button("Zur Kenntnis genommen"):
-        if name and email and va_auswahl:
+    if st.button("Zur Kenntnis genommen", type="primary"):
+        if name.strip() and email.strip() and va_auswahl:
             eintrag = {
-                "Name": name,
-                "E-Mail": email,
+                "Name": name.strip(),
+                "E-Mail": email.strip(),
                 "VA_Nr": va_auswahl,
                 "Zeitpunkt": dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
             df_kenntnis = pd.DataFrame([eintrag])
-            if os.path.exists("kenntnisnahmen.csv"):
-                df_kenntnis.to_csv("kenntnisnahmen.csv", sep=";", index=False,
-                                   mode="a", header=False, encoding="utf-8-sig")
+
+            # Append-only Speicherung der Kenntnisnahmen
+            if os.path.exists(DATA_FILE_KENNTNIS):
+                df_kenntnis.to_csv(
+                    DATA_FILE_KENNTNIS, sep=";", index=False,
+                    mode="a", header=False, encoding="utf-8-sig"
+                )
             else:
-                df_kenntnis.to_csv("kenntnisnahmen.csv", sep=";", index=False,
-                                   encoding="utf-8-sig")
+                df_kenntnis.to_csv(
+                    DATA_FILE_KENNTNIS, sep=";", index=False,
+                    encoding="utf-8-sig"
+                )
+
             st.success(f"Kenntnisnahme für VA {va_auswahl} gespeichert.")
         else:
             st.error("Bitte Name, E-Mail und VA auswählen.")
