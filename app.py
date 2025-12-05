@@ -73,17 +73,17 @@ if not st.session_state["auth"]:
     else:
         st.stop()
 
+# ----------------------------
+# Nach Login: Eingabeformular + Verwaltung
+# ----------------------------
 if st.session_state["auth"]:
     with st.sidebar:
         st.markdown("### Navigation")
         if st.button("Logout", key="logout_btn"):
             st.session_state["auth"] = False
-            st.experimental_rerun()
         st.markdown("---")
 
-    # ----------------------------
     # Eingabeformular
-    # ----------------------------
     st.markdown("## Neue Verfahrensanweisung erfassen")
 
     va_nr = st.text_input("VA Nummer", placeholder="z. B. VA003")
@@ -131,7 +131,7 @@ if st.session_state["auth"]:
             st.success(f"Verfahrensanweisung {va_nr} wurde gespeichert.")
 
     # ----------------------------
-    # Anzeige & Verwaltung
+    # Verwaltung: Anzeige, Auswahl, Download, Löschen
     # ----------------------------
     st.markdown("## Verfahrensanweisungen anzeigen und verwalten")
 
@@ -153,7 +153,6 @@ if st.session_state["auth"]:
 
         st.dataframe(df_filtered, use_container_width=True)
 
-        # Download-Button
         csv_data = df_filtered.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
         st.download_button(
             label="CSV herunterladen",
@@ -162,15 +161,15 @@ if st.session_state["auth"]:
             mime="text/csv"
         )
 
-       st.markdown("### VA löschen")
+        st.markdown("### VA löschen")
+        if selected_va:
+            if st.button("Ausgewählte VA löschen", type="secondary"):
+                df_remaining = df_all[df_all["VA_Nr"].astype(str) != selected_va]
+                df_remaining.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
+                st.success(f"VA {selected_va} wurde gelöscht. Bitte Seite neu laden.")
+        else:
+            st.warning("Bitte zuerst eine VA auswählen, um sie zu löschen.")
 
-  if selected_va:
-    if st.button("Ausgewählte VA löschen", type="secondary"):
-        df_remaining = df_all[df_all["VA_Nr"].astype(str) != selected_va]
-        df_remaining.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-        st.success(f"VA {selected_va} wurde gelöscht. Bitte Seite neu laden.")
-    else:
-        st.warning("Bitte zuerst eine VA auswählen, um sie zu löschen.")
 
 
 
