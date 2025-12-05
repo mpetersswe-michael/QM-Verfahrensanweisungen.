@@ -27,7 +27,6 @@ st.sidebar.title("Login")
 if not st.session_state.logged_in:
     password = st.sidebar.text_input("Passwort", type="password")
     if st.sidebar.button("Login"):
-        # Beispiel: festes Passwort
         if password == "qm2025":
             st.session_state.logged_in = True
             st.success("Login erfolgreich!")
@@ -110,9 +109,54 @@ def export_va_to_pdf(row):
     return buffer.getvalue()
 
 # ----------------------------
-# Verwaltung nur sichtbar nach Login
+# Eingabeformular für neue VA
 # ----------------------------
 if st.session_state.logged_in:
+    st.markdown("## Neue Verfahrensanweisung eingeben")
+
+    va_nr = st.text_input("VA-Nr")
+    titel = st.text_input("Titel")
+    kapitel = st.text_input("Kapitel")
+    unterkapitel = st.text_input("Unterkapitel")
+    revisionsstand = st.text_input("Revisionsstand")
+    ziel = st.text_area("Ziel")
+    geltungsbereich = st.text_area("Geltungsbereich")
+    vorgehensweise = st.text_area("Vorgehensweise")
+    kommentar = st.text_area("Kommentar")
+    mitgeltende_unterlagen = st.text_area("Mitgeltende Unterlagen")
+
+    if st.button("Speichern"):
+        new_entry = {
+            "VA_Nr": va_nr,
+            "Titel": titel,
+            "Kapitel": kapitel,
+            "Unterkapitel": unterkapitel,
+            "Revisionsstand": revisionsstand,
+            "Ziel": ziel,
+            "Geltungsbereich": geltungsbereich,
+            "Vorgehensweise": vorgehensweise,
+            "Kommentar": kommentar,
+            "Mitgeltende Unterlagen": mitgeltende_unterlagen
+        }
+
+        try:
+            df_existing = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
+        except:
+            df_existing = pd.DataFrame(columns=QM_COLUMNS)
+
+        # Alte Version mit gleicher VA_Nr entfernen
+        df_existing = df_existing[df_existing["VA_Nr"].astype(str) != va_nr]
+
+        # Neue VA anhängen
+        df_new = pd.DataFrame([new_entry])
+        df_combined = pd.concat([df_existing, df_new], ignore_index=True)
+
+        df_combined.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
+        st.success(f"VA {va_nr} gespeichert.")
+
+    # ----------------------------
+    # Verwaltung: Anzeigen, Download, Löschen, PDF
+    # ----------------------------
     st.markdown("## Verfahrensanweisungen anzeigen und verwalten")
 
     try:
@@ -168,10 +212,3 @@ if st.session_state.logged_in:
             st.warning("Bitte zuerst eine VA auswählen, um PDF zu erzeugen.")
 else:
     st.warning("Bitte Passwort eingeben, um die Verwaltung zu nutzen.")
-
-
-
-
-
-
-
