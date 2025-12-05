@@ -17,26 +17,39 @@ QM_COLUMNS = [
 ]
 
 # ----------------------------
-# Login / Logout Bereich (nur Passwort)
+# Login mittig auf der Startseite
 # ----------------------------
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
-st.sidebar.title("Login")
-
 if not st.session_state.logged_in:
-    password = st.sidebar.text_input("Passwort", type="password")
-    if st.sidebar.button("Login"):
-        if password == "qm2025":
-            st.session_state.logged_in = True
-            st.success("Login erfolgreich!")
-        else:
-            st.error("Falsches Passwort.")
+    st.markdown("## Login")
+
+    # Gelber Hintergrund für den Login-Bereich
+    login_container = st.container()
+    with login_container:
+        st.markdown(
+            """
+            <div style="background-color:#fff9c4; padding:20px; border-radius:8px;">
+                <h4 style="text-align:center;">Bitte Passwort eingeben</h4>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        password = st.text_input("Passwort", type="password")
+        if st.button("Login", type="primary"):
+            if password == "qm2025":
+                st.session_state.logged_in = True
+                st.success("Login erfolgreich!")
+            else:
+                st.error("Falsches Passwort.")
 else:
+    # Logout in der Sidebar
     st.sidebar.success("Eingeloggt")
-    if st.sidebar.button("Logout"):
+    if st.sidebar.button("Logout", type="secondary"):
         st.session_state.logged_in = False
         st.sidebar.info("Logout erfolgreich.")
+
 
 # ----------------------------
 # Hilfsfunktionen für PDF
