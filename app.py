@@ -175,7 +175,7 @@ if st.session_state.logged_in:
     except Exception:
         df_all = pd.DataFrame(columns=QM_COLUMNS)
 
-    if df_all.empty:
+        if df_all.empty:
         st.info("Noch keine Verfahrensanweisungen gespeichert.")
     else:
         # Anzeigeauswahl „VA-Nr – Titel“
@@ -191,19 +191,18 @@ if st.session_state.logged_in:
         df_filtered = df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va] if selected_va else df_all
         st.dataframe(df_filtered, use_container_width=True)
 
-# CSV-Download (immer gesamte Tabelle)
-csv_data = df_all.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
-st.download_button(
-    label="CSV herunterladen",
-    data=csv_data,
-    file_name=f"qm_va_{dt.date.today()}.csv",
-    mime="text/csv",
-    type="primary"
-)
+        # CSV-Download (immer gesamte Tabelle)
+        csv_data = df_all.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+        st.download_button(
+            label="CSV herunterladen",
+            data=csv_data,
+            file_name=f"qm_va_{dt.date.today()}.csv",
+            mime="text/csv",
+            type="primary"
+        )
 
-
- # Löschfunktion
-   st.markdown("### VA löschen")
+        # Löschfunktion
+        st.markdown("### VA löschen")
         if selected_va:
             if st.button("Ausgewählte VA löschen", type="secondary"):
                 df_remaining = df_all[df_all["VA_Nr"].astype(str).str.strip() != selected_va]
@@ -230,4 +229,3 @@ st.download_button(
                     st.error("Keine Daten für die ausgewählte VA gefunden.")
         else:
             st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
-
