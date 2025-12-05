@@ -229,7 +229,7 @@ if st.button("Speichern", type="primary"):
     st.success(f"VA {va_nr} gespeichert (bestehende Einträge bleiben erhalten).")
 
 
- try:
+    try:
             df_existing = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
         except:
             df_existing = pd.DataFrame(columns=QM_COLUMNS)
