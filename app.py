@@ -222,6 +222,7 @@ if st.session_state.logged_in:
         else:
             st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
 
+from zoneinfo import ZoneInfo  # ab Python 3.9 verfügbar
 
 # -----------------------------------
 # Sidebar-Hinweis "Aktuelles"
@@ -236,7 +237,7 @@ if st.session_state.logged_in:
         else:
             st.sidebar.info("Keine neuen Verfahrensanweisungen vorhanden.")
     except:
-        st.sidebar.info("VA-Datei konnte nicht geladen werden.")
+        st.sidebar.info("Noch keine VA-Datei vorhanden.")
 
 # -----------------------------------
 # Kenntnisnahme durch Mitarbeiter
@@ -250,19 +251,26 @@ if st.session_state.logged_in:
 
     try:
         df_va = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig")
-        va_list = sorted(df_va["VA_Nr"].dropna().astype(str).unique())
-        va_auswahl = st.selectbox("VA auswählen", options=va_list)
+        if not df_va.empty:
+            va_list = sorted(df_va["VA_Nr"].dropna().astype(str).unique())
+            va_auswahl = st.selectbox("VA auswählen", options=va_list)
+        else:
+            va_auswahl = None
+            st.info("Noch keine Verfahrensanweisungen vorhanden.")
     except:
         va_auswahl = None
-        st.info("VA-Datei konnte nicht geladen werden oder enthält keine gültigen Einträge.")
+        st.info("VA-Datei konnte nicht geladen werden.")
 
     if st.button("Zur Kenntnis genommen", type="primary"):
         if name.strip() and email.strip() and va_auswahl:
+            # Lokaler Zeitstempel mit Zeitzone Europe/Berlin
+            zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
+
             eintrag = {
                 "Name": name.strip(),
                 "E-Mail": email.strip(),
                 "VA_Nr": va_auswahl,
-                "Zeitpunkt": dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                "Zeitpunkt": zeitpunkt
             }
             df_kenntnis = pd.DataFrame([eintrag], columns=["Name", "E-Mail", "VA_Nr", "Zeitpunkt"])
 
@@ -294,4 +302,5 @@ if st.session_state.logged_in:
         )
     except:
         st.info("Noch keine Kenntnisnahmen vorhanden oder Datei nicht lesbar.")
+
 
