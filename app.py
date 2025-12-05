@@ -203,6 +203,11 @@ else:
         pdf.set_font("Arial", "B", 16)
         pdf.cell(0, 10, clean_text(f"QM-Verfahrensanweisung - {row['VA_Nr']}"), ln=True, align="C")
         pdf.ln(5)
+   
+    # Fußzeile
+        pdf.set_y(-20)
+        pdf.set_font("Arial", "I", 10)
+        pdf.cell(0, 10, clean_text(f"Erstellt von Peters, Michael – Qualitätsbeauftragter am {dt.date.today().strftime('%d.%m.%Y')}"), align="C")
 
         def add_section(title, content):
             pdf.set_font("Arial", "B", 12)
