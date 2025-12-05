@@ -193,62 +193,11 @@ else:
         )
 
     def export_va_to_pdf(row):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", "B", 16)
-    pdf.cell(0, 10, clean_text(f"QM-Verfahrensanweisung - {row['VA_Nr']}"), ln=True, align="C")
-    pdf.ln(5)
-
-    def add_section(title, content):
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, clean_text(title), ln=True)
-        pdf.set_font("Arial", "", 12)
-        pdf.multi_cell(0, 8, clean_text(content))
-        pdf.ln(3)
-
-    add_section("Titel", row["Titel"])
-    add_section("Kapitel", row["Kapitel"])
-    add_section("Unterkapitel", row["Unterkapitel"])
-    add_section("Revisionsstand", row["Revisionsstand"])
-    add_section("Ziel", row["Ziel"])
-    add_section("Geltungsbereich", row["Geltungsbereich"])
-    add_section("Vorgehensweise", row["Vorgehensweise"])
-    add_section("Kommentar", row["Kommentar"])
-    add_section("Mitgeltende Unterlagen", row["Mitgeltende Unterlagen"])
-
-    out = pdf.output(dest="S")
-    if isinstance(out, bytes):
-        return out
-    elif isinstance(out, str):
-        return out.encode("latin-1")
-    else:
-        return b""
-
-    def add_section(title, content):
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, clean_text(title), ln=True)
-        pdf.set_font("Arial", "", 12)
-        pdf.multi_cell(0, 8, clean_text(content))
-        pdf.ln(3)
-
-    add_section("Titel", row["Titel"])
-    add_section("Kapitel", row["Kapitel"])
-    add_section("Unterkapitel", row["Unterkapitel"])
-    add_section("Revisionsstand", row["Revisionsstand"])
-    add_section("Ziel", row["Ziel"])
-    add_section("Geltungsbereich", row["Geltungsbereich"])
-    add_section("Vorgehensweise", row["Vorgehensweise"])
-    add_section("Kommentar", row["Kommentar"])
-    add_section("Mitgeltende Unterlagen", row["Mitgeltende Unterlagen"])
-
-    out = pdf.output(dest="S")
-    if isinstance(out, bytes):
-        return out
-    elif isinstance(out, str):
-        return out.encode("latin-1")
-    else:
-        return b""
-
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", "B", 16)
+        pdf.cell(0, 10, clean_text(f"QM-Verfahrensanweisung - {row['VA_Nr']}"), ln=True, align="C")
+        pdf.ln(5)
 
         def add_section(title, content):
             pdf.set_font("Arial", "B", 12)
@@ -267,7 +216,13 @@ else:
         add_section("Kommentar", row["Kommentar"])
         add_section("Mitgeltende Unterlagen", row["Mitgeltende Unterlagen"])
 
-        return pdf.output(dest="S").encode("latin-1")
+        out = pdf.output(dest="S")
+        if isinstance(out, bytes):
+            return out
+        elif isinstance(out, str):
+            return out.encode("latin-1")
+        else:
+            return b""
 
     # PDF-Export-Button
     st.markdown("### PDF erzeugen")
