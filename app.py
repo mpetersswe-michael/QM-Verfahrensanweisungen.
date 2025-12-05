@@ -66,71 +66,71 @@ if not st.session_state["auth"]:
     if st.button("Login", key="login_btn"):
         if password == "QM2024":
             st.session_state["auth"] = True
-            st.experimental_rerun()
+            st.success("Login erfolgreich. Eingabefelder sind jetzt sichtbar.")
         else:
             st.error("Falsches Passwort.")
             st.stop()
-    else:
-        st.stop()
 
-with st.sidebar:
-    st.markdown("### Navigation")
-    if st.button("Logout", key="logout_btn"):
-        st.session_state["auth"] = False
-        st.experimental_rerun()
-    st.markdown("---")
+if st.session_state["auth"]:
+    with st.sidebar:
+        st.markdown("### Navigation")
+        if st.button("Logout", key="logout_btn"):
+            st.session_state["auth"] = False
+            st.experimental_rerun()
+        st.markdown("---")
 
-# ----------------------------
-# Eingabeformular
-# ----------------------------
-st.markdown("## Neue Verfahrensanweisung erfassen")
+    # ----------------------------
+    # Eingabeformular
+    # ----------------------------
+    st.markdown("## Neue Verfahrensanweisung erfassen")
 
-va_nr = st.text_input("VA Nummer", placeholder="z. B. VA003")
-va_title = st.text_input("Titel", placeholder="Kommunikationswege im Pflegedienst")
+    va_nr = st.text_input("VA Nummer", placeholder="z. B. VA003")
+    va_title = st.text_input("Titel", placeholder="Kommunikationswege im Pflegedienst")
 
-kapitel_num = st.selectbox("Kapitel Nr.", list(range(1, 11)), index=6)
-kapitel = f"Kapitel {kapitel_num}"
+    kapitel_num = st.selectbox("Kapitel Nr.", list(range(1, 11)), index=6)
+    kapitel = f"Kapitel {kapitel_num}"
 
-unterkapitel = st.text_input("Unterkapitel", placeholder=f"Kap. {kapitel_num}-3")
+    unterkapitel = st.text_input("Unterkapitel", placeholder=f"Kap. {kapitel_num}-3")
 
-revision_date = st.date_input("Revisionsstand", value=dt.date.today())
-revision_str = revision_date.strftime("%d.%m.%Y")  # Format wie in deiner Tabelle
+    revision_date = st.date_input("Revisionsstand", value=dt.date.today())
+    revision_str = revision_date.strftime("%d.%m.%Y")
 
-ziel = st.text_area("Ziel", height=100)
-geltung = st.text_area("Geltungsbereich", height=80)
-vorgehen = st.text_area("Vorgehensweise", height=150)
-kommentar = st.text_area("Kommentar", height=80)
-unterlagen = st.text_area("Mitgeltende Unterlagen", height=80)
+    ziel = st.text_area("Ziel", height=100)
+    geltung = st.text_area("Geltungsbereich", height=80)
+    vorgehen = st.text_area("Vorgehensweise", height=150)
+    kommentar = st.text_area("Kommentar", height=80)
+    unterlagen = st.text_area("Mitgeltende Unterlagen", height=80)
 
-# ----------------------------
-# Speichern in CSV
-# ----------------------------
-if st.button("Verfahrensanweisung speichern", type="primary"):
-    if not va_nr.strip() or not va_title.strip():
-        st.warning("Bitte VA Nummer und Titel eingeben.")
-    else:
-        new_va = pd.DataFrame([{
-            "VA_Nr": va_nr.strip(),
-            "Titel": va_title.strip(),
-            "Kapitel": kapitel,
-            "Unterkapitel": unterkapitel.strip(),
-            "Revisionsstand": revision_str,
-            "Ziel": ziel.strip(),
-            "Geltungsbereich": geltung.strip(),
-            "Vorgehensweise": vorgehen.strip(),
-            "Kommentar": kommentar.strip(),
-            "Mitgeltende Unterlagen": unterlagen.strip()
-        }])
+    # ----------------------------
+    # Speichern in CSV
+    # ----------------------------
+    if st.button("Verfahrensanweisung speichern", type="primary"):
+        if not va_nr.strip() or not va_title.strip():
+            st.warning("Bitte VA Nummer und Titel eingeben.")
+        else:
+            new_va = pd.DataFrame([{
+                "VA_Nr": va_nr.strip(),
+                "Titel": va_title.strip(),
+                "Kapitel": kapitel,
+                "Unterkapitel": unterkapitel.strip(),
+                "Revisionsstand": revision_str,
+                "Ziel": ziel.strip(),
+                "Geltungsbereich": geltung.strip(),
+                "Vorgehensweise": vorgehen.strip(),
+                "Kommentar": kommentar.strip(),
+                "Mitgeltende Unterlagen": unterlagen.strip()
+            }])
 
-        try:
-            df_existing = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
-        except:
-            df_existing = pd.DataFrame(columns=QM_COLUMNS)
+            try:
+                df_existing = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
+            except:
+                df_existing = pd.DataFrame(columns=QM_COLUMNS)
 
-        df_combined = pd.concat([df_existing, new_va], ignore_index=True)
-        df_combined.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
+            df_combined = pd.concat([df_existing, new_va], ignore_index=True)
+            df_combined.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
 
-        st.success(f"Verfahrensanweisung {va_nr} wurde gespeichert.")
+            st.success(f"Verfahrensanweisung {va_nr} wurde gespeichert.")
+
 
 
 
