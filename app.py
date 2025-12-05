@@ -247,27 +247,39 @@ st.markdown(
     <style>
     /* Standard-Buttons: Blau */
     div.stButton > button {
-        background-color: #2196F3; /* Blau */
+        background-color: #2196F3;
         color: white;
     }
     div.stButton > button:hover {
-        background-color: #1976D2; /* Dunkleres Blau beim Hover */
+        background-color: #1976D2;
         color: white;
     }
 
-    /* Kenntnisnahme-Button: Grün */
-    div.stButton > button[kind="primary"] {
-        background-color: #4CAF50 !important; /* Grün */
+    /* Speichern & Kenntnisnahme: Grün */
+    div.stButton > button:has-text("Speichern") {
+        background-color: #4CAF50 !important;
         color: white !important;
     }
-    div.stButton > button[kind="primary"]:hover {
-        background-color: #45a049 !important; /* Dunkleres Grün beim Hover */
+    div.stButton > button:has-text("Zur Kenntnis genommen") {
+        background-color: #4CAF50 !important;
+        color: white !important;
+    }
+
+    /* CSV-Download: Rot */
+    div.stDownloadButton > button:has-text("CSV herunterladen"),
+    div.stDownloadButton > button:has-text("Kenntnisnahmen als CSV herunterladen") {
+        background-color: #f44336 !important;
+        color: white !important;
+    }
+    div.stDownloadButton > button:hover {
+        background-color: #d32f2f !important;
         color: white !important;
     }
     </style>
     """,
     unsafe_allow_html=True
 )
+
 
 
 
