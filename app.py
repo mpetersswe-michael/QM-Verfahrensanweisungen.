@@ -230,3 +230,53 @@ if st.session_state.logged_in:
                     st.error("Keine Daten für die ausgewählte VA gefunden.")
         else:
             st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
+
+# -----------------------------------
+# Kenntnisnahme durch Mitarbeiter
+# -----------------------------------
+st.markdown("## Kenntnisnahme bestätigen")
+
+# Eingabefelder für Mitarbeiter
+name = st.text_input("Name")
+email = st.text_input("E-Mail")
+
+# Auswahl der VA (aus vorhandenen Daten)
+if not df_all.empty:
+    va_auswahl = st.selectbox("VA auswählen", options=sorted(df_all["VA_Nr"].unique()))
+else:
+    va_auswahl = None
+    st.info("Noch keine Verfahrensanweisungen vorhanden.")
+
+# Button zur Bestätigung
+if st.button("Zur Kenntnis genommen"):
+    if name and email and va_auswahl:
+        eintrag = {
+            "Name": name,
+            "E-Mail": email,
+            "VA_Nr": va_auswahl,
+            "Zeitpunkt": dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        df_kenntnis = pd.DataFrame([eintrag])
+
+        # Speichern in separater Datei (kenntnisnahmen.csv)
+        if os.path.exists("kenntnisnahmen.csv"):
+            df_kenntnis.to_csv(
+                "kenntnisnahmen.csv",
+                sep=";",
+                index=False,
+                mode="a",
+                header=False,
+                encoding="utf-8-sig"
+            )
+        else:
+            df_kenntnis.to_csv(
+                "kenntnisnahmen.csv",
+                sep=";",
+                index=False,
+                encoding="utf-8-sig"
+            )
+
+        st.success(f"Kenntnisnahme für VA {va_auswahl} gespeichert.")
+    else:
+        st.error("Bitte Name, E-Mail und VA auswählen.")
+
