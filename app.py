@@ -183,6 +183,8 @@ else:
             return "-"
         return (
             str(text)
+            .encode("latin-1", errors="ignore")
+            .decode("latin-1")
             .replace("–", "-")
             .replace("•", "*")
             .replace("“", '"')
@@ -246,6 +248,7 @@ else:
                 )
     else:
         st.warning("Bitte zuerst eine VA auswählen, um PDF zu erzeugen.")
+
 
 
 
