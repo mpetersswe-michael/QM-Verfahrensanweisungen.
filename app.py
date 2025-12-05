@@ -138,21 +138,47 @@ if st.session_state.logged_in:
     mitgeltende_unterlagen = st.text_area("Mitgeltende Unterlagen")
 
 
+import os
+
 if st.button("Speichern", type="primary"):
-    va_nr = va_nr.strip()  # Leerzeichen entfernen
+    va_nr = va_nr.strip()
     neuer_eintrag = {
-    VA_Nr": va_nr,
-    "Titel": titel,
-    "Kapitel": kapitel,
-    "Unterkapitel": unterkapitel,
-     "Revisionsstand": revisionsstand,
-     "Ziel": ziel,
-     "Geltungsbereich": geltungsbereich,
-     "Vorgehensweise": vorgehensweise,
-     "Kommentar": kommentar,
-     "Mitgeltende Unterlagen": mitgeltende_unterlagen
+        "VA_Nr": va_nr,
+        "Titel": titel,
+        "Kapitel": kapitel,
+        "Unterkapitel": unterkapitel,
+        "Revisionsstand": revisionsstand,
+        "Ziel": ziel,
+        "Geltungsbereich": geltungsbereich,
+        "Vorgehensweise": vorgehensweise,
+        "Kommentar": kommentar,
+        "Mitgeltende Unterlagen": mitgeltende_unterlagen
     }
     df_neu = pd.DataFrame([neuer_eintrag])[QM_COLUMNS]
+
+    # Prüfen, ob Datei existiert
+    if os.path.exists(DATA_FILE_QM):
+        try:
+            df_alt = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
+        except:
+            df_alt = pd.DataFrame(columns=QM_COLUMNS)
+
+        # Prüfen, ob VA_Nr schon existiert
+        maske = df_alt["VA_Nr"].astype(str).str.strip() == va_nr
+        if maske.any():
+            # Bestehenden Eintrag aktualisieren
+            df_alt.loc[maske, QM_COLUMNS] = df_neu.iloc[0][QM_COLUMNS].values
+            df_alt.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
+        else:
+            # Neue VA anhängen
+            df_alt = pd.concat([df_alt, df_neu], ignore_index=True)
+            df_alt.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
+    else:
+        # Erste Speicherung mit Kopfzeile
+        df_neu.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
+
+    st.success(f"VA {va_nr} gespeichert (bestehende Einträge bleiben erhalten).")
+
 
     # Prüfen, ob Datei existiert
     if os.path.exists(DATA_FILE_QM):
