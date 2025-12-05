@@ -195,6 +195,7 @@ else:
     def export_va_to_pdf(row):
         pdf = FPDF()
         pdf.add_page()
+        pdf.set_auto_page_break(auto=True, margin=15)
         pdf.set_font("Arial", "B", 16)
         pdf.cell(0, 10, clean_text(f"QM-Verfahrensanweisung - {row['VA_Nr']}"), ln=True, align="C")
         pdf.ln(5)
@@ -203,7 +204,7 @@ else:
             pdf.set_font("Arial", "B", 12)
             pdf.cell(0, 8, clean_text(title), ln=True)
             pdf.set_font("Arial", "", 12)
-            pdf.multi_cell(0, 8, clean_text(content))
+            pdf.multi_cell(0, 8, clean_text(content if content else "-"))
             pdf.ln(3)
 
         add_section("Titel", row["Titel"])
