@@ -203,7 +203,21 @@ def export_va_to_pdf(row):
     return pdf.output(dest="S").encode("latin-1")
 
 # ----------------------------
-# PDF-Export-Block unter der Tabelle
+# PDF-Export-Block
+# ----------------------------
+if not df_all.empty and selected_va:
+    if st.button("PDF erzeugen für ausgewählte VA"):
+        df_sel = df_all[df_all["VA_Nr"].astype(str) == selected_va]
+        if not df_sel.empty:
+            pdf_bytes = export_va_to_pdf(df_sel.iloc[0])
+            st.download_button(
+                label="Download PDF",
+                data=pdf_bytes,
+                file_name=f"{selected_va}.pdf",
+                mime="application/pdf"
+            
+# ----------------------------
+# PDF-Export-Block
 # ----------------------------
 if not df_all.empty and selected_va:
     if st.button("PDF erzeugen für ausgewählte VA"):
@@ -216,6 +230,9 @@ if not df_all.empty and selected_va:
                 file_name=f"{selected_va}.pdf",
                 mime="application/pdf"
             )
+
+
+            
 
 
 
