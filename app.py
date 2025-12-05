@@ -145,7 +145,7 @@ if df_all.empty:
 else:
     # Auswahlfeld
     selected_va = st.selectbox(
-        "VA auswählen zur Anzeige oder Löschung",
+        "VA auswählen zur Anzeige oder PDF-Erzeugung",
         options=[""] + sorted(df_all["VA_Nr"].dropna().astype(str).unique()),
         index=0
     )
@@ -163,7 +163,7 @@ else:
         mime="text/csv"
     )
 
-    # Lösch-Button
+    # Löschfunktion
     st.markdown("### VA löschen")
     if selected_va:
         if st.button("Ausgewählte VA löschen", type="secondary"):
@@ -210,16 +210,17 @@ else:
             pdf.multi_cell(0, 8, clean_text(content if content else "-"))
             pdf.ln(3)
 
-        add_section("Titel", row["Titel"])
-        add_section("Kapitel", row["Kapitel"])
-        add_section("Unterkapitel", row["Unterkapitel"])
-        add_section("Revisionsstand", row["Revisionsstand"])
-        add_section("Ziel", row["Ziel"])
-        add_section("Geltungsbereich", row["Geltungsbereich"])
-        add_section("Vorgehensweise", row["Vorgehensweise"])
-        add_section("Kommentar", row["Kommentar"])
-        add_section("Mitgeltende Unterlagen", row["Mitgeltende Unterlagen"])
+        add_section("Titel", row.get("Titel", ""))
+        add_section("Kapitel", row.get("Kapitel", ""))
+        add_section("Unterkapitel", row.get("Unterkapitel", ""))
+        add_section("Revisionsstand", row.get("Revisionsstand", ""))
+        add_section("Ziel", row.get("Ziel", ""))
+        add_section("Geltungsbereich", row.get("Geltungsbereich", ""))
+        add_section("Vorgehensweise", row.get("Vorgehensweise", ""))
+        add_section("Kommentar", row.get("Kommentar", ""))
+        add_section("Mitgeltende Unterlagen", row.get("Mitgeltende Unterlagen", ""))
 
+        # PDF als Bytes zurückgeben
         out = pdf.output(dest="S")
         if isinstance(out, bytes):
             return out
@@ -245,3 +246,4 @@ else:
                 )
     else:
         st.warning("Bitte zuerst eine VA auswählen, um PDF zu erzeugen.")
+
