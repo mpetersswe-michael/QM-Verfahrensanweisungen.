@@ -122,13 +122,16 @@ if st.session_state.logged_in:
         st.sidebar.markdown(f"**Aktuelles Dokument:** {st.session_state.selected_va}")
         st.sidebar.progress(0.75, text="Bearbeitungsfortschritt")
 
-    # Tabs und Inhalte
-    tab1, tab2 = st.tabs(["Verfahrensanweisungen", "Lesebestätigung"])
 # --------------------------
 # Tab 1: VA-Eingabe, Anzeige, Export, PDF
 # --------------------------
+tab1, tab2 = st.tabs(["Verfahrensanweisungen", "Lesebestätigung"])
+
 with tab1:
     st.markdown("## Neue Verfahrensanweisung eingeben")
+
+with tab2:
+    st.markdown("## Lesebestätigung")
 
     kapitel_nr = st.selectbox("Kapitel-Nr", options=list(range(1, 21)), index=0)
     unterkap_nr = st.selectbox("Unterkapitel-Nr", options=list(range(1, 21)), index=0)
