@@ -275,18 +275,24 @@ if st.session_state.logged_in:
         else:
             st.error("Bitte Name und VA auswählen.")
 
-    # -----------------------------------
-    # Live-Vorschau: Kenntnisnahmen anzeigen
-    # -----------------------------------
-    st.markdown("## Live-Vorschau: Kenntnisnahmen")
-    try:
-        df_anzeige = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
-        if {"Name", "VA_Nr", "Zeitpunkt"}.issubset(df_anzeige.columns):
-            if df_anzeige.empty:
-                st.info("Noch keine Lesebestätigungen vorhanden.")
-            else:
-                st.dataframe(df_anzeige[["Name", "VA_Nr", "Zeitpunkt"]], use_container_width=True)
+# -----------------------------------
+# Live-Vorschau: Kenntnisnahmen anzeigen
+# -----------------------------------
+st.markdown("## Live-Vorschau: Kenntnisnahmen")
+
+try:
+    df_anzeige = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
+
+    # Prüfen, ob die erwarteten Spalten vorhanden sind
+    if {"Name", "VA_Nr", "Zeitpunkt"}.issubset(df_anzeige.columns):
+        if df_anzeige.empty:
+            st.info("Noch keine Lesebestätigungen vorhanden.")
+        elif len(df_anzeige) < 2:
+            st.info("Es liegt nur eine Lesebestätigung vor – keine Tabelle angezeigt.")
         else:
-            st.warning(f"Spaltenstruktur stimmt nicht: {df_anzeige.columns.tolist()}")
-    except Exception as e:
-        st.error(f"Fehler beim Laden der Kenntnisnahmen: {e}")
+            st.dataframe(df_anzeige[["Name", "VA_Nr", "Zeitpunkt"]], use_container_width=True)
+    else:
+        st.warning(f"Spaltenstruktur stimmt nicht: {df_anzeige.columns.tolist()}")
+
+except Exception as e:
+    st.error(f"Fehler beim Laden der Kenntnisnahmen: {e}")
