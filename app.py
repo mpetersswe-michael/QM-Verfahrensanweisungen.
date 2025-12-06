@@ -228,18 +228,17 @@ if st.session_state.logged_in:
         st.sidebar.info("Noch keine VA-Datei vorhanden.")
 
 # -----------------------------------
-# Lesebestätigung mit kombiniertem Namensfeld
+# Lesebestätigung mit Name im Format "Nachname,Vorname"
 # -----------------------------------
-KN_COLUMNS = ["Name", "VA_Nr", "Zeitpunkt"]
-
 if st.session_state.logged_in:
     st.markdown("## Lesebestätigung")
     st.markdown("Bitte bestätigen Sie, dass Sie die ausgewählte VA gelesen haben.")
 
-    # Eingabefeld für vollständigen Namen
-    name = st.text_input("Name (Vorname Nachname)", key="lese_name")
+    # Eingabefelder
+    nachname = st.text_input("Nachname", key="lese_nachname")
+    vorname = st.text_input("Vorname", key="lese_vorname")
 
-    # VA-Auswahl aus VA-Datei
+    # VA-Auswahl
     try:
         df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
         va_list = sorted(
@@ -247,29 +246,27 @@ if st.session_state.logged_in:
             .str.replace("VA", "", regex=False)
             .str.strip()
         )
-        va_nummer = st.selectbox(
-            "VA auswählen zur Lesebestätigung",
-            options=va_list,
-            key="lesebestaetigung_va"
-        )
+        va_nummer = st.selectbox("VA auswählen zur Lesebestätigung", options=va_list, key="lesebestaetigung_va")
     except Exception:
         va_nummer = None
         st.info("VA-Datei konnte nicht geladen werden oder enthält keine gültigen Einträge.")
 
     # Speicherung
     if st.button("Lesebestätigung bestätigen", key="lesebestaetigung_button"):
-        if name.strip() and va_nummer:
+        if nachname.strip() and vorname.strip() and va_nummer:
             zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
             va_nr_speichern = f"VA{va_nummer}"
 
+            # Name im Format "Nachname,Vorname"
+            name_kombi = f"{nachname.strip()},{vorname.strip()}"
+
             eintrag = {
-                "Name": name.strip(),
+                "Name": name_kombi,
                 "VA_Nr": va_nr_speichern,
                 "Zeitpunkt": zeitpunkt
             }
-            df_kenntnis = pd.DataFrame([eintrag], columns=KN_COLUMNS)
+            df_kenntnis = pd.DataFrame([eintrag], columns=["Name", "VA_Nr", "Zeitpunkt"])
 
-            # Header nur beim ersten Mal schreiben
             write_header = not os.path.exists(DATA_FILE_KENNTNIS) or os.path.getsize(DATA_FILE_KENNTNIS) == 0
             df_kenntnis.to_csv(
                 DATA_FILE_KENNTNIS,
@@ -282,29 +279,23 @@ if st.session_state.logged_in:
 
             st.success(f"Lesebestätigung für {va_nr_speichern} gespeichert.")
         else:
-            st.error("Bitte Name und VA auswählen.")
+            st.error("Bitte Nachname, Vorname und VA auswählen.")
 
-  # -----------------------------------
-# Live-Vorschau: Kenntnisnahmen anzeigen
-# -----------------------------------
-st.markdown("## Live-Vorschau: Kenntnisnahmen")
-
-try:
-    df_anzeige = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
-
-    # Prüfen, ob die erwarteten Spalten vorhanden sind
-    if {"Vorname", "Name", "VA_Nr", "Zeitpunkt"}.issubset(df_anzeige.columns):
-        if df_anzeige.empty:
-            st.info("Noch keine Lesebestätigungen vorhanden.")
+    # -----------------------------------
+    # Live-Vorschau: Kenntnisnahmen anzeigen
+    # -----------------------------------
+    st.markdown("## Live-Vorschau: Kenntnisnahmen")
+    try:
+        df_anzeige = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
+        if {"Name", "VA_Nr", "Zeitpunkt"}.issubset(df_anzeige.columns):
+            if df_anzeige.empty:
+                st.info("Noch keine Lesebestätigungen vorhanden.")
+            else:
+                st.dataframe(df_anzeige[["Name", "VA_Nr", "Zeitpunkt"]], use_container_width=True)
         else:
-            st.dataframe(
-                df_anzeige[["Vorname", "Name", "VA_Nr", "Zeitpunkt"]],
-                use_container_width=True
-            )
-    else:
-        st.warning(f"Spaltenstruktur stimmt nicht: {df_anzeige.columns.tolist()}")
+            st.warning(f"Spaltenstruktur stimmt nicht: {df_anzeige.columns.tolist()}")
+    except Exception as e:
+        st.error(f"Fehler beim Laden der Kenntnisnahmen: {e}")
 
-except Exception as e:
-    st.error(f"Fehler beim Laden der Kenntnisnahmen: {e}")
 
 
