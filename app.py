@@ -228,21 +228,20 @@ if st.session_state.logged_in:
         st.sidebar.info("Noch keine VA-Datei vorhanden.")
 
 # -----------------------------------
-# Lesebestätigung durch Mitarbeiter
+# Lesebestätigung mit kombiniertem Namensfeld
 # -----------------------------------
-KN_COLUMNS = ["Vorname", "Name", "VA_Nr", "Zeitpunkt"]
+KN_COLUMNS = ["Name", "VA_Nr", "Zeitpunkt"]
 
 if st.session_state.logged_in:
     st.markdown("## Lesebestätigung")
     st.markdown("Bitte bestätigen Sie, dass Sie die ausgewählte VA gelesen haben.")
 
-    # Eingabefelder mit eindeutigen Keys
-    vorname = st.text_input("Vorname", key="lese_vorname")
-    name = st.text_input("Name", key="lese_name")
+    # Eingabefeld für vollständigen Namen
+    name = st.text_input("Name (Vorname Nachname)", key="lese_name")
 
+    # VA-Auswahl aus VA-Datei
     try:
         df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
-        # Dropdown nur mit Nummern (z. B. "004"), Speicherung als "VA004"
         va_list = sorted(
             df_va["VA_Nr"].dropna().astype(str)
             .str.replace("VA", "", regex=False)
@@ -257,13 +256,13 @@ if st.session_state.logged_in:
         va_nummer = None
         st.info("VA-Datei konnte nicht geladen werden oder enthält keine gültigen Einträge.")
 
+    # Speicherung
     if st.button("Lesebestätigung bestätigen", key="lesebestaetigung_button"):
-        if vorname.strip() and name.strip() and va_nummer:
+        if name.strip() and va_nummer:
             zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
             va_nr_speichern = f"VA{va_nummer}"
 
             eintrag = {
-                "Vorname": vorname.strip(),
                 "Name": name.strip(),
                 "VA_Nr": va_nr_speichern,
                 "Zeitpunkt": zeitpunkt
@@ -283,7 +282,7 @@ if st.session_state.logged_in:
 
             st.success(f"Lesebestätigung für {va_nr_speichern} gespeichert.")
         else:
-            st.error("Bitte Vorname, Name und VA auswählen.")
+            st.error("Bitte Name und VA auswählen.")
 
     # -----------------------------------
     # Live-Vorschau: Kenntnisnahmen anzeigen
@@ -292,8 +291,7 @@ if st.session_state.logged_in:
     try:
         df_anzeige = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
 
-        # Nur die erwarteten Spalten anzeigen
-        if {"Vorname", "Name", "VA_Nr", "Zeitpunkt"}.issubset(df_anzeige.columns):
+        if {"Name", "VA_Nr", "Zeitpunkt"}.issubset(df_anzeige.columns):
             if df_anzeige.empty:
                 st.info("Noch keine Lesebestätigungen vorhanden.")
             else:
