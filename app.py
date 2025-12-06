@@ -8,10 +8,23 @@ from zoneinfo import ZoneInfo
 import re
 
 # --------------------------
-# Session-Status für Login
+# Sidebar: Logout, aktuelles Dokument, Fortschritt
 # --------------------------
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
+if st.session_state.logged_in:
+    st.sidebar.success("Eingeloggt")
+
+    # Logout-Button
+    if st.sidebar.button("Logout", type="secondary"):
+        st.session_state.logged_in = False
+        st.sidebar.info("Logout erfolgreich.")
+
+    # Aktuelles Dokument anzeigen (falls ausgewählt)
+    if "selected_va" in locals() and selected_va:
+        st.sidebar.markdown(f"**Aktuelles Dokument:** {selected_va}")
+
+        # Fortschrittsbalken – hier Beispielwert, kann dynamisch berechnet werden
+        progress_value = 0.5  # z. B. 50 %
+        st.sidebar.progress(progress_value, text="Bearbeitungsfortschritt")
 
 # --------------------------
 # Konfiguration
