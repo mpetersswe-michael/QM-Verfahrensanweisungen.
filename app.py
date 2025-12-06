@@ -111,103 +111,115 @@ def export_va_to_pdf(row):
 if st.session_state.logged_in:
     tab1, tab2 = st.tabs(["Verfahrensanweisungen", "Lesebestätigung"])
 
-    # --------------------------
-    # Tab 1: VA-Eingabe, Anzeige, Export
-    # --------------------------
-    with tab1:
-        st.markdown("## Neue Verfahrensanweisung eingeben")
+# --------------------------
+# Tab 1: VA-Eingabe, Anzeige, Export
+# --------------------------
+with tab1:
+    st.markdown("## Neue Verfahrensanweisung eingeben")
 
-        kapitel_nr = st.selectbox("Kapitel-Nr", options=list(range(1, 21)), index=0)
-        unterkap_nr = st.selectbox("Unterkapitel-Nr", options=list(range(1, 21)), index=0)
+    kapitel_nr = st.selectbox("Kapitel-Nr", options=list(range(1, 21)), index=0)
+    unterkap_nr = st.selectbox("Unterkapitel-Nr", options=list(range(1, 21)), index=0)
 
-        va_nr = st.text_input("VA-Nr").strip()
-        titel = st.text_input("Titel")
-        kapitel = str(kapitel_nr)
-        unterkapitel = f"Kap. {kapitel_nr}-{unterkap_nr}"
-        revisionsstand = st.text_input("Revisionsstand")
-        ziel = st.text_area("Ziel")
-        geltungsbereich = st.text_area("Geltungsbereich")
-        vorgehensweise = st.text_area("Vorgehensweise")
-        kommentar = st.text_area("Kommentar")
-        mitgeltende_unterlagen = st.text_area("Mitgeltende Unterlagen")
+    va_nr = st.text_input("VA-Nr").strip()
+    titel = st.text_input("Titel")
+    kapitel = str(kapitel_nr)
+    unterkapitel = f"Kap. {kapitel_nr}-{unterkap_nr}"
+    revisionsstand = st.text_input("Revisionsstand")
+    ziel = st.text_area("Ziel")
+    geltungsbereich = st.text_area("Geltungsbereich")
+    vorgehensweise = st.text_area("Vorgehensweise")
+    kommentar = st.text_area("Kommentar")
+    mitgeltende_unterlagen = st.text_area("Mitgeltende Unterlagen")
 
-        if st.button("Speichern (Append-only)", type="primary"):
-            neuer_eintrag = {
-                "VA_Nr": va_nr,
-                "Titel": titel,
-                "Kapitel": kapitel,
-                "Unterkapitel": unterkapitel,
-                "Revisionsstand": revisionsstand,
-                "Ziel": ziel,
-                "Geltungsbereich": geltungsbereich,
-                "Vorgehensweise": vorgehensweise,
-                "Kommentar": kommentar,
-                "Mitgeltende Unterlagen": mitgeltende_unterlagen
-            }
-            df_neu = pd.DataFrame([neuer_eintrag]).reindex(columns=QM_COLUMNS)
+    if st.button("Speichern (Append-only)", type="primary"):
+        neuer_eintrag = {
+            "VA_Nr": va_nr,
+            "Titel": titel,
+            "Kapitel": kapitel,
+            "Unterkapitel": unterkapitel,
+            "Revisionsstand": revisionsstand,
+            "Ziel": ziel,
+            "Geltungsbereich": geltungsbereich,
+            "Vorgehensweise": vorgehensweise,
+            "Kommentar": kommentar,
+            "Mitgeltende Unterlagen": mitgeltende_unterlagen
+        }
+        df_neu = pd.DataFrame([neuer_eintrag]).reindex(columns=QM_COLUMNS)
 
-            if os.path.exists(DATA_FILE_QM):
-                try:
-                    df_alt = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
-                except Exception:
-                    df_alt = pd.DataFrame(columns=QM_COLUMNS)
+        if os.path.exists(DATA_FILE_QM):
+            try:
+                df_alt = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
+            except Exception:
+                df_alt = pd.DataFrame(columns=QM_COLUMNS)
 
-                if not df_alt.empty and df_alt["VA_Nr"].astype(str).str.strip().eq(va_nr).any():
-                    st.error(f"VA {va_nr} existiert bereits. Append-only: kein Überschreiben, bitte neue VA-Nr wählen.")
-                else:
-                    df_neu.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig",
-                                  mode="a", header=not os.path.exists(DATA_FILE_QM) or os.path.getsize(DATA_FILE_QM) == 0)
-                    st.success(f"VA {va_nr} hinzugefügt (Append-only).")
+            if not df_alt.empty and df_alt["VA_Nr"].astype(str).str.strip().eq(va_nr).any():
+                st.error(f"VA {va_nr} existiert bereits. Append-only: kein Überschreiben, bitte neue VA-Nr wählen.")
             else:
-                df_neu.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-                st.success(f"VA {va_nr} gespeichert (neue Datei erstellt, Append-only).")
-
-        st.markdown("## Verfahrensanweisungen anzeigen und exportieren")
-        try:
-            df_all = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
-        except Exception:
-            df_all = pd.DataFrame(columns=QM_COLUMNS)
-
-        if df_all.empty:
-            st.info("Noch keine Verfahrensanweisungen gespeichert.")
+                df_neu.to_csv(
+                    DATA_FILE_QM,
+                    sep=";",
+                    index=False,
+                    encoding="utf-8-sig",
+                    mode="a",
+                    header=not os.path.exists(DATA_FILE_QM) or os.path.getsize(DATA_FILE_QM) == 0
+                )
+                st.success(f"VA {va_nr} hinzugefügt (Append-only).")
         else:
-            df_all["VA_Anzeige"] = df_all["VA_Nr"].astype(str).str.strip() + " – " + df_all["Titel"].astype(str).str.strip()
-            selected_va_display = st.selectbox(
-                "VA auswählen für Anzeige und PDF-Erzeugung",
-                options=[""] + sorted(df_all["VA_Anzeige"].dropna().unique()),
-                index=0
-            )
-            selected_va = selected_va_display.split(" – ")[0] if selected_va_display else ""
+            df_neu.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
+            st.success(f"VA {va_nr} gespeichert (neue Datei erstellt, Append-only).")
 
-            df_filtered = df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va] if selected_va else df_all
-            st.dataframe(df_filtered, use_container_width=True)
+    # --------------------------
+    # Anzeige und Export
+    # --------------------------
+    st.markdown("## Verfahrensanweisungen anzeigen und exportieren")
+    try:
+        df_all = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
+    except Exception:
+        df_all = pd.DataFrame(columns=QM_COLUMNS)
 
-            csv_data = df_all.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
-            st.download_button(
-                label="VA-Tabelle als CSV herunterladen",
-                data=csv_data,
-                file_name=f"qm_va_{dt.date.today()}.csv",
-                mime="text/csv",
-                type="primary"
-            )
+    if df_all.empty:
+        st.info("Noch keine Verfahrensanweisungen gespeichert.")
+    else:
+        df_all["VA_Anzeige"] = df_all["VA_Nr"].astype(str).str.strip() + " – " + df_all["Titel"].astype(str).str.strip()
+        selected_va_display = st.selectbox(
+            "VA auswählen für Anzeige und PDF-Erzeugung",
+            options=[""] + sorted(df_all["VA_Anzeige"].dropna().unique()),
+            index=0
+        )
+        selected_va = selected_va_display.split(" – ")[0] if selected_va_display else ""
 
-           st.markdown("### PDF erzeugen")
-if selected_va:
-    if st.button("PDF erzeugen für ausgewählte VA", type="primary"):
-        df_sel = df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va]
-        if not df_sel.empty:
-            pdf_bytes = export_va_to_pdf(df_sel.iloc[0].to_dict())
-            st.download_button(
-                label="VA-PDF herunterladen",
-                data=pdf_bytes,
-                file_name=f"{selected_va}.pdf",
-                mime="application/pdf",
-                type="primary"
-            )
+        df_filtered = df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va] if selected_va else df_all
+        st.dataframe(df_filtered, use_container_width=True)
+
+        csv_data = df_all.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+        st.download_button(
+            label="VA-Tabelle als CSV herunterladen",
+            data=csv_data,
+            file_name=f"qm_va_{dt.date.today()}.csv",
+            mime="text/csv",
+            type="primary"
+        )
+
+        # --------------------------
+        # PDF erzeugen
+        # --------------------------
+        st.markdown("### PDF erzeugen")
+        if selected_va:
+            if st.button("PDF erzeugen für ausgewählte VA", type="primary"):
+                df_sel = df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va]
+                if not df_sel.empty:
+                    pdf_bytes = export_va_to_pdf(df_sel.iloc[0].to_dict())
+                    st.download_button(
+                        label="VA-PDF herunterladen",
+                        data=pdf_bytes,
+                        file_name=f"{selected_va}.pdf",
+                        mime="application/pdf",
+                        type="primary"
+                    )
+                else:
+                    st.error("Keine Daten für die ausgewählte VA gefunden.")
         else:
-            st.error("Keine Daten für die ausgewählte VA gefunden.")
-else:
-    st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
+            st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
 
 
     # --------------------------
