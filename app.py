@@ -234,7 +234,7 @@ with tab2:
     st.markdown("## Lesebestätigung")
     st.markdown("Bitte bestätigen Sie, dass Sie die ausgewählte VA gelesen haben.")
 
-    # Name im Format "Nachname,Vorname"
+    # Eingabe Name
     name_raw = st.text_input("Name (Nachname,Vorname)", key="lese_name")
 
     # VA-Auswahl
@@ -254,8 +254,8 @@ with tab2:
         va_nummer = None
         st.info("VA-Datei konnte nicht geladen werden oder enthält keine gültigen Einträge.")
 
-    if st.button("Lesebestätigung bestätigen", key="lesebestaetigung_button"):
-        # Name normalisieren: "Peters, Michael" -> "Peters,Michael"
+    # Button: Speichern + Download
+    if st.button("Lesebestätigung speichern & herunterladen", key="lesebestaetigung_button"):
         name_kombi = re.sub(r"\s*,\s*", ",", name_raw.strip())
 
         if name_kombi and va_nummer:
@@ -266,7 +266,7 @@ with tab2:
             eintrag = {"Name": name_kombi, "VA_Nr": va_nr_speichern, "Zeitpunkt": zeitpunkt}
             df_kenntnis = pd.DataFrame([eintrag])[["Name", "VA_Nr", "Zeitpunkt"]]
 
-            # Append-only: Header nur, wenn Datei neu/leer ist
+            # Append-only Speicherung
             file_exists = os.path.exists(DATA_FILE_KENNTNIS)
             file_empty = (not file_exists) or (os.path.getsize(DATA_FILE_KENNTNIS) == 0)
 
@@ -279,25 +279,16 @@ with tab2:
                 encoding="utf-8-sig"
             )
 
-            st.success(f"Lesebestätigung für {va_nr_speichern} gespeichert.")
+            # Sofortiger Download der aktuellen Bestätigung
+            csv_bytes = df_kenntnis.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+            st.download_button(
+                label="Diese Lesebestätigung als CSV herunterladen",
+                data=csv_bytes,
+                file_name=f"lesebestaetigung_{va_nr_speichern}_{dt.date.today()}.csv",
+                mime="text/csv",
+                type="primary"
+            )
+
+            st.success(f"Lesebestätigung für {va_nr_speichern} gespeichert und bereit zum Download.")
         else:
             st.error("Bitte Name (Nachname,Vorname) und VA auswählen.")
-
-    # --------------------------
-    # Live-Vorschau: nur letzter Eintrag
-    # --------------------------
-    st.markdown("## Live-Vorschau: Letzte Lesebestätigung")
-    try:
-        df_anzeige = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
-
-        if {"Name", "VA_Nr", "Zeitpunkt"}.issubset(df_anzeige.columns):
-            if df_anzeige.empty:
-                st.info("Noch keine Lesebestätigungen vorhanden.")
-            else:
-                letzter = df_anzeige.tail(1).copy()
-                letzter["Name"] = letzter["Name"].astype(str).str.replace(r"\s*,\s*", ",", regex=True)
-                st.dataframe(letzter[["Name", "VA_Nr", "Zeitpunkt"]], use_container_width=True)
-        else:
-            st.warning(f"Spaltenstruktur stimmt nicht: {df_anzeige.columns.tolist()}")
-    except Exception as e:
-        st.error(f"Fehler beim Laden der Kenntnisnahmen: {e}")
