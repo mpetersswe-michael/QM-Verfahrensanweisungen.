@@ -190,128 +190,14 @@ if st.session_state.logged_in:
         )
 
         st.markdown("### PDF erzeugen")
-if selected_va:
-    if st.button("PDF erzeugen für ausgewählte VA", type="primary"):
-        df_sel = df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va]
-        if not df_sel.empty:
-            pdf_bytes = export_va_to_pdf(df_sel.iloc[0].to_dict())
-            st.download_button(
-                label="Download PDF",
-                data=pdf_bytes,
-                file_name=f"{selected_va}.pdf",
-                mime="application/pdf",
-                type="primary"
-            )
-        else:
-            st.error("Keine Daten für die ausgewählte VA gefunden.")
-else:
-    st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
-
-
-# -----------------------------------
-# Sidebar-Hinweis "Aktuelles"
-# -----------------------------------
-if st.session_state.logged_in:
-    st.sidebar.markdown("### Aktuelles")
-    try:
-        df_all_sidebar = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
-        if not df_all_sidebar.empty:
-            letzte_va = df_all_sidebar.iloc[-1]
-            st.sidebar.info(f"Neue VA verfügbar: **{letzte_va['VA_Nr']} – {letzte_va['Titel']}**")
-        else:
-            st.sidebar.info("Keine neuen Verfahrensanweisungen vorhanden.")
-    except:
-        st.sidebar.info("Noch keine VA-Datei vorhanden.")
-
-# -----------------------------------
-# Button-Farben anpassen (CSS)
-# -----------------------------------
-st.markdown(
-    """
-    <style>
-    /* Standard-Buttons: Blau */
-    div.stButton > button {
-        background-color: #2196F3;
-        color: white;
-    }
-    div.stButton > button:hover {
-        background-color: #1976D2;
-        color: white;
-    }
-
-    /* Speichern & Lesebestätigung: Grün */
-    div.stButton > button:has-text("Speichern"),
-    div.stButton > button:has-text("Lesebestätigung") {
-        background-color: #4CAF50 !important;
-        color: white !important;
-    }
-    div.stButton > button:has-text("Speichern"):hover,
-    div.stButton > button:has-text("Lesebestätigung"):hover {
-        background-color: #45a049 !important;
-        color: white !important;
-    }
-
-    /* CSV-Download: Rot */
-    div.stDownloadButton > button:has-text("CSV herunterladen"),
-    div.stDownloadButton > button:has-text("Lesebestätigungen als CSV herunterladen") {
-        background-color: #f44336 !important;
-        color: white !important;
-    }
-    div.stDownloadButton > button:hover {
-        background-color: #d32f2f !important;
-        color: white !important;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-# -----------------------------------
-# Lesebestätigung durch Mitarbeiter
-# -----------------------------------
-if st.session_state.logged_in:
-    st.markdown("## Lesebestätigung")
-    st.markdown("Bitte bestätigen Sie, dass Sie die ausgewählte VA gelesen haben.")
-
-    vorname = st.text_input("Vorname")
-    name = st.text_input("Name")
-
-    try:
-        df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
-        va_list = sorted(df_va["VA_Nr"].dropna().astype(str).unique())
-        va_auswahl = st.selectbox("VA auswählen", options=va_list)
-    except:
-        va_auswahl = None
-        st.info("VA-Datei konnte nicht geladen werden oder enthält keine gültigen Einträge.")
-
-    if st.button("Lesebestätigung"):
-        if vorname.strip() and name.strip() and va_auswahl:
-            zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
-
-            eintrag = {
-                "Vorname": vorname.strip(),
-                "Name": name.strip(),
-                "VA_Nr": va_auswahl,
-                "Zeitpunkt": zeitpunkt
-            }
-            df_kenntnis = pd.DataFrame([eintrag], columns=["Vorname", "Name", "VA_Nr", "Zeitpunkt"])
-
-            if os.path.exists(DATA_FILE_KENNTNIS) and os.path.getsize(DATA_FILE_KENNTNIS) > 0:
-                df_kenntnis.to_csv(DATA_FILE_KENNTNIS, sep=";", index=False,
-                                   mode="a", header=False, encoding="utf-8-sig")
-            else:
-                df_kenntnis.to_csv(DATA_FILE_KENNTNIS, sep=";", index=False,
-                                   header=True, encoding="utf-8-sig")
-
-            st.success(f"Lesebestätigung für VA {va_auswahl} gespeichert.")
-        else:
-            st.error("Bitte Vorname, Name und VA auswählen.")
-
 # -----------------------------------
 # Verfahrensanweisungen anzeigen und exportieren
 # -----------------------------------
 if st.session_state.logged_in:
     st.markdown("## Verfahrensanweisungen anzeigen und exportieren")
+
+    selected_va = ""  # Initialisierung zur Fehlervermeidung
+
     try:
         df_all = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
     except Exception:
@@ -361,6 +247,7 @@ if st.session_state.logged_in:
                     st.error("Keine Daten für die ausgewählte VA gefunden.")
         else:
             st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
+
 
 
 # -----------------------------------
