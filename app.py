@@ -51,8 +51,7 @@ if st.session_state.logged_in:
         st.sidebar.markdown(f"**Aktuelles Dokument:** {st.session_state.selected_va}")
         st.sidebar.progress(0.75, text="Bearbeitungsfortschritt")
 
-    # Tabs und Inhalte
-    tab1, tab2 = st.tabs(["Verfahrensanweisungen", "Lesebestätigung"])
+   
 # --------------------------
 # Datenkonfiguration
 # --------------------------
