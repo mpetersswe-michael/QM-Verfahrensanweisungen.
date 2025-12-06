@@ -189,7 +189,7 @@ if st.session_state.logged_in:
             type="primary"
         )
 
-        st.markdown("### PDF erzeugen")
+
 # -----------------------------------
 # Verfahrensanweisungen anzeigen und exportieren
 # -----------------------------------
@@ -209,7 +209,7 @@ if st.session_state.logged_in:
         # Anzeigeauswahl „VA-Nr – Titel“
         df_all["VA_Anzeige"] = df_all["VA_Nr"].astype(str).str.strip() + " – " + df_all["Titel"].astype(str).str.strip()
         selected_va_display = st.selectbox(
-            "VA auswählen zur Anzeige oder PDF-Erzeugung",
+            "VA auswählen für Anzeige und PDF-Erzeugung",  # eindeutiger Label-Text
             options=[""] + sorted(df_all["VA_Anzeige"].dropna().unique()),
             index=0
         )
@@ -247,8 +247,6 @@ if st.session_state.logged_in:
                     st.error("Keine Daten für die ausgewählte VA gefunden.")
         else:
             st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
-
-
 
 # -----------------------------------
 # Mitarbeiterliste anzeigen
