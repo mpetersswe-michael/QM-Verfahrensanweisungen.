@@ -10,17 +10,12 @@ import re
 # --------------------------
 # Session-Status für Login
 # --------------------------
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-
-# --------------------------
-# Sidebar: Logout, aktuelles Dokument, Fortschritt
-# --------------------------
-if st.session_state.logged_in:
-    st.sidebar.success("Eingeloggt")
-
+    if st.session_state.logged_in:
+        st.sidebar.success("Eingeloggt")
+    
     # Logout-Button mit eindeutiger Key-ID
     if st.sidebar.button("Logout", key="sidebar_logout"):
+        
         st.session_state.logged_in = False
         st.sidebar.info("Logout erfolgreich.")
 
