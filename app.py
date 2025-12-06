@@ -240,25 +240,32 @@ if st.session_state.logged_in:
 
     try:
         df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
-        # Bereinigte VA-Auswahl (z. B. "VA004" statt "VA VA 004")
-        va_list = sorted(df_va["VA_Nr"].dropna().astype(str).str.replace(" ", "").str.strip())
-        va_auswahl_lese = st.selectbox(
+        # Dropdown nur mit Nummern (z. B. "004")
+        va_list = sorted(
+            df_va["VA_Nr"].dropna().astype(str)
+            .str.replace("VA", "", regex=False)
+            .str.strip()
+        )
+        va_auswahl_num = st.selectbox(
             "VA auswählen zur Lesebestätigung",
             options=va_list,
             key="lesebestaetigung_va"
         )
     except Exception:
-        va_auswahl_lese = None
+        va_auswahl_num = None
         st.info("VA-Datei konnte nicht geladen werden oder enthält keine gültigen Einträge.")
 
     if st.button("Lesebestätigung bestätigen", key="lesebestaetigung_button"):
-        if vorname.strip() and name.strip() and va_auswahl_lese:
+        if vorname.strip() and name.strip() and va_auswahl_num:
             zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
+
+            # Einheitlich als "VAxxx" speichern
+            va_nr_speichern = f"VA{va_auswahl_num}"
 
             eintrag = {
                 "Vorname": vorname.strip(),
                 "Name": name.strip(),
-                "VA_Nr": va_auswahl_lese,
+                "VA_Nr": va_nr_speichern,
                 "Zeitpunkt": zeitpunkt
             }
             df_kenntnis = pd.DataFrame([eintrag], columns=["Vorname", "Name", "VA_Nr", "Zeitpunkt"])
@@ -274,6 +281,6 @@ if st.session_state.logged_in:
                 encoding="utf-8-sig"
             )
 
-            st.success(f"Lesebestätigung für VA {va_auswahl_lese} gespeichert.")
+            st.success(f"Lesebestätigung für {va_nr_speichern} gespeichert.")
         else:
             st.error("Bitte Vorname, Name und VA auswählen.")
