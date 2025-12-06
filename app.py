@@ -231,9 +231,8 @@ if st.session_state.logged_in:
     st.markdown("## Lesebestätigung")
     st.markdown("Bitte bestätigen Sie, dass Sie die ausgewählte VA gelesen haben.")
 
-    # Eingabefelder
-    nachname = st.text_input("Nachname", key="lese_nachname")
-    vorname = st.text_input("Vorname", key="lese_vorname")
+    # Eingabefeld für vollständigen Namen im Format "Peters,Michael"
+    name_kombi = st.text_input("Name (Nachname,Vorname)", key="lese_name")
 
     # VA-Auswahl
     try:
@@ -250,15 +249,12 @@ if st.session_state.logged_in:
 
     # Speicherung
     if st.button("Lesebestätigung bestätigen", key="lesebestaetigung_button"):
-        if nachname.strip() and vorname.strip() and va_nummer:
+        if name_kombi.strip() and va_nummer:
             zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
             va_nr_speichern = f"VA{va_nummer}"
 
-            # Kombinierter Name im Format "Peters,Michael"
-            name_kombi = f"{nachname.strip()},{vorname.strip()}"
-
             eintrag = {
-                "Name": name_kombi,
+                "Name": name_kombi.strip(),
                 "VA_Nr": va_nr_speichern,
                 "Zeitpunkt": zeitpunkt
             }
@@ -276,7 +272,7 @@ if st.session_state.logged_in:
 
             st.success(f"Lesebestätigung für {va_nr_speichern} gespeichert.")
         else:
-            st.error("Bitte Nachname, Vorname und VA auswählen.")
+            st.error("Bitte Name und VA auswählen.")
 
     # -----------------------------------
     # Live-Vorschau: Kenntnisnahmen anzeigen
@@ -293,10 +289,3 @@ if st.session_state.logged_in:
             st.warning(f"Spaltenstruktur stimmt nicht: {df_anzeige.columns.tolist()}")
     except Exception as e:
         st.error(f"Fehler beim Laden der Kenntnisnahmen: {e}")
-
-
-
-
-
-
-
