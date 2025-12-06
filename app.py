@@ -206,93 +206,98 @@ if st.session_state.logged_in:
             # --------------------------
             # PDF erzeugen
             # --------------------------
-            st.markdown("### PDF erzeugen")
-            if selected_va:
-                if st.button("PDF erzeugen für ausgewählte VA", type="primary"):
-                    df_sel = df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va]
-                    if not df_sel.empty:
-                        pdf_bytes = export_va_to_pdf(df_sel.iloc[0].to_dict())
-                        st.download_button(
-                            label="VA-PDF herunterladen",
-                            data=pdf_bytes,
-                            file_name=f"{selected_va}.pdf",
-                            mime="application/pdf",
-                            type="primary"
-                        )
-                    else:
-                        st.error("Keine Daten für die ausgewählte VA gefunden.")
-            else:
-                st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
+            # --------------------------
+# PDF erzeugen
+# --------------------------
+st.markdown("### PDF erzeugen")
+
+if "selected_va" in locals() and selected_va:
+    if st.button("PDF erzeugen für ausgewählte VA", type="primary"):
+        df_sel = df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va]
+        if not df_sel.empty:
+            pdf_bytes = export_va_to_pdf(df_sel.iloc[0].to_dict())
+            st.download_button(
+                label="VA-PDF herunterladen",
+                data=pdf_bytes,
+                file_name=f"{selected_va}.pdf",
+                mime="application/pdf",
+                type="primary"
+            )
+        else:
+            st.error("Keine Daten für die ausgewählte VA gefunden.")
+else:
+    st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
+# --------------------------
+# Tab 2: Lesebestätigung
+# --------------------------
+with tab2:
+    st.markdown("## Lesebestätigung")
+    st.markdown("Bitte bestätigen Sie, dass Sie die ausgewählte VA gelesen haben.")
+
+    # Name im Format "Nachname,Vorname"
+    name_raw = st.text_input("Name (Nachname,Vorname)", key="lese_name")
+
+    # VA-Auswahl
+    try:
+        df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
+        va_list = sorted(
+            df_va["VA_Nr"].dropna().astype(str)
+            .str.replace("VA", "", regex=False)
+            .str.strip()
+        )
+        va_nummer = st.selectbox(
+            "VA auswählen zur Lesebestätigung",
+            options=va_list,
+            key="lesebestaetigung_va"
+        )
+    except Exception:
+        va_nummer = None
+        st.info("VA-Datei konnte nicht geladen werden oder enthält keine gültigen Einträge.")
+
+    if st.button("Lesebestätigung bestätigen", key="lesebestaetigung_button"):
+        # Name normalisieren: "Peters, Michael" -> "Peters,Michael"
+        name_kombi = re.sub(r"\s*,\s*", ",", name_raw.strip())
+
+        if name_kombi and va_nummer:
+            zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
+            va_nr_speichern = f"VA{va_nummer}"
+
+            # Eintrag exakt mit drei Spalten
+            eintrag = {"Name": name_kombi, "VA_Nr": va_nr_speichern, "Zeitpunkt": zeitpunkt}
+            df_kenntnis = pd.DataFrame([eintrag])[["Name", "VA_Nr", "Zeitpunkt"]]
+
+            # Append-only: Header nur, wenn Datei neu/leer ist
+            file_exists = os.path.exists(DATA_FILE_KENNTNIS)
+            file_empty = (not file_exists) or (os.path.getsize(DATA_FILE_KENNTNIS) == 0)
+
+            df_kenntnis.to_csv(
+                DATA_FILE_KENNTNIS,
+                sep=";",
+                index=False,
+                mode="a" if file_exists and not file_empty else "w",
+                header=True if file_empty else False,
+                encoding="utf-8-sig"
+            )
+
+            st.success(f"Lesebestätigung für {va_nr_speichern} gespeichert.")
+        else:
+            st.error("Bitte Name (Nachname,Vorname) und VA auswählen.")
 
     # --------------------------
-    # Tab 2: Lesebestätigung
+    # Live-Vorschau: nur letzter Eintrag
     # --------------------------
-    with tab2:
-        st.markdown("## Lesebestätigung")
-        st.markdown("Bitte bestätigen Sie, dass Sie die ausgewählte VA gelesen haben.")
+    st.markdown("## Live-Vorschau: Letzte Lesebestätigung")
+    try:
+        df_anzeige = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
 
-        # Name im Format "Nachname,Vorname"
-        name_raw = st.text_input("Name (Nachname,Vorname)", key="lese_name")
-
-        # VA-Auswahl
-        try:
-            df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
-            va_list = sorted(
-                df_va["VA_Nr"].dropna().astype(str)
-                .str.replace("VA", "", regex=False)
-                .str.strip()
-            )
-            va_nummer = st.selectbox(
-                "VA auswählen zur Lesebestätigung",
-                options=va_list,
-                key="lesebestaetigung_va"
-            )
-        except Exception:
-            va_nummer = None
-            st.info("VA-Datei konnte nicht geladen werden oder enthält keine gültigen Einträge.")
-
-        if st.button("Lesebestätigung bestätigen", key="lesebestaetigung_button"):
-            # Name normalisieren: "Peters, Michael" -> "Peters,Michael"
-            name_kombi = re.sub(r"\s*,\s*", ",", name_raw.strip())
-
-            if name_kombi and va_nummer:
-                zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
-                va_nr_speichern = f"VA{va_nummer}"
-
-                # Eintrag exakt mit drei Spalten
-                eintrag = {"Name": name_kombi, "VA_Nr": va_nr_speichern, "Zeitpunkt": zeitpunkt}
-                df_kenntnis = pd.DataFrame([eintrag])[["Name", "VA_Nr", "Zeitpunkt"]]
-
-                # Append-only: Header nur, wenn Datei neu/leer ist
-                file_exists = os.path.exists(DATA_FILE_KENNTNIS)
-                file_empty = (not file_exists) or (os.path.getsize(DATA_FILE_KENNTNIS) == 0)
-
-                df_kenntnis.to_csv(
-                    DATA_FILE_KENNTNIS,
-                    sep=";",
-                    index=False,
-                    mode="a" if file_exists and not file_empty else "w",
-                    header=True if file_empty else False,
-                    encoding="utf-8-sig"
-                )
-
-                st.success(f"Lesebestätigung für {va_nr_speichern} gespeichert.")
+        if {"Name", "VA_Nr", "Zeitpunkt"}.issubset(df_anzeige.columns):
+            if df_anzeige.empty:
+                st.info("Noch keine Lesebestätigungen vorhanden.")
             else:
-                st.error("Bitte Name (Nachname,Vorname) und VA auswählen.")
-
-        # --------------------------
-        # Live-Vorschau: nur letzter Eintrag
-        # --------------------------
-        st.markdown("## Live-Vorschau: Letzte Lesebestätigung")
-        try:
-            df_anzeige = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
-
-            if {"Name", "VA_Nr", "Zeitpunkt"}.issubset(df_anzeige.columns):
-                if df_anzeige.empty:
-                    st.info("Noch keine Lesebestätigungen vorhanden.")
-                else:
-                    letzter = df_anzeige.tail(1).copy()
-                    letzter["Name"] = letzter["Name"].astype(str).str.replace(r"\s*,\s*", ",", regex=True)
-                    st.dataframe(letzter[["Name", "VA_Nr", "Zeitpunkt"]], use_container_width=True)
-            else:
-                st.warning(f"Spaltenstruktur stimmt nicht: {df_anzeige.columns.tolist
+                letzter = df_anzeige.tail(1).copy()
+                letzter["Name"] = letzter["Name"].astype(str).str.replace(r"\s*,\s*", ",", regex=True)
+                st.dataframe(letzter[["Name", "VA_Nr", "Zeitpunkt"]], use_container_width=True)
+        else:
+            st.warning(f"Spaltenstruktur stimmt nicht: {df_anzeige.columns.tolist()}")
+    except Exception as e:
+        st.error(f"Fehler beim Laden der Kenntnisnahmen: {e}")
