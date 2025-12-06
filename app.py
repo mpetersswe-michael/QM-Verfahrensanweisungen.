@@ -240,7 +240,8 @@ if st.session_state.logged_in:
 
     try:
         df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
-        va_list = sorted(df_va["VA_Nr"].dropna().astype(str).unique())
+        # Bereinigte VA-Auswahl (z. B. "VA004" statt "VA VA 004")
+        va_list = sorted(df_va["VA_Nr"].dropna().astype(str).str.replace(" ", "").str.strip())
         va_auswahl_lese = st.selectbox(
             "VA auswählen zur Lesebestätigung",
             options=va_list,
