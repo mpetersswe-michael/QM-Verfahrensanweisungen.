@@ -215,4 +215,13 @@ if st.session_state.logged_in:
                         st.download_button(
                             label="VA-PDF herunterladen",
                             data=pdf_bytes,
-                            file_name=f"{
+                            file_name=f"{                        pdf_bytes,
+                        file_name=f"{selected_va}.pdf",
+                        mime="application/pdf",
+                        type="primary"
+                    )
+                else:
+                    st.error("Keine Daten für die ausgewählte VA gefunden.")
+        else:
+            st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
+
