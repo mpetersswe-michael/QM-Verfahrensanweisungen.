@@ -228,55 +228,25 @@ if st.session_state.logged_in:
         st.sidebar.info("Noch keine VA-Datei vorhanden.")
 
 # -----------------------------------
-# Lesebestätigung (mit Schemafix für kenntnisnahme.csv)
+# Lesebestätigung durch Mitarbeiter
 # -----------------------------------
 KN_COLUMNS = ["Vorname", "Name", "VA_Nr", "Zeitpunkt"]
 
-def ensure_kenntnis_schema(file_path: str):
-    """Erzwingt das Schema ['Vorname','Name','VA_Nr','Zeitpunkt'] und entfernt Fremdspalten."""
-    try:
-        # Datei neu anlegen (nur Header), falls sie fehlt oder leer ist
-        if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
-            pd.DataFrame(columns=KN_COLUMNS).to_csv(
-                file_path, sep=";", index=False, encoding="utf-8-sig"
-            )
-            return
-
-        # Bestehende Datei laden und auf Schema bringen
-        df = pd.read_csv(file_path, sep=";", encoding="utf-8-sig", dtype=str)
-
-        # Fehlende Pflichtspalten ergänzen (leer), Fremdspalten werden entfernt
-        for col in KN_COLUMNS:
-            if col not in df.columns:
-                df[col] = ""
-
-        # Nur Pflichtspalten und korrekte Reihenfolge behalten
-        df_clean = df[KN_COLUMNS]
-
-        # Zurückschreiben im gewünschten Schema
-        df_clean.to_csv(file_path, sep=";", index=False, encoding="utf-8-sig")
-    except Exception:
-        # Fallback: Datei sauber neu initialisieren, falls etwas schiefgeht
-        pd.DataFrame(columns=KN_COLUMNS).to_csv(
-            file_path, sep=";", index=False, encoding="utf-8-sig"
-        )
-
 if st.session_state.logged_in:
-    # 1) Schema der kenntnisnahme.csv sicherstellen
-    ensure_kenntnis_schema(DATA_FILE_KENNTNIS)
-
     st.markdown("## Lesebestätigung")
     st.markdown("Bitte bestätigen Sie, dass Sie die ausgewählte VA gelesen haben.")
 
-    # Eingabefelder
+    # Eingabefelder mit eindeutigen Keys
     vorname = st.text_input("Vorname", key="lese_vorname")
     name = st.text_input("Name", key="lese_name")
 
-    # VA nur als Nummern anzeigen (z. B. "004"), Speicherung als "VA004"
     try:
         df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
+        # Dropdown nur mit Nummern (z. B. "004"), Speicherung als "VA004"
         va_list = sorted(
-            df_va["VA_Nr"].dropna().astype(str).str.replace("VA", "", regex=False).str.strip()
+            df_va["VA_Nr"].dropna().astype(str)
+            .str.replace("VA", "", regex=False)
+            .str.strip()
         )
         va_nummer = st.selectbox(
             "VA auswählen zur Lesebestätigung",
@@ -287,7 +257,6 @@ if st.session_state.logged_in:
         va_nummer = None
         st.info("VA-Datei konnte nicht geladen werden oder enthält keine gültigen Einträge.")
 
-    # Speicherung
     if st.button("Lesebestätigung bestätigen", key="lesebestaetigung_button"):
         if vorname.strip() and name.strip() and va_nummer:
             zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
@@ -301,16 +270,14 @@ if st.session_state.logged_in:
             }
             df_kenntnis = pd.DataFrame([eintrag], columns=KN_COLUMNS)
 
-            # Vor dem Schreiben Schema nochmals sichern (idempotent)
-            ensure_kenntnis_schema(DATA_FILE_KENNTNIS)
-
-            # Append ohne Header (Header ist jetzt garantiert vorhanden)
+            # Header nur beim ersten Mal schreiben
+            write_header = not os.path.exists(DATA_FILE_KENNTNIS) or os.path.getsize(DATA_FILE_KENNTNIS) == 0
             df_kenntnis.to_csv(
                 DATA_FILE_KENNTNIS,
                 sep=";",
                 index=False,
-                mode="a",
-                header=False,
+                mode="w" if write_header else "a",
+                header=write_header,
                 encoding="utf-8-sig"
             )
 
@@ -318,33 +285,22 @@ if st.session_state.logged_in:
         else:
             st.error("Bitte Vorname, Name und VA auswählen.")
 
-    # 2) Live-Vorschau im korrekten Schema
-    st.markdown("## Live-Vorschau: Kenntnisnahmen")
-    try:
-        ensure_kenntnis_schema(DATA_FILE_KENNTNIS)  # Lesen nur nach Schemafix
-        df_anzeige = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
-
-        if df_anzeige.empty:
-            st.info("Noch keine Lesebestätigungen vorhanden.")
-        else:
-            st.dataframe(df_anzeige[KN_COLUMNS], use_container_width=True)
-    except Exception as e:
-        st.error(f"Fehler beim Laden der Kenntnisnahmen: {e}")
-
-
     # -----------------------------------
     # Live-Vorschau: Kenntnisnahmen anzeigen
     # -----------------------------------
     st.markdown("## Live-Vorschau: Kenntnisnahmen")
     try:
         df_anzeige = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
+
+        # Nur die erwarteten Spalten anzeigen
         if {"Vorname", "Name", "VA_Nr", "Zeitpunkt"}.issubset(df_anzeige.columns):
             if df_anzeige.empty:
                 st.info("Noch keine Lesebestätigungen vorhanden.")
             else:
-                st.dataframe(df_anzeige[["Vorname", "Name", "VA_Nr", "Zeitpunkt"]], use_container_width=True)
+                st.dataframe(df_anzeige[KN_COLUMNS], use_container_width=True)
         else:
             st.warning(f"Spaltenstruktur stimmt nicht: {df_anzeige.columns.tolist()}")
     except Exception as e:
         st.error(f"Fehler beim Laden der Kenntnisnahmen: {e}")
+
 
