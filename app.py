@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 import re
 
 # --------------------------
-# Session-Status
+# Session-Status initialisieren
 # --------------------------
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
@@ -25,7 +25,7 @@ st.markdown(
 )
 
 # --------------------------
-# Login
+# Login-Bereich (nur vor Login sichtbar)
 # --------------------------
 if not st.session_state.logged_in:
     st.markdown("## Login")
@@ -38,22 +38,29 @@ if not st.session_state.logged_in:
             st.error("Falsches Passwort.")
 
 # --------------------------
-# Sidebar bei Login
+# Hauptinhalt (nur nach Login sichtbar)
 # --------------------------
 if st.session_state.logged_in:
+    # Sidebar
     st.sidebar.success("Eingeloggt")
-
     if st.sidebar.button("Logout", key="sidebar_logout"):
         st.session_state.logged_in = False
         st.sidebar.info("Logout erfolgreich.")
 
-    # Anzeige des aktuellen Dokuments
     if st.session_state.selected_va:
         st.sidebar.markdown(f"**Aktuelles Dokument:** {st.session_state.selected_va}")
+        st.sidebar.progress(0.75, text="Bearbeitungsfortschritt")
 
-        # Fortschrittsbalken – Beispielwert, später dynamisch
-        progress_value = 0.75
-        st.sidebar.progress(progress_value, text="Bearbeitungsfortschritt")
+    # Tabs und Inhalte
+    tab1, tab2 = st.tabs(["Verfahrensanweisungen", "Lesebestätigung"])
+
+    with tab1:
+        # VA-Eingabe, Anzeige, Export, PDF
+        # (→ hier kommen deine bestehenden Blöcke rein)
+
+    with tab2:
+        # Lesebestätigung
+        # (→ hier kommt dein Bestätigungs- und CSV-Block rein)
 
 # --------------------------
 # Datenkonfiguration
