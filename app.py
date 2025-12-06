@@ -252,100 +252,59 @@ if st.session_state.logged_in:
             st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
 
 # -----------------------------------
-# Mitarbeiterliste anzeigen
+# Sidebar-Hinweis "Aktuelles"
 # -----------------------------------
 if st.session_state.logged_in:
-    st.markdown("## Mitarbeiterliste")
+    st.sidebar.markdown("### Aktuelles")
     try:
-        df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig", dtype=str)
-        st.dataframe(df_mitarbeiter[["Vorname", "Name", "VA_Nr"]], use_container_width=True)
+        df_all_sidebar = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
+        if not df_all_sidebar.empty:
+            letzte_va = df_all_sidebar.iloc[-1]
+            st.sidebar.info(f"Neue VA verfügbar: **{letzte_va['VA_Nr']} – {letzte_va['Titel']}**")
+        else:
+            st.sidebar.info("Keine neuen Verfahrensanweisungen vorhanden.")
     except:
-        st.info("Noch keine Mitarbeiterliste vorhanden oder Datei nicht lesbar.")
+        st.sidebar.info("Noch keine VA-Datei vorhanden.")
 
 # -----------------------------------
-# Auswertung Lesebestätigungen pro VA mit Fortschrittsbalken
-# -----------------------------------
-if st.session_state.logged_in:
-    st.markdown("## Auswertung Lesebestätigungen")
-
-    try:
-        df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig", dtype=str)
-        df_lese = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
-
-        va_list = sorted(df_mitarbeiter["VA_Nr"].dropna().astype(str).unique())
-        va_auswahl = st.selectbox("VA auswählen für Auswertung", options=va_list)
-
-        if va_auswahl:
-            df_m_va = df_mitarbeiter[df_mitarbeiter["VA_Nr"].astype(str) == va_auswahl]
-            df_l_va = df_lese[df_lese["VA_Nr"].astype(str) == va_auswahl]
-
-            gelesen = set(zip(df_l_va["Vorname"].str.strip(), df_l_va["Name"].str.strip()))
-            alle = set(zip(df_m_va["Vorname"].str.strip(), df_m_va["Name"].str.strip()))
-            fehlt = alle - gelesen
-
-            total = len(alle)
-            done = len(gelesen)
-            percent = round((done / total) * 100, 1) if total > 0 else 0
-
-            st.info(f"VA {va_auswahl}: {done} von {total} Mitarbeitenden haben bestätigt ({percent} %).")
-            st.progress(percent / 100)
-
-            st.markdown("### Bestätigt")
-            if not df_l_va.empty:
-                st.dataframe(df_l_va[["Vorname", "Name", "Zeitpunkt"]], use_container_width=True)
-            else:
-                st.warning("Noch keine Lesebestätigungen vorhanden.")
-
-            st.markdown("### Noch offen")
-            if fehlt:
-                df_fehlt = pd.DataFrame(list(fehlt), columns=["Vorname", "Name"])
-                st.dataframe(df_fehlt, use_container_width=True)
-            else:
-                st.success("Alle Mitarbeitenden haben bestätigt.")
-    except Exception as e:
-        st.error(f"Fehler bei der Auswertung: {e}")
-
-# -----------------------------------
-# Gesamtübersicht Lesebestätigungen für alle VAs
+# Lesebestätigung durch Mitarbeiter
 # -----------------------------------
 if st.session_state.logged_in:
-    st.markdown("## Gesamtübersicht Lesebestätigungen")
+    st.markdown("## Lesebestätigung")
+    st.markdown("Bitte bestätigen Sie, dass Sie die ausgewählte VA gelesen haben.")
+
+    vorname = st.text_input("Vorname")
+    name = st.text_input("Name")
 
     try:
-        df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig", dtype=str)
-        df_lese = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
+        df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
+        va_list = sorted(df_va["VA_Nr"].dropna().astype(str).unique())
+        va_auswahl = st.selectbox("VA auswählen (Lesebestätigung)", options=va_list)
+    except:
+        va_auswahl = None
+        st.info("VA-Datei konnte nicht geladen werden oder enthält keine gültigen Einträge.")
 
-        va_list = sorted(df_mitarbeiter["VA_Nr"].dropna().astype(str).unique())
+    if st.button("Lesebestätigung"):
+        if vorname.strip() and name.strip() and va_auswahl:
+            zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
 
-        summary_data = []
-        for va in va_list:
-            df_m_va = df_mitarbeiter[df_mitarbeiter["VA_Nr"].astype(str) == va]
-            df_l_va = df_lese[df_lese["VA_Nr"].astype(str) == va]
+            eintrag = {
+                "Vorname": vorname.strip(),
+                "Name": name.strip(),
+                "VA_Nr": va_auswahl,
+                "Zeitpunkt": zeitpunkt
+            }
+            df_kenntnis = pd.DataFrame([eintrag], columns=["Vorname", "Name", "VA_Nr", "Zeitpunkt"])
 
-            gelesen = set(zip(df_l_va["Vorname"].str.strip(), df_l_va["Name"].str.strip()))
-            alle = set(zip(df_m_va["Vorname"].str.strip(), df_m_va["Name"].str.strip()))
+            if os.path.exists(DATA_FILE_KENNTNIS) and os.path.getsize(DATA_FILE_KENNTNIS) > 0:
+                df_kenntnis.to_csv(DATA_FILE_KENNTNIS, sep=";", index=False,
+                                   mode="a", header=False, encoding="utf-8-sig")
+            else:
+                df_kenntnis.to_csv(DATA_FILE_KENNTNIS, sep=";", index=False,
+                                   header=True, encoding="utf-8-sig")
 
-            total = len(alle)
-            done = len(gelesen)
-            percent = round((done / total) * 100, 1) if total > 0 else 0
+            st.success(f"Lesebestätigung für VA {va_auswahl} gespeichert.")
+        else:
+            st.error("Bitte Vorname, Name und VA auswählen.")
 
-            summary_data.append({"VA_Nr": va, "Gesamt": total, "Gelesen": done, "Prozent": percent})
-
-        df_summary = pd.DataFrame(summary_data)
-        st.dataframe(df_summary, use_container_width=True)
-
-        for _, row in df_summary.iterrows():
-            st.markdown(f"**VA {row['VA_Nr']}** – {row['Gelesen']} von {row['Gesamt']} ({row['Prozent']} %)")
-            st.progress(row["Prozent"] / 100)
-
-        st.download_button(
-            label="Gesamtübersicht als CSV herunterladen",  # eindeutiger Label
-            data=df_summary.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig"),
-            file_name=f"gesamtuebersicht_{dt.date.today()}.csv",
-            mime="text/csv",
-            type="secondary"
-        )
-
-    except Exception as e:
-        st.error(f"Fehler bei der Gesamtübersicht: {e}")
 
