@@ -227,13 +227,14 @@ if st.session_state.logged_in:
     except:
         st.sidebar.info("Noch keine VA-Datei vorhanden.")
 
-   # -----------------------------------
+# -----------------------------------
 # Lesebestätigung durch Mitarbeiter
 # -----------------------------------
 if st.session_state.logged_in:
     st.markdown("## Lesebestätigung")
     st.markdown("Bitte bestätigen Sie, dass Sie die ausgewählte VA gelesen haben.")
 
+    # Eingabefelder mit eindeutigen Keys
     vorname = st.text_input("Vorname", key="lese_vorname")
     name = st.text_input("Name", key="lese_name")
 
@@ -245,11 +246,11 @@ if st.session_state.logged_in:
             options=va_list,
             key="lesebestaetigung_va"
         )
-    except:
+    except Exception:
         va_auswahl_lese = None
         st.info("VA-Datei konnte nicht geladen werden oder enthält keine gültigen Einträge.")
 
-    if st.button("Lesebestätigung", key="lesebestaetigung_button"):
+    if st.button("Lesebestätigung bestätigen", key="lesebestaetigung_button"):
         if vorname.strip() and name.strip() and va_auswahl_lese:
             zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
 
@@ -261,12 +262,16 @@ if st.session_state.logged_in:
             }
             df_kenntnis = pd.DataFrame([eintrag], columns=["Vorname", "Name", "VA_Nr", "Zeitpunkt"])
 
-            if not os.path.exists(DATA_FILE_KENNTNIS) or os.path.getsize(DATA_FILE_KENNTNIS) == 0:
-                df_kenntnis.to_csv(DATA_FILE_KENNTNIS, sep=";", index=False,
-                                   header=True, encoding="utf-8-sig")
-            else:
-                df_kenntnis.to_csv(DATA_FILE_KENNTNIS, sep=";", index=False,
-                                   mode="a", header=False, encoding="utf-8-sig")
+            # Robuste Schreiblogik: erster Eintrag mit Header, danach Append ohne Header
+            write_header = not os.path.exists(DATA_FILE_KENNTNIS) or os.path.getsize(DATA_FILE_KENNTNIS) == 0
+            df_kenntnis.to_csv(
+                DATA_FILE_KENNTNIS,
+                sep=";",
+                index=False,
+                mode="w" if write_header else "a",
+                header=write_header,
+                encoding="utf-8-sig"
+            )
 
             st.success(f"Lesebestätigung für VA {va_auswahl_lese} gespeichert.")
         else:
