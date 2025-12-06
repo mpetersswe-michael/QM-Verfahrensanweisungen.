@@ -188,8 +188,8 @@ if st.session_state.logged_in:
     # --------------------------
 
     with tab2:
-    st.markdown("## Lesebestätigung")
-    st.markdown("Bitte bestätigen Sie, dass Sie die ausgewählte VA gelesen haben.")
+        st.markdown("## Lesebestätigung")
+        st.markdown("Bitte bestätigen Sie, dass Sie die ausgewählte VA gelesen haben.")
 
     name_raw = st.text_input("Name (Nachname,Vorname)", key="lese_name")
 
