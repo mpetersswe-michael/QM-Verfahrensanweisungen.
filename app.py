@@ -47,9 +47,13 @@ if st.session_state.logged_in:
         st.session_state.logged_in = False
         st.sidebar.info("Logout erfolgreich.")
 
+    # Anzeige des aktuellen Dokuments
     if st.session_state.selected_va:
         st.sidebar.markdown(f"**Aktuelles Dokument:** {st.session_state.selected_va}")
-        st.sidebar.progress(0.75, text="Bearbeitungsfortschritt")
+
+        # Fortschrittsbalken – Beispielwert, später dynamisch
+        progress_value = 0.75
+        st.sidebar.progress(progress_value, text="Bearbeitungsfortschritt")
 
 # --------------------------
 # Datenkonfiguration
@@ -182,58 +186,76 @@ if st.session_state.logged_in:
                 df_neu.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
                 st.success(f"VA {va_nr} gespeichert (neue Datei erstellt, Append-only).")
 
-        # Anzeige und Export
-        st.markdown("## Verfahrensanweisungen anzeigen und exportieren")
-        try:
-            df_all = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
-        except Exception:
-            df_all = pd.DataFrame(columns=QM_COLUMNS)
+      # --------------------------
+# Anzeige und Export
+# --------------------------
+st.markdown("## Verfahrensanweisungen anzeigen und exportieren")
+try:
+    df_all = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
+except Exception:
+    df_all = pd.DataFrame(columns=QM_COLUMNS)
 
-        if df_all.empty:
-            st.info("Noch keine Verfahrensanweisungen gespeichert.")
-        else:
-            df_all["VA_Anzeige"] = df_all["VA_Nr"].astype(str).str.strip() + " – " + df_all["Titel"].astype(str).str.strip()
-            selected_va_display = st.selectbox(
-                "VA auswählen für Anzeige und PDF-Erzeugung",
-                options=[""] + sorted(df_all["VA_Anzeige"].dropna().unique()),
-                index=0,
-                key="va_select_display"
-            )
-            selected_va = selected_va_display.split(" – ")[0] if selected_va_display else ""
-            st.session_state.selected_va = selected_va  # ← für Sidebar
+if df_all.empty:
+    st.info("Noch keine Verfahrensanweisungen gespeichert.")
+else:
+    # Anzeige-Spalte erzeugen
+    df_all["VA_Anzeige"] = (
+        df_all["VA_Nr"].astype(str).str.strip()
+        + " – "
+        + df_all["Titel"].astype(str).str.strip()
+    )
 
-            df_filtered = df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va] if selected_va else df_all
-            st.dataframe(df_filtered, use_container_width=True)
+    # Auswahlbox für VA
+    selected_va_display = st.selectbox(
+        "VA auswählen für Anzeige und PDF-Erzeugung",
+        options=[""] + sorted(df_all["VA_Anzeige"].dropna().unique()),
+        index=0,
+        key="va_select_display"
+    )
 
-            csv_data = df_all.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+    # VA-Nummer extrahieren und in Session speichern
+    selected_va = selected_va_display.split(" – ")[0] if selected_va_display else ""
+    st.session_state.selected_va = selected_va  # ← für Sidebar verfügbar
+
+    # Gefilterte Anzeige
+    df_filtered = (
+        df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va]
+        if selected_va else df_all
+    )
+    st.dataframe(df_filtered, use_container_width=True)
+
+    # CSV-Download
+    csv_data = df_all.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+    st.download_button(
+        label="VA-Tabelle als CSV herunterladen",
+        data=csv_data,
+        file_name=f"qm_va_{dt.date.today()}.csv",
+        mime="text/csv",
+        type="primary"
+    )
+
+  # --------------------------
+# PDF erzeugen
+# --------------------------
+st.markdown("### PDF erzeugen")
+
+if st.session_state.selected_va:
+    if st.button("PDF erzeugen für ausgewählte VA", type="primary"):
+        df_sel = df_all[df_all["VA_Nr"].astype(str).str.strip() == st.session_state.selected_va]
+        if not df_sel.empty:
+            pdf_bytes = export_va_to_pdf(df_sel.iloc[0].to_dict())
             st.download_button(
-                label="VA-Tabelle als CSV herunterladen",
-                data=csv_data,
-                file_name=f"qm_va_{dt.date.today()}.csv",
-                mime="text/csv",
+                label="VA-PDF herunterladen",
+                data=pdf_bytes,
+                file_name=f"{st.session_state.selected_va}_{dt.date.today()}.pdf",
+                mime="application/pdf",
                 type="primary"
             )
+        else:
+            st.error("Keine Daten für die ausgewählte VA gefunden.")
+else:
+    st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
 
-            # --------------------------
-            # PDF erzeugen
-            # --------------------------
-            st.markdown("### PDF erzeugen")
-            if selected_va:
-                if st.button("PDF erzeugen für ausgewählte VA", type="primary"):
-                    df_sel = df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va]
-                    if not df_sel.empty:
-                        pdf_bytes = export_va_to_pdf(df_sel.iloc[0].to_dict())
-                        st.download_button(
-                            label="VA-PDF herunterladen",
-                            data=pdf_bytes,
-                            file_name=f"{selected_va}_{dt.date.today()}.pdf",
-                            mime="application/pdf",
-                            type="primary"
-                        )
-                    else:
-                        st.error("Keine Daten für die ausgewählte VA gefunden.")
-            else:
-                st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
 
     # --------------------------
     # Tab 2: Lesebestätigung
