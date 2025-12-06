@@ -284,3 +284,12 @@ if st.session_state.logged_in:
             st.success(f"Lesebestätigung für {va_nr_speichern} gespeichert.")
         else:
             st.error("Bitte Vorname, Name und VA auswählen.")
+
+
+# -----------------------------------
+# Debug: Lesebestätigung prüfen
+# -----------------------------------
+if st.session_state.logged_in and "Vorname" in df_kenntnis.columns:
+    st.markdown("### 🔍 Debug: Lesebestätigung intern")
+
+    st.write
