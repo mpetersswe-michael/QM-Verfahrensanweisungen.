@@ -4,6 +4,7 @@ import datetime as dt
 import io
 import os
 from fpdf import FPDF
+from zoneinfo import ZoneInfo  # ab Python 3.9 verfügbar
 
 # -----------------------------------
 # Konfiguration
@@ -101,8 +102,7 @@ def export_va_to_pdf(row):
         pdf.multi_cell(0, 8, clean_text(content))
         pdf.ln(3)
 
-    for feld in ["Titel", "Kapitel", "Unterkapitel", "Revisionsstand", "Ziel",
-                 "Geltungsbereich", "Vorgehensweise", "Kommentar", "Mitgeltende Unterlagen"]:
+    for feld in QM_COLUMNS[1:]:
         add_section(feld, row.get(feld, ""))
 
     buffer = io.BytesIO()
@@ -113,20 +113,15 @@ def export_va_to_pdf(row):
 # Eingabe + Anzeige/Export (nur wenn eingeloggt)
 # -----------------------------------
 if st.session_state.logged_in:
-    # -----------------------------
-    # Eingabeformular (Append-only)
-    # -----------------------------
     st.markdown("## Neue Verfahrensanweisung eingeben")
 
-    # Numerische Auswahl für Kapitel/Unterkapitel
     kapitel_nr = st.selectbox("Kapitel-Nr", options=list(range(1, 21)), index=0)
     unterkap_nr = st.selectbox("Unterkapitel-Nr", options=list(range(1, 21)), index=0)
 
-    # Ableitung Felder
     va_nr = st.text_input("VA-Nr").strip()
     titel = st.text_input("Titel")
-    kapitel = str(kapitel_nr)  # bewusst numerisch als String
-    unterkapitel = f"Kap. {kapitel_nr}-{unterkap_nr}"  # garantiertes Format "Kap. X-Y"
+    kapitel = str(kapitel_nr)
+    unterkapitel = f"Kap. {kapitel_nr}-{unterkap_nr}"
     revisionsstand = st.text_input("Revisionsstand")
     ziel = st.text_area("Ziel")
     geltungsbereich = st.text_area("Geltungsbereich")
@@ -135,7 +130,6 @@ if st.session_state.logged_in:
     mitgeltende_unterlagen = st.text_area("Mitgeltende Unterlagen")
 
     if st.button("Speichern (Append-only)", type="primary"):
-        # neuer Eintrag in definierter Spaltenreihenfolge
         neuer_eintrag = {
             "VA_Nr": va_nr,
             "Titel": titel,
@@ -150,7 +144,6 @@ if st.session_state.logged_in:
         }
         df_neu = pd.DataFrame([neuer_eintrag]).reindex(columns=QM_COLUMNS)
 
-        # Anhängen nur, wenn VA_Nr noch nicht existiert
         if os.path.exists(DATA_FILE_QM):
             try:
                 df_alt = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
@@ -164,13 +157,9 @@ if st.session_state.logged_in:
                               mode="a", header=not os.path.exists(DATA_FILE_QM) or os.path.getsize(DATA_FILE_QM) == 0)
                 st.success(f"VA {va_nr} hinzugefügt (Append-only).")
         else:
-            # Erste Speicherung mit Kopfzeile
             df_neu.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
             st.success(f"VA {va_nr} gespeichert (neue Datei erstellt, Append-only).")
 
-    # -----------------------------
-    # Verwaltung/Anzeige
-    # -----------------------------
     st.markdown("## Verfahrensanweisungen anzeigen und exportieren")
     try:
         df_all = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
@@ -180,7 +169,6 @@ if st.session_state.logged_in:
     if df_all.empty:
         st.info("Noch keine Verfahrensanweisungen gespeichert.")
     else:
-        # Anzeigeauswahl „VA-Nr – Titel“
         df_all["VA_Anzeige"] = df_all["VA_Nr"].astype(str).str.strip() + " – " + df_all["Titel"].astype(str).str.strip()
         selected_va_display = st.selectbox(
             "VA auswählen zur Anzeige oder PDF-Erzeugung",
@@ -189,11 +177,9 @@ if st.session_state.logged_in:
         )
         selected_va = selected_va_display.split(" – ")[0] if selected_va_display else ""
 
-        # Tabelle (gefiltert oder komplett)
         df_filtered = df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va] if selected_va else df_all
         st.dataframe(df_filtered, use_container_width=True)
 
-        # CSV-Download (immer gesamte Tabelle)
         csv_data = df_all.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
         st.download_button(
             label="CSV herunterladen",
@@ -203,13 +189,14 @@ if st.session_state.logged_in:
             type="primary"
         )
 
-        # PDF-Export nur für ausgewählte VA
         st.markdown("### PDF erzeugen")
         if selected_va:
             if st.button("PDF erzeugen für ausgewählte VA", type="primary"):
                 df_sel = df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va]
                 if not df_sel.empty:
                     pdf_bytes = export_va_to_pdf(df_sel.iloc[0].to_dict())
+                    st.download_button(
+                        label="Download                    pdf_bytes = export_va_to_pdf(df_sel.iloc[0].to_dict())
                     st.download_button(
                         label="Download PDF",
                         data=pdf_bytes,
@@ -222,15 +209,13 @@ if st.session_state.logged_in:
         else:
             st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
 
-from zoneinfo import ZoneInfo  # ab Python 3.9 verfügbar
-
 # -----------------------------------
 # Sidebar-Hinweis "Aktuelles"
 # -----------------------------------
 if st.session_state.logged_in:
     st.sidebar.markdown("### Aktuelles")
     try:
-        df_all_sidebar = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig")
+        df_all_sidebar = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
         if not df_all_sidebar.empty:
             letzte_va = df_all_sidebar.iloc[-1]
             st.sidebar.info(f"Neue VA verfügbar: **{letzte_va['VA_Nr']} – {letzte_va['Titel']}**")
@@ -255,21 +240,21 @@ st.markdown(
         color: white;
     }
 
-    /* Speichern & Kenntnisnahme: Grün */
+    /* Speichern & Lesebestätigung: Grün */
     div.stButton > button:has-text("Speichern"),
-    div.stButton > button:has-text("Zur Kenntnis genommen") {
+    div.stButton > button:has-text("Lesebestätigung") {
         background-color: #4CAF50 !important;
         color: white !important;
     }
     div.stButton > button:has-text("Speichern"):hover,
-    div.stButton > button:has-text("Zur Kenntnis genommen"):hover {
+    div.stButton > button:has-text("Lesebestätigung"):hover {
         background-color: #45a049 !important;
         color: white !important;
     }
 
     /* CSV-Download: Rot */
     div.stDownloadButton > button:has-text("CSV herunterladen"),
-    div.stDownloadButton > button:has-text("Kenntnisnahmen als CSV herunterladen") {
+    div.stDownloadButton > button:has-text("Lesebestätigungen als CSV herunterladen") {
         background-color: #f44336 !important;
         color: white !important;
     }
@@ -283,83 +268,6 @@ st.markdown(
 )
 
 # -----------------------------------
-# Kenntnisnahme durch Mitarbeiter
-# -----------------------------------
-if st.session_state.logged_in:
-    st.markdown("## Kenntnisnahme bestätigen")
-    st.markdown("Bitte bestätigen Sie, dass Sie die ausgewählte VA gelesen haben.")
-
-    name = st.text_input("Name")
-    email = st.text_input("E-Mail")
-
-    try:
-        df_va = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig")
-        if not df_va.empty:
-            va_list = sorted(df_va["VA_Nr"].dropna().astype(str).unique())
-            va_auswahl = st.selectbox("VA auswählen", options=va_list)
-        else:
-            va_auswahl = None
-            st.info("Noch keine Verfahrensanweisungen vorhanden.")
-    except:
-        va_auswahl = None
-        st.info("VA-Datei konnte nicht geladen werden.")
-
-    if st.button("Zur Kenntnis genommen", type="primary"):
-        if name.strip() and email.strip() and va_auswahl:
-            # Lokaler Zeitstempel mit Zeitzone Europe/Berlin
-            zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
-
-            eintrag = {
-                "Name": name.strip(),
-                "E-Mail": email.strip(),
-                "VA_Nr": va_auswahl,
-                "Zeitpunkt": zeitpunkt
-            }
-            df_kenntnis = pd.DataFrame([eintrag], columns=["Name", "E-Mail", "VA_Nr", "Zeitpunkt"])
-
-            if os.path.exists("kenntnisnahmen.csv") and os.path.getsize("kenntnisnahmen.csv") > 0:
-                df_kenntnis.to_csv("kenntnisnahmen.csv", sep=";", index=False,
-                                   mode="a", header=False, encoding="utf-8-sig")
-            else:
-                df_kenntnis.to_csv("kenntnisnahmen.csv", sep=";", index=False,
-                                   header=True, encoding="utf-8-sig")
-
-            st.success(f"Kenntnisnahme für VA {va_auswahl} gespeichert.")
-        else:
-            st.error("Bitte Name, E-Mail und VA auswählen.")
-
-# -----------------------------------
-# Kenntnisnahmen anzeigen und exportieren
-# -----------------------------------
-if st.session_state.logged_in:
-    st.markdown("## Kenntnisnahmen anzeigen")
-    try:
-        df_k = pd.read_csv("kenntnisnahmen.csv", sep=";", encoding="utf-8-sig", dtype=str)
-        st.dataframe(df_k, use_container_width=True)
-        st.download_button(
-            label="Kenntnisnahmen als CSV herunterladen",
-            data=df_k.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig"),
-            file_name=f"kenntnisnahmen_{dt.date.today()}.csv",
-            mime="text/csv",
-            type="secondary"
-        )
-    except:
-        st.info("Noch keine Kenntnisnahmen vorhanden oder Datei nicht lesbar.")
-        
-# -----------------------------------
-# Mitarbeiterliste anzeigen
-# -----------------------------------
-if st.session_state.logged_in:
-    st.markdown("## Mitarbeiterliste")
-    try:
-        df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig", dtype=str)
-        st.dataframe(df_mitarbeiter[["Vorname", "Name", "VA_Nr"]], use_container_width=True)
-    except:
-        st.info("Noch keine Mitarbeiterliste vorhanden oder Datei nicht lesbar.")
-
-from zoneinfo import ZoneInfo  # für lokale Zeit
-
-# -----------------------------------
 # Lesebestätigung durch Mitarbeiter
 # -----------------------------------
 if st.session_state.logged_in:
@@ -370,29 +278,12 @@ if st.session_state.logged_in:
     name = st.text_input("Name")
 
     try:
-        df_va = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig")
+        df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
         va_list = sorted(df_va["VA_Nr"].dropna().astype(str).unique())
         va_auswahl = st.selectbox("VA auswählen", options=va_list)
     except:
         va_auswahl = None
         st.info("VA-Datei konnte nicht geladen werden oder enthält keine gültigen Einträge.")
-
-    # CSS für grünen Button
-    st.markdown(
-        """
-        <style>
-        div.stButton > button:first-child {
-            background-color: #4CAF50;
-            color: white;
-        }
-        div.stButton > button:first-child:hover {
-            background-color: #45a049;
-            color: white;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
 
     if st.button("Lesebestätigung"):
         if vorname.strip() and name.strip() and va_auswahl:
@@ -406,11 +297,11 @@ if st.session_state.logged_in:
             }
             df_kenntnis = pd.DataFrame([eintrag], columns=["Vorname", "Name", "VA_Nr", "Zeitpunkt"])
 
-            if os.path.exists("kenntnisnahmen.csv") and os.path.getsize("kenntnisnahmen.csv") > 0:
-                df_kenntnis.to_csv("kenntnisnahmen.csv", sep=";", index=False,
+            if os.path.exists(DATA_FILE_KENNTNIS) and os.path.getsize(DATA_FILE_KENNTNIS) > 0:
+                df_kenntnis.to_csv(DATA_FILE_KENNTNIS, sep=";", index=False,
                                    mode="a", header=False, encoding="utf-8-sig")
             else:
-                df_kenntnis.to_csv("kenntnisnahmen.csv", sep=";", index=False,
+                df_kenntnis.to_csv(DATA_FILE_KENNTNIS, sep=";", index=False,
                                    header=True, encoding="utf-8-sig")
 
             st.success(f"Lesebestätigung für VA {va_auswahl} gespeichert.")
@@ -423,7 +314,7 @@ if st.session_state.logged_in:
 if st.session_state.logged_in:
     st.markdown("## Lesebestätigungen anzeigen")
     try:
-        df_k = pd.read_csv("kenntnisnahmen.csv", sep=";", encoding="utf-8-sig", dtype=str)
+        df_k = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
         st.dataframe(df_k[["Vorname", "Name", "VA_Nr", "Zeitpunkt"]], use_container_width=True)
         st.download_button(
             label="Lesebestätigungen als CSV herunterladen",
@@ -434,4 +325,113 @@ if st.session_state.logged_in:
         )
     except:
         st.info("Noch keine Lesebestätigungen vorhanden oder Datei nicht lesbar.")
+
+# -----------------------------------
+# Mitarbeiterliste anzeigen
+# -----------------------------------
+if st.session_state.logged_in:
+    st.markdown("## Mitarbeiterliste")
+    try:
+        df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig", dtype=str)
+        st.dataframe(df_mitarbeiter[["Vorname", "Name", "VA_Nr"]], use_container_width=True)
+    except:
+        st.info("Noch keine Mitarbeiterliste vorhanden oder Datei nicht lesbar.")
+# -----------------------------------
+# Auswertung Lesebestätigungen pro VA mit Fortschrittsbalken
+# -----------------------------------
+if st.session_state.logged_in:
+    st.markdown("## Auswertung Lesebestätigungen")
+
+    try:
+        df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig", dtype=str)
+        df_lese = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
+
+        va_list = sorted(df_mitarbeiter["VA_Nr"].dropna().astype(str).unique())
+        va_auswahl = st.selectbox("VA auswählen für Auswertung", options=va_list)
+
+        if va_auswahl:
+            # Alle Mitarbeiter für diese VA
+            df_m_va = df_mitarbeiter[df_mitarbeiter["VA_Nr"].astype(str) == va_auswahl]
+
+            # Alle Bestätigungen für diese VA
+            df_l_va = df_lese[df_lese["VA_Nr"].astype(str) == va_auswahl]
+
+            # Abgleich: wer fehlt?
+            gelesen = set(zip(df_l_va["Vorname"].str.strip(), df_l_va["Name"].str.strip()))
+            alle = set(zip(df_m_va["Vorname"].str.strip(), df_m_va["Name"].str.strip()))
+            fehlt = alle - gelesen
+
+            total = len(alle)
+            done = len(gelesen)
+            percent = round((done / total) * 100, 1) if total > 0 else 0
+
+            st.info(f"VA {va_auswahl}: {done} von {total} Mitarbeitenden haben bestätigt ({percent} %).")
+
+            # Fortschrittsbalken
+            st.progress(percent / 100)
+
+            # Tabellen
+            st.markdown("### Bestätigt")
+            if not df_l_va.empty:
+                st.dataframe(df_l_va[["Vorname", "Name", "Zeitpunkt"]], use_container_width=True)
+            else:
+                st.warning("Noch keine Lesebestätigungen vorhanden.")
+
+            st.markdown("### Noch offen")
+            if fehlt:
+                df_fehlt = pd.DataFrame(list(fehlt), columns=["Vorname", "Name"])
+                st.dataframe(df_fehlt, use_container_width=True)
+            else:
+                st.success("Alle Mitarbeitenden haben bestätigt.")
+    except Exception as e:
+        st.error(f"Fehler bei der Auswertung: {e}")
+
+# -----------------------------------
+# Gesamtübersicht Lesebestätigungen für alle VAs
+# -----------------------------------
+if st.session_state.logged_in:
+    st.markdown("## Gesamtübersicht Lesebestätigungen")
+
+    try:
+        df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig", dtype=str)
+        df_lese = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
+
+        # Alle VA_Nr aus Mitarbeiterliste
+        va_list = sorted(df_mitarbeiter["VA_Nr"].dropna().astype(str).unique())
+
+        summary_data = []
+        for va in va_list:
+            df_m_va = df_mitarbeiter[df_mitarbeiter["VA_Nr"].astype(str) == va]
+            df_l_va = df_lese[df_lese["VA_Nr"].astype(str) == va]
+
+            gelesen = set(zip(df_l_va["Vorname"].str.strip(), df_l_va["Name"].str.strip()))
+            alle = set(zip(df_m_va["Vorname"].str.strip(), df_m_va["Name"].str.strip()))
+
+            total = len(alle)
+            done = len(gelesen)
+            percent = round((done / total) * 100, 1) if total > 0 else 0
+
+            summary_data.append({"VA_Nr": va, "Gesamt": total, "Gelesen": done, "Prozent": percent})
+
+        df_summary = pd.DataFrame(summary_data)
+
+        # Übersichtstabelle
+        st.dataframe(df_summary, use_container_width=True)
+
+        # Fortschrittsbalken pro VA
+        for _, row in df_summary.iterrows():
+            st.markdown(f"**VA {row['VA_Nr']}** – {row['Gelesen']} von {row['Gesamt']} ({row['Prozent']} %)")
+            st.progress(row["Prozent"] / 100)
+
+        # Export
+        st.download_button(
+            label="Gesamtübersicht als CSV herunterladen",
+            data=df_summary.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig"),
+            file_name=f"gesamtuebersicht_{dt.date.today()}.csv",
+            mime="text/csv",
+            type="secondary"
+        )
+
+    except Exception as e:
+        st.error(f"Fehler bei der Gesamtübersicht: {e}")
 
