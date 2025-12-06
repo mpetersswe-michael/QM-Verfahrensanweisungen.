@@ -253,6 +253,7 @@ if st.session_state.logged_in:
             zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
             va_nr_speichern = f"VA{va_nummer}"
 
+            # Eintrag mit genau den drei Spalten
             eintrag = {
                 "Name": name_kombi.strip(),
                 "VA_Nr": va_nr_speichern,
