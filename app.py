@@ -227,9 +227,6 @@ if st.session_state.logged_in:
     except:
         st.sidebar.info("Noch keine VA-Datei vorhanden.")
 
-# -----------------------------------
-# Lesebestätigung mit Name im Format "Nachname,Vorname"
-# -----------------------------------
 if st.session_state.logged_in:
     st.markdown("## Lesebestätigung")
     st.markdown("Bitte bestätigen Sie, dass Sie die ausgewählte VA gelesen haben.")
@@ -257,7 +254,7 @@ if st.session_state.logged_in:
             zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
             va_nr_speichern = f"VA{va_nummer}"
 
-            # Name im Format "Nachname,Vorname"
+            # Kombinierter Name im Format "Peters,Michael"
             name_kombi = f"{nachname.strip()},{vorname.strip()}"
 
             eintrag = {
@@ -296,6 +293,7 @@ if st.session_state.logged_in:
             st.warning(f"Spaltenstruktur stimmt nicht: {df_anzeige.columns.tolist()}")
     except Exception as e:
         st.error(f"Fehler beim Laden der Kenntnisnahmen: {e}")
+
 
 
 
