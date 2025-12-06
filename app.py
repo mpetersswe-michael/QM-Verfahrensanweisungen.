@@ -276,21 +276,19 @@ if st.session_state.logged_in:
             st.error("Bitte Name und VA auswählen.")
 
 # -----------------------------------
-# Live-Vorschau: Kenntnisnahmen anzeigen
+# Live-Vorschau: nur letzter Eintrag
 # -----------------------------------
-st.markdown("## Live-Vorschau: Kenntnisnahmen")
+st.markdown("## Live-Vorschau: Letzte Lesebestätigung")
 
 try:
     df_anzeige = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
 
-    # Prüfen, ob die erwarteten Spalten vorhanden sind
     if {"Name", "VA_Nr", "Zeitpunkt"}.issubset(df_anzeige.columns):
         if df_anzeige.empty:
             st.info("Noch keine Lesebestätigungen vorhanden.")
-        elif len(df_anzeige) < 2:
-            st.info("Es liegt nur eine Lesebestätigung vor – keine Tabelle angezeigt.")
         else:
-            st.dataframe(df_anzeige[["Name", "VA_Nr", "Zeitpunkt"]], use_container_width=True)
+            letzter_eintrag = df_anzeige.tail(1)  # nur die letzte Zeile
+            st.dataframe(letzter_eintrag[["Name", "VA_Nr", "Zeitpunkt"]], use_container_width=True)
     else:
         st.warning(f"Spaltenstruktur stimmt nicht: {df_anzeige.columns.tolist()}")
 
