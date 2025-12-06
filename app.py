@@ -285,6 +285,25 @@ if st.session_state.logged_in:
         else:
             st.error("Bitte Vorname, Name und VA auswählen.")
 
+# -----------------------------------
+# Live-Vorschau: Kenntnisnahmen anzeigen
+# -----------------------------------
+if st.session_state.logged_in:
+    st.markdown("## Live-Vorschau: Kenntnisnahmen")
+
+    try:
+        df_anzeige = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
+        if df_anzeige.empty:
+            st.info("Noch keine Lesebestätigungen vorhanden.")
+        else:
+            st.dataframe(df_anzeige[["Vorname", "Name", "VA_Nr", "Zeitpunkt"]], use_container_width=True)
+    except Exception as e:
+        st.error(f"Fehler beim Laden der Kenntnisnahmen: {e}")
+
+
+
+
+
 
 # -----------------------------------
 # Debug: Lesebestätigung prüfen
