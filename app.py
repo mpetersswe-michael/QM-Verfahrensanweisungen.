@@ -227,31 +227,36 @@ if st.session_state.logged_in:
     except:
         st.sidebar.info("Noch keine VA-Datei vorhanden.")
 
-    # -----------------------------------
-    # Lesebestätigung durch Mitarbeiter
-    # -----------------------------------
+   # -----------------------------------
+# Lesebestätigung durch Mitarbeiter
+# -----------------------------------
+if st.session_state.logged_in:
     st.markdown("## Lesebestätigung")
     st.markdown("Bitte bestätigen Sie, dass Sie die ausgewählte VA gelesen haben.")
 
-    vorname = st.text_input("Vorname")
-    name = st.text_input("Name")
+    vorname = st.text_input("Vorname", key="lese_vorname")
+    name = st.text_input("Name", key="lese_name")
 
     try:
         df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
         va_list = sorted(df_va["VA_Nr"].dropna().astype(str).unique())
-        va_auswahl = st.selectbox("VA auswählen (Lesebestätigung)", options=va_list)
+        va_auswahl_lese = st.selectbox(
+            "VA auswählen zur Lesebestätigung",
+            options=va_list,
+            key="lesebestaetigung_va"
+        )
     except:
-        va_auswahl = None
+        va_auswahl_lese = None
         st.info("VA-Datei konnte nicht geladen werden oder enthält keine gültigen Einträge.")
 
-    if st.button("Lesebestätigung"):
-        if vorname.strip() and name.strip() and va_auswahl:
+    if st.button("Lesebestätigung", key="lesebestaetigung_button"):
+        if vorname.strip() and name.strip() and va_auswahl_lese:
             zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
 
             eintrag = {
                 "Vorname": vorname.strip(),
                 "Name": name.strip(),
-                "VA_Nr": va_auswahl,
+                "VA_Nr": va_auswahl_lese,
                 "Zeitpunkt": zeitpunkt
             }
             df_kenntnis = pd.DataFrame([eintrag], columns=["Vorname", "Name", "VA_Nr", "Zeitpunkt"])
@@ -263,6 +268,6 @@ if st.session_state.logged_in:
                 df_kenntnis.to_csv(DATA_FILE_KENNTNIS, sep=";", index=False,
                                    mode="a", header=False, encoding="utf-8-sig")
 
-            st.success(f"Lesebestätigung für VA {va_auswahl} gespeichert.")
+            st.success(f"Lesebestätigung für VA {va_auswahl_lese} gespeichert.")
         else:
             st.error("Bitte Vorname, Name und VA auswählen.")
