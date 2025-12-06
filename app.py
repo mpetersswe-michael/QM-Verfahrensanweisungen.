@@ -293,17 +293,18 @@ if st.session_state.logged_in:
 
     try:
         df_anzeige = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
-        if df_anzeige.empty:
+
+        # Nur anzeigen, wenn die erwarteten Spalten vorhanden sind
+        erwartete_spalten = {"Vorname", "Name", "VA_Nr", "Zeitpunkt"}
+        if not erwartete_spalten.issubset(df_anzeige.columns):
+            st.warning(f"Spalten fehlen in der Datei. Erwartet: {erwartete_spalten}, gefunden: {set(df_anzeige.columns)}")
+        elif df_anzeige.empty:
             st.info("Noch keine Lesebestätigungen vorhanden.")
         else:
             st.dataframe(df_anzeige[["Vorname", "Name", "VA_Nr", "Zeitpunkt"]], use_container_width=True)
+
     except Exception as e:
         st.error(f"Fehler beim Laden der Kenntnisnahmen: {e}")
-
-
-
-
-
 
 # -----------------------------------
 # Debug: Lesebestätigung prüfen
