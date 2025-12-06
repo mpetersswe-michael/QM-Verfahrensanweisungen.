@@ -24,11 +24,12 @@ st.set_page_config(page_title="Verfahrensanweisungen (Auszug aus dem QMH)")
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "selected_va" not in st.session_state:
-    st.session_state.selected_va = ""  # wird in Tab 1 gesetzt
+    st.session_state.selected_va = ""
 
 # --------------------------
 # App-Titel
 # --------------------------
+st.set_page_config(page_title="Verfahrensanweisungen (Auszug aus dem QMH)")
 st.markdown(
     "<h5 style='text-align:center; color:#444;'>Verfahrensanweisungen (Auszug aus dem QMH)</h5>",
     unsafe_allow_html=True
@@ -46,25 +47,20 @@ if not st.session_state.logged_in:
             st.success("Login erfolgreich!")
         else:
             st.error("Falsches Passwort.")
-else:
-    # --------------------------
-    # Sidebar: Logout, aktuelles Dokument, Fortschritt
-    # --------------------------
+
+# --------------------------
+# Sidebar bei Login
+# --------------------------
+if st.session_state.logged_in:
     st.sidebar.success("Eingeloggt")
 
     if st.sidebar.button("Logout", key="sidebar_logout"):
         st.session_state.logged_in = False
         st.sidebar.info("Logout erfolgreich.")
 
-    # Aktuelles Dokument anzeigen (wenn vorhanden)
     if st.session_state.selected_va:
         st.sidebar.markdown(f"**Aktuelles Dokument:** {st.session_state.selected_va}")
-
-        # Fortschrittsbalken – Beispielwert; passe nach Bedarf an
-        progress_value = 0.75
-        st.sidebar.progress(progress_value, text="Bearbeitungsfortschritt")
-
-    # Ab hier: Tabs und Hauptinhalte ...
+        st.sidebar.progress(0.75, text="Bearbeitungsfortschritt")
 
 # --------------------------
 # PDF-Hilfsfunktionen
