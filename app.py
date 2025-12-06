@@ -5,6 +5,7 @@ import io
 import os
 from fpdf import FPDF
 from zoneinfo import ZoneInfo  # ab Python 3.9 verfügbar
+import re
 
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
@@ -227,12 +228,17 @@ if st.session_state.logged_in:
     except:
         st.sidebar.info("Noch keine VA-Datei vorhanden.")
 
+import re
+
+# --------------------------
+# Lesebestätigung (nur Name, VA_Nr, Zeitpunkt) mit Append-only
+# --------------------------
 if st.session_state.logged_in:
     st.markdown("## Lesebestätigung")
     st.markdown("Bitte bestätigen Sie, dass Sie die ausgewählte VA gelesen haben.")
 
-    # Eingabefeld für kombinierten Namen im Format "Nachname,Vorname"
-    name_kombi = st.text_input("Name (Nachname,Vorname)", key="lese_name")
+    # Name im Format "Nachname,Vorname" (ohne Leerzeichen)
+    name_raw = st.text_input("Name (Nachname,Vorname)", key="lese_name")
 
     # VA-Auswahl
     try:
@@ -247,50 +253,64 @@ if st.session_state.logged_in:
         va_nummer = None
         st.info("VA-Datei konnte nicht geladen werden oder enthält keine gültigen Einträge.")
 
-    # Speicherung
-    if st.button("Lesebestätigung bestätigen", key="lesebestaetigung_button"):
-        if name_kombi.strip() and va_nummer:
-            zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
-            va_nr_speichern = f"VA{va_nummer}"
+    # Anti-Doppelklick: verhindert mehrfaches Schreiben beim selben Klick
+    if "write_guard" not in st.session_state:
+        st.session_state.write_guard = False
 
-            # Eintrag mit genau den drei Spalten
-            eintrag = {
-                "Name": name_kombi.strip(),
-                "VA_Nr": va_nr_speichern,
-                "Zeitpunkt": zeitpunkt
-            }
-            df_kenntnis = pd.DataFrame([eintrag], columns=["Name", "VA_Nr", "Zeitpunkt"])
+    if st.button("Lesebestätigung bestätigen", key="lesebestaetigung_button") and not st.session_state.write_guard:
+        st.session_state.write_guard = True
+        try:
+            # Name normalisieren: "Peters, Michael" -> "Peters,Michael"
+            name_kombi = re.sub(r"\s*,\s*", ",", name_raw.strip())
 
-            write_header = not os.path.exists(DATA_FILE_KENNTNIS) or os.path.getsize(DATA_FILE_KENNTNIS) == 0
-            df_kenntnis.to_csv(
-                DATA_FILE_KENNTNIS,
-                sep=";",
-                index=False,
-                mode="w" if write_header else "a",
-                header=write_header,
-                encoding="utf-8-sig"
-            )
+            if name_kombi and va_nummer:
+                zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
+                va_nr_speichern = f"VA{va_nummer}"
 
-            st.success(f"Lesebestätigung für {va_nr_speichern} gespeichert.")
+                # Eintrag exakt mit drei Spalten
+                eintrag = {"Name": name_kombi, "VA_Nr": va_nr_speichern, "Zeitpunkt": zeitpunkt}
+                df_kenntnis = pd.DataFrame([eintrag], columns=["Name", "VA_Nr", "Zeitpunkt"])
+
+                # Append-only: Header nur, wenn Datei neu/leer ist
+                file_exists = os.path.exists(DATA_FILE_KENNTNIS)
+                file_empty = (not file_exists) or (os.path.getsize(DATA_FILE_KENNTNIS) == 0)
+
+                df_kenntnis.to_csv(
+                    DATA_FILE_KENNTNIS,
+                    sep=";",
+                    index=False,
+                    mode="a" if file_exists and not file_empty else "w",
+                    header=True if file_empty else False,
+                    encoding="utf-8-sig"
+                )
+
+                st.success(f"Lesebestätigung für {va_nr_speichern} gespeichert.")
+            else:
+                st.error("Bitte Name (Nachname,Vorname) und VA auswählen.")
+        except Exception as e:
+            st.error(f"Fehler beim Speichern: {e}")
+        finally:
+            # Guard nach kurzem Moment wieder freigeben
+            st.session_state.write_guard = False
+
+    # --------------------------
+    # Live-Vorschau: nur letzter Eintrag anzeigen
+    # --------------------------
+    st.markdown("## Live-Vorschau: Letzte Lesebestätigung")
+    try:
+        df_anzeige = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
+
+        # Sicherstellen, dass nur die drei Spalten genutzt werden und Name ohne Leerzeichen nach dem Komma dargestellt wird
+        if {"Name", "VA_Nr", "Zeitpunkt"}.issubset(df_anzeige.columns):
+            if df_anzeige.empty:
+                st.info("Noch keine Lesebestätigungen vorhanden.")
+            else:
+                letzter = df_anzeige.tail(1).copy()
+                # Darstellung vereinheitlichen: "Peters, Michael" -> "Peters,Michael"
+                letzter["Name"] = letzter["Name"].astype(str).str.replace(r"\s*,\s*", ",", regex=True)
+                st.dataframe(letzter[["Name", "VA_Nr", "Zeitpunkt"]], use_container_width=True)
         else:
-            st.error("Bitte Name und VA auswählen.")
+            st.warning(f"Spaltenstruktur stimmt nicht: {df_anzeige.columns.tolist()}")
+    except Exception as e:
+        st.error(f"Fehler beim Laden der Kenntnisnahmen: {e}")
 
-# -----------------------------------
-# Live-Vorschau: nur letzter Eintrag
-# -----------------------------------
-st.markdown("## Live-Vorschau: Letzte Lesebestätigung")
-
-try:
-    df_anzeige = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
-
-    if {"Name", "VA_Nr", "Zeitpunkt"}.issubset(df_anzeige.columns):
-        if df_anzeige.empty:
-            st.info("Noch keine Lesebestätigungen vorhanden.")
-        else:
-            letzter_eintrag = df_anzeige.tail(1)  # nur die letzte Zeile
-            st.dataframe(letzter_eintrag[["Name", "VA_Nr", "Zeitpunkt"]], use_container_width=True)
-    else:
-        st.warning(f"Spaltenstruktur stimmt nicht: {df_anzeige.columns.tolist()}")
-
-except Exception as e:
-    st.error(f"Fehler beim Laden der Kenntnisnahmen: {e}")
