@@ -120,11 +120,7 @@ def export_va_to_pdf(row):
     pdf.output(buffer)
     return buffer.getvalue()
 
-# --------------------------
-# Tabs bei Login
-# --------------------------
-if st.session_state.logged_in:
-    tab1, tab2 = st.tabs(["Verfahrensanweisungen", "Lesebestätigung"])
+
  # --------------------------
     # Tab 1: VA-Eingabe, Anzeige, PDF
     # --------------------------
