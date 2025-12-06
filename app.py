@@ -11,6 +11,74 @@ from zoneinfo import ZoneInfo
 import re
 
 # --------------------------
+# Datenkonfiguration
+# --------------------------
+DATA_FILE_QM = "qm_verfahrensanweisungen.csv"
+DATA_FILE_KENNTNIS = "kenntnisnahmen.csv"
+QM_COLUMNS = [
+    "VA_Nr", "Titel", "Kapitel", "Unterkapitel", "Revisionsstand",
+    "Ziel", "Geltungsbereich", "Vorgehensweise", "Kommentar", "Mitgeltende Unterlagen"
+]
+
+# --------------------------
+# PDF-Hilfsfunktionen
+# --------------------------
+def clean_text(text):
+    if text is None or str(text).strip() == "":
+        return "-"
+    return (
+        str(text)
+        .encode("latin-1", errors="ignore")
+        .decode("latin-1")
+        .replace("–", "-")
+        .replace("•", "*")
+        .replace("“", '"')
+        .replace("”", '"')
+        .replace("’", "'")
+        .replace("€", "EUR")
+        .replace("ä", "ae")
+        .replace("ö", "oe")
+        .replace("ü", "ue")
+        .replace("ß", "ss")
+    )
+
+class CustomPDF(FPDF):
+    def footer(self):
+        self.set_y(-15)
+        self.set_font("Arial", "I", 10)
+        va_name = getattr(self, "va_name", "")
+        self.cell(60, 10, clean_text(va_name), align="L")
+        text = f"Erstellt von Peters, Michael - Qualitaetsbeauftragter am {dt.date.today().strftime('%d.%m.%Y')}"
+        self.cell(70, 10, clean_text(text), align="C")
+        page_text = f"Seite {self.page_no()} von {{nb}}"
+        self.cell(0, 10, clean_text(page_text), align="R")
+
+def export_va_to_pdf(row):
+    pdf = CustomPDF()
+    pdf.alias_nb_pages()
+    pdf.va_name = f"VA {row.get('VA_Nr','')}"
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, clean_text(f"QM-Verfahrensanweisung - {row.get('VA_Nr','')}"), ln=True, align="C")
+    pdf.ln(5)
+
+    def add_section(title, content):
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 8, clean_text(title), ln=True)
+        pdf.set_font("Arial", "", 12)
+        pdf.multi_cell(0, 8, clean_text(content))
+        pdf.ln(3)
+
+    for feld in QM_COLUMNS[1:]:
+        add_section(feld, row.get(feld, ""))
+
+    buffer = io.BytesIO()
+    pdf.output(buffer)
+    return buffer.getvalue()
+
+# --------------------------
 # Session-Status initialisieren
 # --------------------------
 if "logged_in" not in st.session_state:
@@ -236,74 +304,4 @@ with tab2:
             st.success(f"Bestätigung für {va_nr_speichern} gespeichert.")
         else:
             st.error("Bitte Name und VA auswählen.")
-
-# --------------------------
-# Datenkonfiguration
-# --------------------------
-DATA_FILE_QM = "qm_verfahrensanweisungen.csv"
-DATA_FILE_KENNTNIS = "kenntnisnahmen.csv"
-QM_COLUMNS = [
-    "VA_Nr", "Titel", "Kapitel", "Unterkapitel", "Revisionsstand",
-    "Ziel", "Geltungsbereich", "Vorgehensweise", "Kommentar", "Mitgeltende Unterlagen"
-]
-
-# --------------------------
-# PDF-Hilfsfunktionen
-# --------------------------
-def clean_text(text):
-    if text is None or str(text).strip() == "":
-        return "-"
-    return (
-        str(text)
-        .encode("latin-1", errors="ignore")
-        .decode("latin-1")
-        .replace("–", "-")
-        .replace("•", "*")
-        .replace("“", '"')
-        .replace("”", '"')
-        .replace("’", "'")
-        .replace("€", "EUR")
-        .replace("ä", "ae")
-        .replace("ö", "oe")
-        .replace("ü", "ue")
-        .replace("ß", "ss")
-    )
-
-class CustomPDF(FPDF):
-    def footer(self):
-        self.set_y(-15)
-        self.set_font("Arial", "I", 10)
-        va_name = getattr(self, "va_name", "")
-        self.cell(60, 10, clean_text(va_name), align="L")
-        text = f"Erstellt von Peters, Michael - Qualitaetsbeauftragter am {dt.date.today().strftime('%d.%m.%Y')}"
-        self.cell(70, 10, clean_text(text), align="C")
-        page_text = f"Seite {self.page_no()} von {{nb}}"
-        self.cell(0, 10, clean_text(page_text), align="R")
-
-def export_va_to_pdf(row):
-    pdf = CustomPDF()
-    pdf.alias_nb_pages()
-    pdf.va_name = f"VA {row.get('VA_Nr','')}"
-    pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
-
-    pdf.set_font("Arial", "B", 16)
-    pdf.cell(0, 10, clean_text(f"QM-Verfahrensanweisung - {row.get('VA_Nr','')}"), ln=True, align="C")
-    pdf.ln(5)
-
-    def add_section(title, content):
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, clean_text(title), ln=True)
-        pdf.set_font("Arial", "", 12)
-        pdf.multi_cell(0, 8, clean_text(content))
-        pdf.ln(3)
-
-    for feld in QM_COLUMNS[1:]:
-        add_section(feld, row.get(feld, ""))
-
-    buffer = io.BytesIO()
-    pdf.output(buffer)
-    return buffer.getvalue()
-
-
 
