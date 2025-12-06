@@ -345,5 +345,91 @@ if st.session_state.logged_in:
         )
     except:
         st.info("Noch keine Kenntnisnahmen vorhanden oder Datei nicht lesbar.")
+# -----------------------------------
+# Mitarbeiterliste anzeigen
+# -----------------------------------
+if st.session_state.logged_in:
+    st.markdown("## Mitarbeiterliste")
+    try:
+        df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig", dtype=str)
+        st.dataframe(df_mitarbeiter, use_container_width=True)
+    except:
+        st.info("Noch keine Mitarbeiterliste vorhanden oder Datei nicht lesbar.")
+# -----------------------------------
+# Auswertung Lesebestätigungen pro VA
+# -----------------------------------
+if st.session_state.logged_in:
+    st.markdown("## Auswertung Lesebestätigungen")
+
+    try:
+        df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig", dtype=str)
+        df_lese = pd.read_csv("kenntnisnahmen.csv", sep=";", encoding="utf-8-sig", dtype=str)
+
+        # Auswahl VA
+        va_list = sorted(df_mitarbeiter["VA_Nr"].dropna().astype(str).unique())
+        va_auswahl = st.selectbox("VA auswählen für Auswertung", options=va_list)
+
+        if va_auswahl:
+            # Alle Mitarbeiter für diese VA
+            df_m_va = df_mitarbeiter[df_mitarbeiter["VA_Nr"].astype(str) == va_auswahl]
+
+            # Alle Bestätigungen für diese VA
+            df_l_va = df_lese[df_lese["VA_Nr"].astype(str) == va_auswahl]
+
+            # Abgleich: wer fehlt?
+            gelesen = set(zip(df_l_va["Vorname"], df_l_va["Name"]))
+            alle = set(zip(df_m_va["Vorname"], df_m_va["Name"]))
+            fehlt = alle - gelesen
+
+            # Kennzahlen
+            total = len(alle)
+            done = len(gelesen)
+            percent = round((done / total) * 100, 1) if total > 0 else 0
+
+            st.info(f"VA {va_auswahl}: {done} von {total} Mitarbeitern haben bestätigt ({percent}%).")
+
+            # Tabellen
+            st.markdown("### Bestätigt")
+            st.dataframe(df_l_va[["Vorname", "Name", "Zeitpunkt"]], use_container_width=True)
+
+            st.markdown("### Noch offen")
+            if fehlt:
+                df_fehlt = pd.DataFrame(list(fehlt), columns=["Vorname", "Name"])
+                st.dataframe(df_fehlt, use_container_width=True)
+            else:
+                st.success("Alle Mitarbeiter haben bestätigt.")
+
+    except Exception as e:
+        st.error(f"Fehler bei der Auswertung: {e}")
+# -----------------------------------
+# Export Auswertung
+# -----------------------------------
+if st.session_state.logged_in:
+    st.markdown("## Auswertung exportieren")
+    try:
+        df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig", dtype=str)
+        df_lese = pd.read_csv("kenntnisnahmen.csv", sep=";", encoding="utf-8-sig", dtype=str)
+
+        df_summary = (
+            df_lese.groupby("VA_Nr")
+            .agg(Gelesen=("Name", "count"))
+            .reset_index()
+        )
+        df_summary["Gesamt"] = df_summary["VA_Nr"].map(
+            df_mitarbeiter.groupby("VA_Nr")["Name"].count()
+        )
+        df_summary["Prozent"] = (df_summary["Gelesen"] / df_summary["Gesamt"] * 100).round(1)
+
+        st.dataframe(df_summary, use_container_width=True)
+
+        st.download_button(
+            label="Auswertung als CSV herunterladen",
+            data=df_summary.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig"),
+            file_name=f"auswertung_{dt.date.today()}.csv",
+            mime="text/csv",
+            type="secondary"
+        )
+    except:
+        st.info("Noch keine Daten für Auswertung vorhanden.")
 
 
