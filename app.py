@@ -206,7 +206,7 @@ if st.session_state.logged_in:
             st.dataframe(df_filtered, use_container_width=True)
 
             csv_data = df_all.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
-                st.download_button(
+            st.download_button(
                 label="VA-Tabelle als CSV herunterladen",
                 data=csv_data,
                 file_name=f"qm_va_{dt.date.today()}.csv",
