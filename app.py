@@ -206,77 +206,77 @@ if st.session_state.logged_in:
             # --------------------------
             # PDF erzeugen
             # --------------------------
-            # --------------------------
-# PDF erzeugen
-# --------------------------
-st.markdown("### PDF erzeugen")
+            st.markdown("### PDF erzeugen")
+            if selected_va:
+                if st.button("PDF erzeugen für ausgewählte VA", type="primary"):
+                    df_sel = df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va]
+                    if not df_sel.empty:
+                        pdf_bytes = export_va_to_pdf(df_sel.iloc[0].to_dict())
+                        st.download_button(
+                            label="VA-PDF herunterladen",
+                            data=pdf_bytes,                            mime="application/pdf",
+                            type="primary"
+                        )
+                    else:
+                        st.error("Keine Daten für die ausgewählte VA gefunden.")
+            else:
+                st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
 
-if "selected_va" in locals() and selected_va:
-    if st.button("PDF erzeugen für ausgewählte VA", type="primary"):
-        df_sel = df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va]
-        if not df_sel.empty:
-            pdf_bytes = export_va_to_pdf(df_sel.iloc[0].to_dict())
-            st.download_button(
-                label="VA-PDF herunterladen",
-                data=pdf_bytes,
-                file_name=f"{selected_va}.pdf",
-                mime="application/pdf",
-                type="primary"
+    # --------------------------
+    # Tab 2: Lesebestätigung
+    # --------------------------
+    with tab2:
+        st.markdown("## Lesebestätigung")
+        st.markdown("Bitte bestätigen Sie, dass Sie die ausgewählte VA gelesen haben.")
+
+        name_raw = st.text_input("Name (Nachname,Vorname)", key="lese_name")
+
+        try:
+            df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
+            va_list = sorted(
+                df_va["VA_Nr"].dropna().astype(str)
+                .str.replace("VA", "", regex=False)
+                .str.strip()
             )
-        else:
-            st.error("Keine Daten für die ausgewählte VA gefunden.")
-else:
-    st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
-# --------------------------
-# Tab 2: Lesebestätigung
-# --------------------------
-with tab2:
-    st.markdown("## Lesebestätigung")
-    st.markdown("Bitte bestätigen Sie, dass Sie die ausgewählte VA gelesen haben.")
+            va_nummer = st.selectbox("VA auswählen", options=va_list, key="lese_va")
+        except Exception:
+            va_nummer = None
+            st.warning("VA-Datei konnte nicht geladen werden.")
 
-    name_raw = st.text_input("Name (Nachname,Vorname)", key="lese_name")
-    try:
-        df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
-        va_list = sorted(
-            df_va["VA_Nr"].dropna().astype(str)
-            .str.replace("VA", "", regex=False)
-            .str.strip()
-        )
-        va_nummer = st.selectbox("VA auswählen", options=va_list, key="lese_va")
-    except Exception:
-        va_nummer = None
-        st.warning("VA-Datei konnte nicht geladen werden.")
+        if st.button("Bestätigen & CSV herunterladen", key="lese_button"):
+            name_kombi = re.sub(r"\s*,\s*", ",", name_raw.strip())
+            if name_kombi and va_nummer:
+                zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
+                va_nr_speichern = f"VA{va_nummer}"
 
-    if st.button("Bestätigen & CSV herunterladen", key="lese_button"):
-        name_kombi = re.sub(r"\s*,\s*", ",", name_raw.strip())
-        if name_kombi and va_nummer:
-            zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
-            va_nr_speichern = f"VA{va_nummer}"
-            eintrag = {"Name": name_kombi, "VA_Nr": va_nr_speichern, "Zeitpunkt": zeitpunkt}
-            df_kenntnis = pd.DataFrame([eintrag])[["Name", "VA_Nr", "Zeitpunkt"]]
+                eintrag = {"Name": name_kombi, "VA_Nr": va_nr_speichern, "Zeitpunkt": zeitpunkt}
+                df_kenntnis = pd.DataFrame([eintrag])[["Name", "VA_Nr", "Zeitpunkt"]]
 
-            # Speichern (append-only)
-            file_exists = os.path.exists(DATA_FILE_KENNTNIS)
-            file_empty = (not file_exists) or (os.path.getsize(DATA_FILE_KENNTNIS) == 0)
-            df_kenntnis.to_csv(
-                DATA_FILE_KENNTNIS,
-                sep=";",
-                index=False,
-                mode="a" if file_exists and not file_empty else "w",
-                header=True if file_empty else False,
-                encoding="utf-8-sig"
-            )
+                # Append-only Speicherung
+                file_exists = os.path.exists(DATA_FILE_KENNTNIS)
+                file_empty = (not file_exists) or (os.path.getsize(DATA_FILE_KENNTNIS) == 0)
 
-            # Sofortiger Download
-            csv_bytes = df_kenntnis.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
-            st.download_button(
-                label="Diese Lesebestätigung als CSV herunterladen",
-                data=csv_bytes,
-                file_name=f"lesebestaetigung_{va_nr_speichern}_{dt.date.today()}.csv",
-                mime="text/csv",
-                type="primary"
-            )
+                df_kenntnis.to_csv(
+                    DATA_FILE_KENNTNIS,
+                    sep=";",
+                    index=False,
+                    mode="a" if file_exists and not file_empty else "w",
+                    header=True if file_empty else False,
+                    encoding="utf-8-sig"
+                )
 
-            st.success(f"Bestätigung für {va_nr_speichern} gespeichert.")
-        else:
-            st.error("Bitte Name und VA auswählen.")
+                # Sofortiger Download
+                csv_bytes = df_kenntnis.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+                st.download_button(
+                    label="Diese Lesebestätigung als CSV herunterladen",
+                    data=csv_bytes,
+                    file_name=f"lesebestaetigung_{va_nr_speichern}_{dt.date.today()}.csv",
+                    mime="text/csv",
+                    type="primary"
+                )
+
+                st.success(f"Bestätigung für {va_nr_speichern} gespeichert.")
+            else:
+                st.error("Bitte Name und VA auswählen.")
+
+
