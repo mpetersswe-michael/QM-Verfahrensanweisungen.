@@ -191,26 +191,25 @@ if st.session_state.logged_in:
                 type="primary"
             )
 
-            st.markdown("### PDF erzeugen")
-            if selected_va:
-                if st.button("PDF erzeugen für ausgewählte VA", type="primary"):
-                df_sel = df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va]
-            if not df_sel.empty:
-                pdf_bytes = export_va_to_pdf(df_sel.iloc[0].to_dict())
-                st.download_button(
+           st.markdown("### PDF erzeugen")
+if selected_va:
+    if st.button("PDF erzeugen für ausgewählte VA", type="primary"):
+        df_sel = df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va]
+        if not df_sel.empty:
+            pdf_bytes = export_va_to_pdf(df_sel.iloc[0].to_dict())
+            st.download_button(
                 label="VA-PDF herunterladen",
                 data=pdf_bytes,
                 file_name=f"{selected_va}.pdf",
                 mime="application/pdf",
                 type="primary"
             )
-            else:
-            st.error("Keine Daten für die ausgewählte VA gefunden.")
         else:
-            st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
+            st.error("Keine Daten für die ausgewählte VA gefunden.")
+else:
+    st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
 
 
-   
     # --------------------------
     # Tab 2: Lesebestätigung
     # --------------------------
