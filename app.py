@@ -357,70 +357,81 @@ if st.session_state.logged_in:
     except:
         st.info("Noch keine Mitarbeiterliste vorhanden oder Datei nicht lesbar.")
 
+from zoneinfo import ZoneInfo  # für lokale Zeit
+
 # -----------------------------------
-# Auswertung Lesebestätigungen pro VA
+# Lesebestätigung durch Mitarbeiter
 # -----------------------------------
 if st.session_state.logged_in:
-    st.markdown("## Auswertung Lesebestätigungen")
+    st.markdown("## Lesebestätigung")
+    st.markdown("Bitte bestätigen Sie, dass Sie die ausgewählte VA gelesen haben.")
+
+    vorname = st.text_input("Vorname")
+    name = st.text_input("Name")
 
     try:
-        df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig", dtype=str)
-        df_lese = pd.read_csv("kenntnisnahmen.csv", sep=";", encoding="utf-8-sig", dtype=str)
+        df_va = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig")
+        va_list = sorted(df_va["VA_Nr"].dropna().astype(str).unique())
+        va_auswahl = st.selectbox("VA auswählen", options=va_list)
+    except:
+        va_auswahl = None
+        st.info("VA-Datei konnte nicht geladen werden oder enthält keine gültigen Einträge.")
 
-        va_list = sorted(df_mitarbeiter["VA_Nr"].dropna().astype(str).unique())
-        va_auswahl = st.selectbox("VA auswählen für Auswertung", options=va_list)
+    # CSS für grünen Button
+    st.markdown(
+        """
+        <style>
+        div.stButton > button:first-child {
+            background-color: #4CAF50;
+            color: white;
+        }
+        div.stButton > button:first-child:hover {
+            background-color: #45a049;
+            color: white;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
-        if va_auswahl:
-            df_m_va = df_mitarbeiter[df_mitarbeiter["VA_Nr"].astype(str) == va_auswahl]
-            df_l_va = df_lese[df_lese["VA_Nr"].astype(str) == va_auswahl]
+    if st.button("Lesebestätigung"):
+        if vorname.strip() and name.strip() and va_auswahl:
+            zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
 
-            gelesen = set(zip(df_l_va["Vorname"].str.strip(), df_l_va["Name"].str.strip()))
-            alle = set(zip(df_m_va["Vorname"].str.strip(), df_m_va["Name"].str.strip()))
-            fehlt = alle - gelesen
+            eintrag = {
+                "Vorname": vorname.strip(),
+                "Name": name.strip(),
+                "VA_Nr": va_auswahl,
+                "Zeitpunkt": zeitpunkt
+            }
+            df_kenntnis = pd.DataFrame([eintrag], columns=["Vorname", "Name", "VA_Nr", "Zeitpunkt"])
 
-            total = len(alle)
-            done = len(gelesen)
-            percent = round((done / total) * 100, 1) if total > 0 else 0
-
-            st.info(f"VA {va_auswahl}: {done} von {total} Mitarbeitenden haben bestätigt ({percent} %).")
-
-            st.markdown("### Bestätigt")
-            st.dataframe(df_l_va[["Vorname", "Name", "Zeitpunkt"]], use_container_width=True)
-
-            st.markdown("### Noch offen")
-            if fehlt:
-                df_fehlt = pd.DataFrame(list(fehlt), columns=["Vorname", "Name"])
-                st.dataframe(df_fehlt, use_container_width=True)
+            if os.path.exists("kenntnisnahmen.csv") and os.path.getsize("kenntnisnahmen.csv") > 0:
+                df_kenntnis.to_csv("kenntnisnahmen.csv", sep=";", index=False,
+                                   mode="a", header=False, encoding="utf-8-sig")
             else:
-                st.success("Alle Mitarbeitenden haben bestätigt.")
-    except Exception as e:
-        st.error(f"Fehler bei der Auswertung: {e}")
+                df_kenntnis.to_csv("kenntnisnahmen.csv", sep=";", index=False,
+                                   header=True, encoding="utf-8-sig")
+
+            st.success(f"Lesebestätigung für VA {va_auswahl} gespeichert.")
+        else:
+            st.error("Bitte Vorname, Name und VA auswählen.")
+
 # -----------------------------------
-# Export Auswertung
+# Lesebestätigungen anzeigen und exportieren
 # -----------------------------------
 if st.session_state.logged_in:
-    st.markdown("## Auswertung exportieren")
+    st.markdown("## Lesebestätigungen anzeigen")
     try:
-        df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig", dtype=str)
-        df_lese = pd.read_csv("kenntnisnahmen.csv", sep=";", encoding="utf-8-sig", dtype=str)
-
-        df_gelesen = df_lese.groupby("VA_Nr").agg(Gelesen=("Name", "count")).reset_index()
-        df_gesamt = df_mitarbeiter.groupby("VA_Nr").agg(Gesamt=("Name", "count")).reset_index()
-
-        df_summary = pd.merge(df_gesamt, df_gelesen, on="VA_Nr", how="left").fillna(0)
-        df_summary["Gelesen"] = df_summary["Gelesen"].astype(int)
-        df_summary["Prozent"] = (df_summary["Gelesen"] / df_summary["Gesamt"] * 100).round(1)
-
-        st.dataframe(df_summary[["VA_Nr", "Gelesen", "Gesamt", "Prozent"]], use_container_width=True)
-
+        df_k = pd.read_csv("kenntnisnahmen.csv", sep=";", encoding="utf-8-sig", dtype=str)
+        st.dataframe(df_k[["Vorname", "Name", "VA_Nr", "Zeitpunkt"]], use_container_width=True)
         st.download_button(
-            label="Auswertung als CSV herunterladen",
-            data=df_summary.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig"),
-            file_name=f"auswertung_{dt.date.today()}.csv",
+            label="Lesebestätigungen als CSV herunterladen",
+            data=df_k.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig"),
+            file_name=f"lesebestaetigungen_{dt.date.today()}.csv",
             mime="text/csv",
             type="secondary"
         )
     except:
-        st.info("Noch keine Daten für Auswertung vorhanden.")
-
+        st.info("Noch keine Lesebestätigungen vorhanden oder Datei nicht lesbar.")
 
