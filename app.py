@@ -219,12 +219,10 @@ if st.session_state.logged_in:
         df_filtered = df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va] if selected_va else df_all
         st.dataframe(df_filtered, use_container_width=True)
 
-        # CSV-Download (immer gesamte Tabelle)
-        csv_data = df_all.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
-                # CSV-Download (immer gesamte Tabelle)
+               # CSV-Download (immer gesamte Tabelle)
         csv_data = df_all.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
         st.download_button(
-            label="CSV herunterladen",
+            label="VA-CSV herunterladen",  # eindeutiger Label
             data=csv_data,
             file_name=f"qm_va_{dt.date.today()}.csv",
             mime="text/csv",
@@ -239,7 +237,7 @@ if st.session_state.logged_in:
                 if not df_sel.empty:
                     pdf_bytes = export_va_to_pdf(df_sel.iloc[0].to_dict())
                     st.download_button(
-                        label="Download PDF",
+                        label="VA-PDF herunterladen",  # eindeutiger Label
                         data=pdf_bytes,
                         file_name=f"{selected_va}.pdf",
                         mime="application/pdf",
@@ -260,6 +258,7 @@ if st.session_state.logged_in:
         st.dataframe(df_mitarbeiter[["Vorname", "Name", "VA_Nr"]], use_container_width=True)
     except:
         st.info("Noch keine Mitarbeiterliste vorhanden oder Datei nicht lesbar.")
+
 # -----------------------------------
 # Auswertung Lesebestätigungen pro VA mit Fortschrittsbalken
 # -----------------------------------
@@ -274,13 +273,9 @@ if st.session_state.logged_in:
         va_auswahl = st.selectbox("VA auswählen für Auswertung", options=va_list)
 
         if va_auswahl:
-            # Alle Mitarbeiter für diese VA
             df_m_va = df_mitarbeiter[df_mitarbeiter["VA_Nr"].astype(str) == va_auswahl]
-
-            # Alle Bestätigungen für diese VA
             df_l_va = df_lese[df_lese["VA_Nr"].astype(str) == va_auswahl]
 
-            # Abgleich: wer fehlt?
             gelesen = set(zip(df_l_va["Vorname"].str.strip(), df_l_va["Name"].str.strip()))
             alle = set(zip(df_m_va["Vorname"].str.strip(), df_m_va["Name"].str.strip()))
             fehlt = alle - gelesen
@@ -290,11 +285,8 @@ if st.session_state.logged_in:
             percent = round((done / total) * 100, 1) if total > 0 else 0
 
             st.info(f"VA {va_auswahl}: {done} von {total} Mitarbeitenden haben bestätigt ({percent} %).")
-
-            # Fortschrittsbalken
             st.progress(percent / 100)
 
-            # Tabellen
             st.markdown("### Bestätigt")
             if not df_l_va.empty:
                 st.dataframe(df_l_va[["Vorname", "Name", "Zeitpunkt"]], use_container_width=True)
@@ -320,7 +312,6 @@ if st.session_state.logged_in:
         df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig", dtype=str)
         df_lese = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
 
-        # Alle VA_Nr aus Mitarbeiterliste
         va_list = sorted(df_mitarbeiter["VA_Nr"].dropna().astype(str).unique())
 
         summary_data = []
@@ -338,18 +329,14 @@ if st.session_state.logged_in:
             summary_data.append({"VA_Nr": va, "Gesamt": total, "Gelesen": done, "Prozent": percent})
 
         df_summary = pd.DataFrame(summary_data)
-
-        # Übersichtstabelle
         st.dataframe(df_summary, use_container_width=True)
 
-        # Fortschrittsbalken pro VA
         for _, row in df_summary.iterrows():
             st.markdown(f"**VA {row['VA_Nr']}** – {row['Gelesen']} von {row['Gesamt']} ({row['Prozent']} %)")
             st.progress(row["Prozent"] / 100)
 
-        # Export
         st.download_button(
-            label="Gesamtübersicht als CSV herunterladen",
+            label="Gesamtübersicht als CSV herunterladen",  # eindeutiger Label
             data=df_summary.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig"),
             file_name=f"gesamtuebersicht_{dt.date.today()}.csv",
             mime="text/csv",
@@ -358,4 +345,3 @@ if st.session_state.logged_in:
 
     except Exception as e:
         st.error(f"Fehler bei der Gesamtübersicht: {e}")
-
