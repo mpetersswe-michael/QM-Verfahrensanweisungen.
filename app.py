@@ -264,6 +264,10 @@ else:
     st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
 
 
+ # --------------------------
+    # Tab 1: VA-Eingabe, Anzeige, PDF
+    # --------------------------
+
  with tab2:
     st.markdown("## Lesebestätigung")
     st.markdown("Bitte bestätigen Sie, dass Sie die ausgewählte VA gelesen haben.")
