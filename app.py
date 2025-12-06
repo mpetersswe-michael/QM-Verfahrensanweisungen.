@@ -7,41 +7,28 @@ from fpdf import FPDF
 from zoneinfo import ZoneInfo
 import re
 
+import streamlit as st
+import pandas as pd
+import datetime as dt
+import io
+import os
+from fpdf import FPDF
+from zoneinfo import ZoneInfo
+import re
+
+st.set_page_config(page_title="Verfahrensanweisungen (Auszug aus dem QMH)")
+
 # --------------------------
 # Session-Status für Login
 # --------------------------
-    if st.session_state.logged_in:
-        st.sidebar.success("Eingeloggt")
-    
-    # Logout-Button mit eindeutiger Key-ID
-    if st.sidebar.button("Logout", key="sidebar_logout"):
-        
-        st.session_state.logged_in = False
-        st.sidebar.info("Logout erfolgreich.")
-
-    # Aktuelles Dokument anzeigen (wenn vorhanden)
-    if "selected_va" in locals() and selected_va:
-        st.sidebar.markdown(f"**Aktuelles Dokument:** {selected_va}")
-
-        # Fortschrittsbalken – Beispielwert, kann dynamisch ersetzt werden
-        progress_value = 0.75  # z. B. 0.25 = Eingabe, 0.5 = gespeichert, 0.75 = PDF erzeugt
-        st.sidebar.progress(progress_value, text="Bearbeitungsfortschritt")
-
-
-# --------------------------
-# Konfiguration
-# --------------------------
-DATA_FILE_QM = "qm_verfahrensanweisungen.csv"
-DATA_FILE_KENNTNIS = "kenntnisnahmen.csv"
-QM_COLUMNS = [
-    "VA_Nr", "Titel", "Kapitel", "Unterkapitel", "Revisionsstand",
-    "Ziel", "Geltungsbereich", "Vorgehensweise", "Kommentar", "Mitgeltende Unterlagen"
-]
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if "selected_va" not in st.session_state:
+    st.session_state.selected_va = ""  # wird in Tab 1 gesetzt
 
 # --------------------------
 # App-Titel
 # --------------------------
-st.set_page_config(page_title="Verfahrensanweisungen (Auszug aus dem QMH)")
 st.markdown(
     "<h5 style='text-align:center; color:#444;'>Verfahrensanweisungen (Auszug aus dem QMH)</h5>",
     unsafe_allow_html=True
@@ -53,17 +40,31 @@ st.markdown(
 if not st.session_state.logged_in:
     st.markdown("## Login")
     password = st.text_input("Passwort", type="password")
-    if st.button("Login", type="primary"):
+    if st.button("Login", key="login_button", type="primary"):
         if password == "qm2025":
             st.session_state.logged_in = True
             st.success("Login erfolgreich!")
         else:
             st.error("Falsches Passwort.")
 else:
+    # --------------------------
+    # Sidebar: Logout, aktuelles Dokument, Fortschritt
+    # --------------------------
     st.sidebar.success("Eingeloggt")
-    if st.sidebar.button("Logout", type="secondary"):
+
+    if st.sidebar.button("Logout", key="sidebar_logout"):
         st.session_state.logged_in = False
         st.sidebar.info("Logout erfolgreich.")
+
+    # Aktuelles Dokument anzeigen (wenn vorhanden)
+    if st.session_state.selected_va:
+        st.sidebar.markdown(f"**Aktuelles Dokument:** {st.session_state.selected_va}")
+
+        # Fortschrittsbalken – Beispielwert; passe nach Bedarf an
+        progress_value = 0.75
+        st.sidebar.progress(progress_value, text="Bearbeitungsfortschritt")
+
+    # Ab hier: Tabs und Hauptinhalte ...
 
 # --------------------------
 # PDF-Hilfsfunktionen
