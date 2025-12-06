@@ -228,8 +228,6 @@ if st.session_state.logged_in:
     except:
         st.sidebar.info("Noch keine VA-Datei vorhanden.")
 
-import re
-
 # --------------------------
 # Lesebestätigung (nur Name, VA_Nr, Zeitpunkt) mit Append-only
 # --------------------------
