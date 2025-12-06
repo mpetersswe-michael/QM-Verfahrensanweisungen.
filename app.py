@@ -7,19 +7,8 @@ from fpdf import FPDF
 from zoneinfo import ZoneInfo
 import re
 
-import streamlit as st
-import pandas as pd
-import datetime as dt
-import io
-import os
-from fpdf import FPDF
-from zoneinfo import ZoneInfo
-import re
-
-st.set_page_config(page_title="Verfahrensanweisungen (Auszug aus dem QMH)")
-
 # --------------------------
-# Session-Status für Login
+# Session-Status
 # --------------------------
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
@@ -61,6 +50,16 @@ if st.session_state.logged_in:
     if st.session_state.selected_va:
         st.sidebar.markdown(f"**Aktuelles Dokument:** {st.session_state.selected_va}")
         st.sidebar.progress(0.75, text="Bearbeitungsfortschritt")
+
+# --------------------------
+# Datenkonfiguration
+# --------------------------
+DATA_FILE_QM = "qm_verfahrensanweisungen.csv"
+DATA_FILE_KENNTNIS = "kenntnisnahmen.csv"
+QM_COLUMNS = [
+    "VA_Nr", "Titel", "Kapitel", "Unterkapitel", "Revisionsstand",
+    "Ziel", "Geltungsbereich", "Vorgehensweise", "Kommentar", "Mitgeltende Unterlagen"
+]
 
 # --------------------------
 # PDF-Hilfsfunktionen
@@ -121,13 +120,13 @@ def export_va_to_pdf(row):
     return buffer.getvalue()
 
 # --------------------------
-# Hauptbereich mit Tabs
+# Tabs bei Login
 # --------------------------
 if st.session_state.logged_in:
     tab1, tab2 = st.tabs(["Verfahrensanweisungen", "Lesebestätigung"])
 
     # --------------------------
-    # Tab 1: VA-Eingabe, Anzeige, Export
+    # Tab 1: VA-Eingabe, Anzeige, PDF
     # --------------------------
     with tab1:
         st.markdown("## Neue Verfahrensanweisung eingeben")
@@ -183,9 +182,7 @@ if st.session_state.logged_in:
                 df_neu.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
                 st.success(f"VA {va_nr} gespeichert (neue Datei erstellt, Append-only).")
 
-        # --------------------------
         # Anzeige und Export
-        # --------------------------
         st.markdown("## Verfahrensanweisungen anzeigen und exportieren")
         try:
             df_all = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
@@ -199,15 +196,17 @@ if st.session_state.logged_in:
             selected_va_display = st.selectbox(
                 "VA auswählen für Anzeige und PDF-Erzeugung",
                 options=[""] + sorted(df_all["VA_Anzeige"].dropna().unique()),
-                index=0
+                index=0,
+                key="va_select_display"
             )
             selected_va = selected_va_display.split(" – ")[0] if selected_va_display else ""
+            st.session_state.selected_va = selected_va  # ← für Sidebar
 
             df_filtered = df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va] if selected_va else df_all
             st.dataframe(df_filtered, use_container_width=True)
 
             csv_data = df_all.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
-            st.download_button(
+                        st.download_button(
                 label="VA-Tabelle als CSV herunterladen",
                 data=csv_data,
                 file_name=f"qm_va_{dt.date.today()}.csv",
@@ -226,7 +225,9 @@ if st.session_state.logged_in:
                         pdf_bytes = export_va_to_pdf(df_sel.iloc[0].to_dict())
                         st.download_button(
                             label="VA-PDF herunterladen",
-                            data=pdf_bytes,                            mime="application/pdf",
+                            data=pdf_bytes,
+                            file_name=f"{selected_va}_{dt.date.today()}.pdf",
+                            mime="application/pdf",
                             type="primary"
                         )
                     else:
@@ -290,5 +291,7 @@ if st.session_state.logged_in:
                 st.success(f"Bestätigung für {va_nr_speichern} gespeichert.")
             else:
                 st.error("Bitte Name und VA auswählen.")
+
+
 
 
