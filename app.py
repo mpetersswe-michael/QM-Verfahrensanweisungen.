@@ -221,8 +221,8 @@ if st.session_state.logged_in:
                         )
                     else:
                         st.error("Keine Daten für die ausgewählte VA gefunden.")
-            else:
-            st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
+                    else:
+                        st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
 
     # --------------------------
     # Tab 2: Lesebestätigung
