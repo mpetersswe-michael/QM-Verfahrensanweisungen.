@@ -221,6 +221,8 @@ if st.session_state.logged_in:
 
         # CSV-Download (immer gesamte Tabelle)
         csv_data = df_all.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+                # CSV-Download (immer gesamte Tabelle)
+        csv_data = df_all.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
         st.download_button(
             label="CSV herunterladen",
             data=csv_data,
