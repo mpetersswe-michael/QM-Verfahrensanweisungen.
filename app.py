@@ -231,7 +231,7 @@ if st.session_state.logged_in:
     st.markdown("## Lesebestätigung")
     st.markdown("Bitte bestätigen Sie, dass Sie die ausgewählte VA gelesen haben.")
 
-    # Eingabefeld für vollständigen Namen im Format "Peters,Michael"
+    # Eingabefeld für kombinierten Namen im Format "Nachname,Vorname"
     name_kombi = st.text_input("Name (Nachname,Vorname)", key="lese_name")
 
     # VA-Auswahl
