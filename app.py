@@ -19,8 +19,8 @@ if "logged_in" not in st.session_state:
 if st.session_state.logged_in:
     st.sidebar.success("Eingeloggt")
 
-    # Logout-Button
-    if st.sidebar.button("Logout", type="secondary"):
+    # Logout-Button mit eindeutiger Key-ID
+    if st.sidebar.button("Logout", key="sidebar_logout"):
         st.session_state.logged_in = False
         st.sidebar.info("Logout erfolgreich.")
 
@@ -31,7 +31,6 @@ if st.session_state.logged_in:
         # Fortschrittsbalken – Beispielwert, kann dynamisch ersetzt werden
         progress_value = 0.75  # z. B. 0.25 = Eingabe, 0.5 = gespeichert, 0.75 = PDF erzeugt
         st.sidebar.progress(progress_value, text="Bearbeitungsfortschritt")
-
 
 
 # --------------------------
