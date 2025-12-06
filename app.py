@@ -308,22 +308,60 @@ if st.session_state.logged_in:
             st.error("Bitte Vorname, Name und VA auswählen.")
 
 # -----------------------------------
-# Lesebestätigungen anzeigen und exportieren
+# Verfahrensanweisungen anzeigen und exportieren
 # -----------------------------------
 if st.session_state.logged_in:
-    st.markdown("## Lesebestätigungen anzeigen")
+    st.markdown("## Verfahrensanweisungen anzeigen und exportieren")
     try:
-        df_k = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
-        st.dataframe(df_k[["Vorname", "Name", "VA_Nr", "Zeitpunkt"]], use_container_width=True)
-        st.download_button(
-            label="Lesebestätigungen als CSV herunterladen",
-            data=df_k.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig"),
-            file_name=f"lesebestaetigungen_{dt.date.today()}.csv",
-            mime="text/csv",
-            type="secondary"
+        df_all = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
+    except Exception:
+        df_all = pd.DataFrame(columns=QM_COLUMNS)
+
+    if df_all.empty:
+        st.info("Noch keine Verfahrensanweisungen gespeichert.")
+    else:
+        # Anzeigeauswahl „VA-Nr – Titel“
+        df_all["VA_Anzeige"] = df_all["VA_Nr"].astype(str).str.strip() + " – " + df_all["Titel"].astype(str).str.strip()
+        selected_va_display = st.selectbox(
+            "VA auswählen zur Anzeige oder PDF-Erzeugung",
+            options=[""] + sorted(df_all["VA_Anzeige"].dropna().unique()),
+            index=0
         )
-    except:
-        st.info("Noch keine Lesebestätigungen vorhanden oder Datei nicht lesbar.")
+        selected_va = selected_va_display.split(" – ")[0] if selected_va_display else ""
+
+        # Tabelle (gefiltert oder komplett)
+        df_filtered = df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va] if selected_va else df_all
+        st.dataframe(df_filtered, use_container_width=True)
+
+        # CSV-Download (immer gesamte Tabelle)
+        csv_data = df_all.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+        st.download_button(
+            label="CSV herunterladen",
+            data=csv_data,
+            file_name=f"qm_va_{dt.date.today()}.csv",
+            mime="text/csv",
+            type="primary"
+        )
+
+        # PDF-Export nur für ausgewählte VA
+        st.markdown("### PDF erzeugen")
+        if selected_va:
+            if st.button("PDF erzeugen für ausgewählte VA", type="primary"):
+                df_sel = df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va]
+                if not df_sel.empty:
+                    pdf_bytes = export_va_to_pdf(df_sel.iloc[0].to_dict())
+                    st.download_button(
+                        label="Download PDF",
+                        data=pdf_bytes,
+                        file_name=f"{selected_va}.pdf",
+                        mime="application/pdf",
+                        type="primary"
+                    )
+                else:
+                    st.error("Keine Daten für die ausgewählte VA gefunden.")
+        else:
+            st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
+
 
 # -----------------------------------
 # Mitarbeiterliste anzeigen
