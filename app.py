@@ -6,6 +6,9 @@ import os
 from fpdf import FPDF
 from zoneinfo import ZoneInfo  # ab Python 3.9 verfügbar
 
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
 # -----------------------------------
 # Konfiguration
 # -----------------------------------
