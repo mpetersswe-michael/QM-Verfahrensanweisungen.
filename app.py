@@ -120,26 +120,73 @@ with tab0:
             st.sidebar.info("Logout erfolgreich.")
 
         # Sidebar: aktuelles Dokument + Fortschritt
-        if st.session_state.selected_va:
-            st.sidebar.markdown(f"**Aktuelles Dokument:** {st.session_state.selected_va}")
+if st.session_state.selected_va:
+    st.sidebar.markdown(f"**Aktuelles Dokument:** {st.session_state.selected_va}")
 
-            try:
-                df_kenntnis = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig")
-                df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig")
+    try:
+        # Kenntnisnahmen laden
+        df_kenntnis = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig")
 
-                # Einheitliches Format: Nachname,Vorname
-                df_kenntnis["Name"] = df_kenntnis["Name"].astype(str).str.strip()
-                df_mitarbeiter["Name"] = df_mitarbeiter["Name"].astype(str).str.strip()
+        # Mitarbeiter laden
+        df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig")
 
-                gelesen = df_kenntnis[df_kenntnis["VA_Nr"] == st.session_state.selected_va]["Name"].nunique()
-                gesamt = df_mitarbeiter["Name"].nunique()
-
-                fortschritt = gelesen / gesamt if gesamt > 0 else 0
-                st.sidebar.progress(fortschritt, text=f"{gelesen} von {gesamt} Mitarbeiter (gelesen)")
-            except Exception:
-                st.sidebar.warning("Fortschritt konnte nicht berechnet werden.")
+        # Namen vereinheitlichen
+        if "Name" in df_mitarbeiter.columns and "Vorname" in df_mitarbeiter.columns:
+            df_mitarbeiter["Name"] = (
+                df_mitarbeiter["Name"].astype(str).str.strip() + "," +
+                df_mitarbeiter["Vorname"].astype(str).str.strip()
+            )
+        elif "Name" in df_mitarbeiter.columns:
+            df_mitarbeiter["Name"] = df_mitarbeiter["Name"].astype(str).str.strip()
         else:
-            st.sidebar.info("Noch kein Dokument ausgewählt.")
+            st.sidebar.warning("Spalte 'Name' fehlt in mitarbeiter.csv.")
+            raise ValueError("Spalte 'Name' fehlt")
+
+        df_kenntnis["Name"] = df_kenntnis["Name"].astype(str).str.strip()
+
+        # VA-Format harmonisieren (z. B. 'VA 004' vs 'VA004')
+        def norm_va(x):
+            s = str(x).upper().replace(" ", "")
+            # optional: Nullstellen vereinheitlichen: VA004 statt VA4
+            m = s.replace("VA", "")
+            if m.isdigit():
+                s = f"VA{int(m):03d}"
+            return s
+
+        va_current = norm_va(st.session_state.selected_va)
+        if "VA_Nr" in df_kenntnis.columns:
+            df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
+        else:
+            st.sidebar.warning("Spalte 'VA_Nr' fehlt in kenntnisnahmen.csv.")
+            raise ValueError("Spalte 'VA_Nr' fehlt")
+
+        # Wenn mitarbeiter.csv eine VA-Zuordnung hat, Zielgruppe filtern
+        has_va_assign = ("VA" in df_mitarbeiter.columns) or ("VA_Nr" in df_mitarbeiter.columns)
+        if has_va_assign:
+            va_col = "VA" if "VA" in df_mitarbeiter.columns else "VA_Nr"
+            df_mitarbeiter["VA_norm"] = df_mitarbeiter[va_col].apply(norm_va)
+            zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == va_current]["Name"].dropna().unique()
+        else:
+            zielgruppe = df_mitarbeiter["Name"].dropna().unique()
+
+        gesamt = len(zielgruppe)
+
+        # Bestätigt: eindeutige Namen für aktuelle VA
+        gelesen = (
+            df_kenntnis[df_kenntnis["VA_Nr_norm"] == va_current]["Name"]
+            .dropna()
+            .unique()
+        )
+
+        # Schnittmenge (nur wer zur Zielgruppe gehört, zählt)
+        gelesen_count = len(set(gelesen) & set(zielgruppe))
+
+        fortschritt = (gelesen_count / gesamt) if gesamt > 0 else 0.0
+        st.sidebar.progress(fortschritt, text=f"{gelesen_count} von {gesamt} Mitarbeiter (gelesen)")
+    except Exception:
+        st.sidebar.warning("Fortschritt konnte nicht berechnet werden.")
+else:
+    st.sidebar.info("Noch kein Dokument ausgewählt.")
 
 
 
