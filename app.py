@@ -206,6 +206,27 @@ with tabs[2]:
         st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
 
 # --------------------------
+# Übersicht der bisherigen Bestätigungen
+# --------------------------
+st.markdown("---")
+st.markdown("### 📄 Bereits bestätigte Einträge")
+
+if os.path.exists("lesebestätigung.csv"):
+    try:
+        df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig")
+        df_kenntnis = df_kenntnis.sort_values("Zeitpunkt", ascending=False)
+        st.dataframe(df_kenntnis)
+    except Exception as e:
+        st.error(f"Fehler beim Laden der Lesebestätigungen: {e}")
+else:
+    st.info("Noch keine Lesebestätigungen vorhanden.")
+
+
+
+
+
+
+# --------------------------
 # Tab 3: Mitarbeiterliste + Lesebestätigungen
 # --------------------------
 with tabs[3]:
