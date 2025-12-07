@@ -70,13 +70,6 @@ def export_va_to_pdf(row):
     pdf.cell(0, 10, clean_text(f"QM-Verfahrensanweisung - {row.get('VA_Nr','')}"), ln=True, align="C")
     pdf.ln(5)
 
-    def norm_va(x):
-    s = str(x).upper().replace(" ", "")
-    m = s.replace("VA", "")
-    if m.isdigit():
-        s = f"VA{int(m):03d}"
-    return s
-
     def add_section(title, content):
         pdf.set_font("Arial", "B", 12)
         pdf.cell(0, 8, clean_text(title), ln=True)
@@ -225,6 +218,14 @@ with tabs[3]:
                 with open("lesebestätigung.csv", "w", encoding="utf-8-sig") as f:
                     f.write("Name;VA_Nr;Zeitpunkt\n")
                 st.success("✅ Alle Lesebestätigungen wurden zurückgesetzt.")
+
+def norm_va(x):
+    s = str(x).upper().replace(" ", "")
+    m = s.replace("VA", "")
+    if m.isdigit():
+        s = f"VA{int(m):03d}"
+    return s
+
 with st.sidebar:
     if st.session_state.get("logged_in", False):
         st.success("✅ Eingeloggt")
@@ -233,40 +234,81 @@ with st.sidebar:
         st.warning("Nicht eingeloggt")
 
     # --------------------------
+# --------------------------
 # Sidebar: VA-Status und Fortschritt
 # --------------------------
-if st.session_state.get("selected_va"):
-    va_current = norm_va(st.session_state.selected_va)
+def norm_va(x):
+    s = str(x).upper().replace(" ", "")
+    m = s.replace("VA", "")
+    if m.isdigit():
+        s = f"VA{int(m):03d}"
+    return s
 
-    # Titel anzeigen
-    try:
-        df_va = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig", dtype=str)
-        row = df_va[df_va["VA_Nr"].apply(norm_va) == va_current]
-        titel = row["Titel"].values[0] if not row.empty else ""
-        st.markdown(f"**Aktuelles Dokument:** {va_current} – {titel}")
-    except Exception:
-        st.markdown(f"**Aktuelles Dokument:** {va_current}")
+with st.sidebar:
+    # Login-Status
+    if st.session_state.get("logged_in", False):
+        st.success("✅ Eingeloggt")
+        st.button("Logout", on_click=lambda: st.session_state.update({"logged_in": False}))
+    else:
+        st.warning("Nicht eingeloggt")
 
-    # Fortschritt anzeigen
-    try:
-        df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig")
-        df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig")
+    # VA-Status und Fortschritt nur anzeigen, wenn VA ausgewählt
+    if st.session_state.get("selected_va"):
+        va_current = norm_va(st.session_state.selected_va)
 
-        # Name zusammenbauen
-        df_mitarbeiter["Name_full"] = df_mitarbeiter["Name"].str.strip() + "," + df_mitarbeiter["Vorname"].str.strip()
-        df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
-        zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == va_current]["Name_full"].dropna().unique()
+        # Titel anzeigen
+        try:
+            if os.path.exists("qm_verfahrensanweisungen.csv"):
+                df_va = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig", dtype=str)
+                row = df_va[df_va["VA_Nr"].apply(norm_va) == va_current]
+                titel = row["Titel"].values[0] if not row.empty else ""
+                st.markdown(f"**Aktuelles Dokument:** {va_current} – {titel}")
+            else:
+                st.markdown(f"**Aktuelles Dokument:** {va_current}")
+        except Exception as e:
+            st.markdown(f"**Aktuelles Dokument:** {va_current}")
+            st.sidebar.warning(f"Titel konnte nicht geladen werden: {e}")
 
-        df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
-        gelesen = df_kenntnis[df_kenntnis["VA_Nr_norm"] == va_current]["Name"].dropna().unique()
+        # Fortschritt anzeigen
+        try:
+            if not os.path.exists("lesebestätigung.csv") or not os.path.exists("mitarbeiter.csv"):
+                st.sidebar.info("Noch keine Daten vorhanden.")
+            else:
+                df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig")
+                df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig")
 
-        gelesen_count = len(set(gelesen) & set(zielgruppe))
-        gesamt = len(zielgruppe)
-        fortschritt = gelesen_count / gesamt if gesamt > 0 else 0.0
+                # Name zusammenbauen
+                if {"Name", "Vorname"}.issubset(df_mitarbeiter.columns):
+                    df_mitarbeiter["Name_full"] = df_mitarbeiter["Name"].str.strip() + "," + df_mitarbeiter["Vorname"].str.strip()
+                else:
+                    st.sidebar.warning("Spalten 'Name' und 'Vorname' fehlen in mitarbeiter.csv.")
+                    raise ValueError("Spalten fehlen")
 
-        st.progress(fortschritt, text=f"{gelesen_count} von {gesamt} Mitarbeiter (gelesen)")
-    except Exception as e:
-        st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
-else:
-    st.info("Noch kein Dokument ausgewählt.")
+                if "VA_Nr" in df_mitarbeiter.columns:
+                    df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
+                    zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == va_current]["Name_full"].dropna().unique()
+                else:
+                    zielgruppe = df_mitarbeiter["Name_full"].dropna().unique()
 
+                gesamt = len(zielgruppe)
+
+                if "VA_Nr" in df_kenntnis.columns:
+                    df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
+                    gelesen = df_kenntnis[df_kenntnis["VA_Nr_norm"] == va_current]["Name"].dropna().unique()
+                else:
+                    st.sidebar.warning("Spalte 'VA_Nr' fehlt in lesebestätigung.csv.")
+                    raise ValueError("Spalte 'VA_Nr' fehlt")
+
+                gelesen_count = len(set(gelesen) & set(zielgruppe))
+                fortschritt = gelesen_count / gesamt if gesamt > 0 else 0.0
+
+                st.progress(fortschritt, text=f"{gelesen_count} von {gesamt} Mitarbeiter (gelesen)")
+
+                # Debug-Ausgabe (optional, nur für dich beim Testen)
+                st.sidebar.write("Zielgruppe erkannt:", zielgruppe)
+                st.sidebar.write("Gelesen:", gelesen)
+
+        except Exception as e:
+            st.sidebar.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
+    else:
+        st.sidebar.info("Noch kein Dokument ausgewählt.")
