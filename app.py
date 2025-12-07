@@ -123,10 +123,17 @@ with tab0:
 if st.session_state.selected_va:
     st.sidebar.markdown(f"**Aktuelles Dokument:** {st.session_state.selected_va}")
 
-    try:
-        # Lesebestätigungen laden
-        df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig")
+   try:
+    # Lesebestätigungen laden
 
+    # Prüfen, ob mitarbeiter.csv existiert
+    if not os.path.exists("mitarbeiter.csv"):
+        st.sidebar.warning("Die Datei 'mitarbeiter.csv' fehlt. Bitte im App-Verzeichnis ablegen.")
+        raise FileNotFoundError("mitarbeiter.csv fehlt")
+
+    df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig")
+    df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig")
+    
         # Mitarbeiterliste laden
         df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig")
 
