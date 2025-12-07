@@ -233,9 +233,8 @@ with st.sidebar:
     else:
         st.warning("Nicht eingeloggt")
 
-    # --------------------------
 # --------------------------
-# Sidebar: VA-Status und Fortschritt
+# Sidebar: Login, VA-Status und Fortschritt
 # --------------------------
 def norm_va(x):
     s = str(x).upper().replace(" ", "")
@@ -248,11 +247,12 @@ with st.sidebar:
     # Login-Status
     if st.session_state.get("logged_in", False):
         st.success("✅ Eingeloggt")
-        st.button("Logout", on_click=lambda: st.session_state.update({"logged_in": False}))
+        if st.button("Logout", key="logout_sidebar"):
+            st.session_state.logged_in = False
     else:
         st.warning("Nicht eingeloggt")
 
-    # VA-Status und Fortschritt nur anzeigen, wenn VA ausgewählt
+    # VA-Status und Fortschritt
     if st.session_state.get("selected_va"):
         va_current = norm_va(st.session_state.selected_va)
 
@@ -267,12 +267,12 @@ with st.sidebar:
                 st.markdown(f"**Aktuelles Dokument:** {va_current}")
         except Exception as e:
             st.markdown(f"**Aktuelles Dokument:** {va_current}")
-            st.sidebar.warning(f"Titel konnte nicht geladen werden: {e}")
+            st.warning(f"Titel konnte nicht geladen werden: {e}")
 
         # Fortschritt anzeigen
         try:
             if not os.path.exists("lesebestätigung.csv") or not os.path.exists("mitarbeiter.csv"):
-                st.sidebar.info("Noch keine Daten vorhanden.")
+                st.info("Noch keine Daten vorhanden.")
             else:
                 df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig")
                 df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig")
@@ -281,9 +281,10 @@ with st.sidebar:
                 if {"Name", "Vorname"}.issubset(df_mitarbeiter.columns):
                     df_mitarbeiter["Name_full"] = df_mitarbeiter["Name"].str.strip() + "," + df_mitarbeiter["Vorname"].str.strip()
                 else:
-                    st.sidebar.warning("Spalten 'Name' und 'Vorname' fehlen in mitarbeiter.csv.")
+                    st.warning("Spalten 'Name' und 'Vorname' fehlen in mitarbeiter.csv.")
                     raise ValueError("Spalten fehlen")
 
+                # Zielgruppe filtern
                 if "VA_Nr" in df_mitarbeiter.columns:
                     df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
                     zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == va_current]["Name_full"].dropna().unique()
@@ -292,11 +293,12 @@ with st.sidebar:
 
                 gesamt = len(zielgruppe)
 
+                # Gelesene Einträge
                 if "VA_Nr" in df_kenntnis.columns:
                     df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
                     gelesen = df_kenntnis[df_kenntnis["VA_Nr_norm"] == va_current]["Name"].dropna().unique()
                 else:
-                    st.sidebar.warning("Spalte 'VA_Nr' fehlt in lesebestätigung.csv.")
+                    st.warning("Spalte 'VA_Nr' fehlt in lesebestätigung.csv.")
                     raise ValueError("Spalte 'VA_Nr' fehlt")
 
                 gelesen_count = len(set(gelesen) & set(zielgruppe))
@@ -304,11 +306,12 @@ with st.sidebar:
 
                 st.progress(fortschritt, text=f"{gelesen_count} von {gesamt} Mitarbeiter (gelesen)")
 
-                # Debug-Ausgabe (optional, nur für dich beim Testen)
-                st.sidebar.write("Zielgruppe erkannt:", zielgruppe)
-                st.sidebar.write("Gelesen:", gelesen)
+                # Optional: Debug-Ausgabe
+                if st.checkbox("Debug anzeigen"):
+                    st.write("Zielgruppe erkannt:", zielgruppe)
+                    st.write("Gelesen:", gelesen)
 
         except Exception as e:
-            st.sidebar.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
+            st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
     else:
-        st.sidebar.info("Noch kein Dokument ausgewählt.")
+        st.info("Noch kein Dokument ausgewählt.")
