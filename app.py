@@ -267,7 +267,7 @@ with tabs[3]:
 
 
 # --------------------------
-# Sidebar: Login, VA-Status und Fortschritt (einmalig)
+# Sidebar: Login, VA-Status, Fortschritt und Lesebestätigung
 # --------------------------
 with st.sidebar:
     # Login-Status
@@ -278,19 +278,14 @@ with st.sidebar:
     else:
         st.warning("Nicht eingeloggt")
 
-    # VA-Status und Fortschritt
+    # VA-Status, Fortschritt und Lesebestätigung
     if st.session_state.get("selected_va"):
         va_current = norm_va(st.session_state.selected_va)
 
         # Titel anzeigen
         try:
             if os.path.exists("qm_verfahrensanweisungen.csv"):
-                df_va_side = pd.read_csv(
-                    "qm_verfahrensanweisungen.csv",
-                    sep=";",
-                    encoding="utf-8-sig",
-                    dtype=str
-                )
+                df_va_side = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig", dtype=str)
                 row = df_va_side[df_va_side["VA_Nr"].apply(norm_va) == va_current]
                 titel = row["Titel"].values[0] if not row.empty else ""
             else:
@@ -320,7 +315,6 @@ with st.sidebar:
                 df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig")
                 df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig")
 
-                # Name zusammenbauen
                 if {"Name", "Vorname"}.issubset(df_mitarbeiter.columns):
                     df_mitarbeiter["Name_full"] = (
                         df_mitarbeiter["Name"].str.strip() + "," + df_mitarbeiter["Vorname"].str.strip()
@@ -329,7 +323,6 @@ with st.sidebar:
                     st.warning("Spalten 'Name' und 'Vorname' fehlen in mitarbeiter.csv.")
                     raise ValueError("Spalten fehlen")
 
-                # Zielgruppe filtern
                 if "VA_Nr" in df_mitarbeiter.columns:
                     df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
                     zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == va_current]["Name_full"].dropna().unique()
@@ -338,7 +331,6 @@ with st.sidebar:
 
                 gesamt = len(zielgruppe)
 
-                # Gelesene Einträge
                 if "VA_Nr" in df_kenntnis.columns:
                     df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
                     gelesen = df_kenntnis[df_kenntnis["VA_Nr_norm"] == va_current]["Name"].dropna().unique()
@@ -352,5 +344,31 @@ with st.sidebar:
                 st.progress(fortschritt, text=f"{gelesen_count} von {gesamt} Mitarbeiter (gelesen)")
         except Exception as e:
             st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
+
+        # 🔒 Lesebestätigung direkt in der Sidebar
+        st.markdown("### Lesebestätigung")
+        name_sidebar = st.text_input("Name (Nachname, Vorname)", key="sidebar_name")
+        if st.button("Bestätigen", key="sidebar_confirm"):
+            if name_sidebar.strip():
+                zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
+                eintrag = {"Name": name_sidebar.strip(), "VA_Nr": va_current, "Zeitpunkt": zeitpunkt}
+                df_new = pd.DataFrame([eintrag])[["Name", "VA_Nr", "Zeitpunkt"]]
+
+                path = "lesebestätigung.csv"
+                file_exists = os.path.exists(path)
+                file_empty = (not file_exists) or (os.path.getsize(path) == 0)
+
+                df_new.to_csv(
+                    path,
+                    sep=";",
+                    index=False,
+                    mode="a" if file_exists and not file_empty else "w",
+                    header=True if file_empty else False,
+                    encoding="utf-8-sig"
+                )
+
+                st.success(f"Bestätigung für {va_current} gespeichert.")
+            else:
+                st.error("Bitte Name eingeben.")
     else:
         st.info("Noch kein Dokument ausgewählt.")
