@@ -110,7 +110,7 @@ with tabs[0]:
     else:
         pw = st.text_input("Passwort", type="password", key="login_pw")
         if st.button("Login", key="login_button"):
-            if pw == "dein_passwort":
+            if pw == "qm2025":
                 st.session_state.logged_in = True
                 st.success("✅ Login erfolgreich.")
             else:
