@@ -273,14 +273,10 @@ with st.sidebar:
     # Login-Status
     if st.session_state.get("logged_in", False):
         st.success("✅ Eingeloggt")
+        if st.button("Logout", key="logout_sidebar"):
+            st.session_state.logged_in = False
+            st.session_state.selected_va = None  # optional: VA-Auswahl zurücksetzen
 
-if st.session_state.get("logged_in", False):
-    st.success("✅ Eingeloggt")
-    if st.button("Logout", key="logout_sidebar"):
-        st.session_state.logged_in = False
-        st.session_state.selected_va = None  # optional: VA-Auswahl zurücksetzen
-
-        
         # VA-Auswahl
         va_liste = []
         if os.path.exists("qm_verfahrensanweisungen.csv"):
@@ -290,14 +286,27 @@ if st.session_state.get("logged_in", False):
                 va_liste = sorted(df_va["VA_clean"].unique())
 
         va_nummer = st.selectbox("VA auswählen", options=va_liste, index=None, key="sidebar_va_select")
+
         if va_nummer:
             st.session_state.selected_va = va_nummer
             va_current = norm_va(va_nummer)
             row = df_va[df_va["VA_clean"] == va_current]
             titel = row["Titel"].values[0] if not row.empty else ""
 
-            # PDF-Link
-            st.markdown(f"[📄 {va_current} – {titel} öffnen](./pdf/{va_current}.pdf)")
+            # 🔔 Gelber Hinweis + PDF-Link
+            st.markdown(
+                f"""
+                <div style="background-color:#fff3cd;
+                            padding:10px;
+                            border-radius:5px;
+                            border:1px solid #ffeeba;
+                            margin-bottom:10px">
+                <strong>Aktuelles Dokument:</strong><br>{va_current} – {titel}<br>
+                <a href="./pdf/{va_current}.pdf" target="_blank">📄 PDF öffnen</a>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
             # Lesebestätigung
             st.markdown("### Lesebestätigung")
