@@ -164,28 +164,62 @@ with tabs[1]:
             st.success(f"Ausgewählt: {sel}")
 
 
+# --------------------------
+# Tab 2: Lesebestätigung
+# --------------------------
 with tabs[2]:
-    if st.session_state.get("logged_in", False):
-        st.markdown("## ✅ Lesebestätigung")
-        name_raw = st.text_input("Name (Nachname, Vorname)")
-        va_nummer = st.selectbox("VA auswählen", options=[], key="lese_va")  # dynamisch befüllen
+    st.markdown("## ✅ Lesebestätigung")
 
+    if not st.session_state.get("logged_in", False):
+        st.warning("Bitte zuerst im Tab 'Login' anmelden.")
+    else:
+        # VA-Auswahl vorbereiten
+        va_liste = []
+        if os.path.exists("qm_verfahrensanweisungen.csv"):
+            df_va = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig", dtype=str)
+            df_va["VA_clean"] = df_va["VA_Nr"].apply(norm_va)
+            va_liste = sorted(df_va["VA_clean"].unique())
+
+        # Eingabefelder
+        name_raw = st.text_input("Name (Nachname, Vorname)")
+        va_nummer = st.selectbox("VA auswählen", options=va_liste, index=None)
+
+        # Session-State setzen für Sidebar
+        if va_nummer:
+            st.session_state.selected_va = va_nummer
+
+        # Bestätigen
         if st.button("Bestätigen"):
             name_kombi = re.sub(r"\s*,\s*", ",", name_raw.strip())
             if name_kombi and va_nummer:
                 zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
-                va_nr_speichern = f"VA{va_nummer}"
-                eintrag = {"Name": name_kombi, "VA_Nr": va_nr_speichern, "Zeitpunkt": zeitpunkt}
+                eintrag = {"Name": name_kombi, "VA_Nr": va_nummer, "Zeitpunkt": zeitpunkt}
                 df_kenntnis = pd.DataFrame([eintrag])[["Name", "VA_Nr", "Zeitpunkt"]]
+
                 DATA_FILE_KENNTNIS = "lesebestätigung.csv"
                 file_exists = os.path.exists(DATA_FILE_KENNTNIS)
                 file_empty = (not file_exists) or (os.path.getsize(DATA_FILE_KENNTNIS) == 0)
-                df_kenntnis.to_csv(DATA_FILE_KENNTNIS, sep=";", index=False, mode="a" if file_exists and not file_empty else "w", header=True if file_empty else False, encoding="utf-8-sig")
-                st.success(f"Bestätigung für {va_nr_speichern} gespeichert.")
 
+                df_kenntnis.to_csv(
+                    DATA_FILE_KENNTNIS,
+                    sep=";",
+                    index=False,
+                    mode="a" if file_exists and not file_empty else "w",
+                    header=True if file_empty else False,
+                    encoding="utf-8-sig"
+                )
+
+                st.success(f"Bestätigung für {va_nummer} gespeichert.")
+
+                # Optionaler CSV-Download
                 if st.checkbox("Eigenen Nachweis als CSV herunterladen"):
                     csv_bytes = df_kenntnis.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
-                    st.download_button("Diese Lesebestätigung herunterladen", data=csv_bytes, file_name=f"lesebestaetigung_{va_nr_speichern}_{dt.date.today()}.csv", mime="text/csv")
+                    st.download_button(
+                        "Diese Lesebestätigung herunterladen",
+                        data=csv_bytes,
+                        file_name=f"lesebestaetigung_{va_nummer}_{dt.date.today()}.csv",
+                        mime="text/csv"
+                    )
             else:
                 st.error("Bitte Name und VA auswählen.")
 
@@ -193,10 +227,11 @@ with tabs[2]:
         st.markdown("---")
         st.markdown("### 📄 Bereits bestätigte Einträge")
         if os.path.exists("lesebestätigung.csv"):
-            df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig")
-            st.dataframe(df_kenntnis.sort_values("Zeitpunkt", ascending=False))
+            df_alle = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig")
+            st.dataframe(df_alle.sort_values("Zeitpunkt", ascending=False))
         else:
             st.info("Noch keine Lesebestätigungen vorhanden.")
+
     else:
         st.warning("Bitte zuerst im Tab 'Login' anmelden.")
 
