@@ -91,9 +91,17 @@ def export_va_to_pdf(row):
     for feld in QM_COLUMNS[1:]:
         add_section(feld, row.get(feld, ""))
 
-    # Bytes zurückgeben (robust für PyFPDF)
+    # Bytes erzeugen
     pdf_bytes = pdf.output(dest="S").encode("latin-1")
-    return pdf_bytes
+
+    # Datei im Ordner va_pdf speichern
+    va_nr = norm_va(row.get("VA_Nr", "VA000"))
+    pdf_path = f"va_pdf/{va_nr}.pdf"
+    with open(pdf_path, "wb") as f:
+        f.write(pdf_bytes)
+
+    # Bytes zurückgeben (für Download-Button etc.)
+    return pdf_bytes, pdf_path
 
 
 # --------------------------
@@ -293,7 +301,7 @@ with st.sidebar:
             row = df_va[df_va["VA_clean"] == va_current]
             titel = row["Titel"].values[0] if not row.empty else ""
 
-            # 🔔 Gelber Hinweis + PDF-Link
+            # 🔔 Gelber Hinweis
             st.markdown(
                 f"""
                 <div style="background-color:#fff3cd;
@@ -301,12 +309,26 @@ with st.sidebar:
                             border-radius:5px;
                             border:1px solid #ffeeba;
                             margin-bottom:10px">
-                <strong>Aktuelles Dokument:</strong><br>{va_current} – {titel}<br>
-                <a href="./pdf/{va_current}.pdf" target="_blank">📄 PDF öffnen</a>
+                <strong>Aktuelles Dokument:</strong><br>{va_current} – {titel}
                 </div>
                 """,
                 unsafe_allow_html=True
             )
+
+            # 📄 PDF aus Ordner va_pdf laden und anzeigen
+            pdf_path = f"va_pdf/{va_current}.pdf"
+            if os.path.exists(pdf_path):
+                with open(pdf_path, "rb") as f:
+                    pdf_bytes = f.read()
+                st.download_button(
+                    label=f"📄 PDF öffnen: {va_current}",
+                    data=pdf_bytes,
+                    file_name=f"{va_current}.pdf",
+                    mime="application/pdf",
+                    key=f"download_{va_current}"
+                )
+            else:
+                st.info("PDF noch nicht vorhanden – bitte zuerst erzeugen.")
 
             # Lesebestätigung
             st.markdown("### Lesebestätigung")
