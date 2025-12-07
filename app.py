@@ -213,19 +213,19 @@ with tab1:
             )
             st.dataframe(df_filtered, use_container_width=True)
 
-            csv_data = df_all.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+                  csv_data = df_all.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+        st.download_button(
+            label="VA-Tabelle als CSV herunterladen",
+            data=csv_data,
+            file_name=f"qm_va_{dt.date.today()}.csv",
+            mime="text/csv",
+            type="primary"
+        )
 
-st.download_button(
-    label="VA-Tabelle als CSV herunterladen",
-    data=csv_data,
-    file_name=f"qm_va_{dt.date.today()}.csv",
-    mime="text/csv",
-    type="primary"
-)
-# --------------------------
- # PDF erzeugen
-# --------------------------
-st.markdown("### PDF erzeugen")
+        # --------------------------
+        # PDF erzeugen
+        # --------------------------
+        st.markdown("### PDF erzeugen")
 
         if st.session_state.selected_va:
             if st.button("PDF erzeugen für ausgewählte VA", type="primary"):
@@ -303,4 +303,3 @@ with tab2:
                 st.error("Bitte Name und VA auswählen.")
     else:
         st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
-
