@@ -98,16 +98,24 @@ if "selected_va" not in st.session_state:
 tabs = st.tabs(["System & Login", "Verfahrensanweisungen", "Lesebestätigung", "Mitarbeiter"])
 
 # --------------------------
+# --------------------------
+# Tab 0: Login
+# --------------------------
 with tabs[0]:
     st.markdown("## 🔒 Login")
 
-    pw = st.text_input("Passwort", type="password", key="login_pw")
-    if st.button("Login", key="login_button"):
-        if pw == "dein_passwort":
-            st.session_state.logged_in = True
-            st.success("✅ Login erfolgreich.")
-        else:
-            st.error("❌ Passwort falsch.")
+    if st.session_state.get("logged_in", False):
+        st.success("✅ Bereits eingeloggt")
+        st.button("Logout", on_click=lambda: st.session_state.update({"logged_in": False}))
+    else:
+        pw = st.text_input("Passwort", type="password", key="login_pw")
+        if st.button("Login", key="login_button"):
+            if pw == "dein_passwort":
+                st.session_state.logged_in = True
+                st.success("✅ Login erfolgreich.")
+            else:
+                st.error("❌ Passwort falsch.")
+
 with tabs[1]:
     st.markdown("## 📘 Verfahrensanweisungen")
 
@@ -217,6 +225,9 @@ with st.sidebar:
     else:
         st.warning("Nicht eingeloggt")
 
+    # VA-Status und Fortschritt nur anzeigen, wenn VA ausgewählt
+    if st.session_state.get("selected_va"):
+        # Fortschrittslogik wie gehabt …
     if st.session_state.get("selected_va"):
         va_current = norm_va(st.session_state.selected_va)
         try:
