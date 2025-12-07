@@ -27,6 +27,13 @@ QM_COLUMNS = [
 ]
 
 # --------------------------
+# Imports
+# --------------------------
+import io
+import datetime as dt
+from fpdf import FPDF
+
+# --------------------------
 # PDF-Hilfsfunktionen
 # --------------------------
 def clean_text(text):
@@ -62,22 +69,16 @@ class CustomPDF(FPDF):
 def export_va_to_pdf(row):
     pdf = CustomPDF()
     pdf.alias_nb_pages()
-    pdf.va_name = f"VA {row.get('VA_Nr','')}"
+    pdf.va_name = f"VA {row.get('VA_Nr', '')}"
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
 
+    # Titel
     pdf.set_font("Arial", "B", 16)
-    pdf.cell(0, 10, clean_text(f"QM-Verfahrensanweisung - {row.get('VA_Nr','')}"), ln=True, align="C")
+    pdf.cell(0, 10, clean_text(f"QM-Verfahrensanweisung - {row.get('VA_Nr', '')}"), ln=True, align="C")
     pdf.ln(5)
 
-    def norm_va(x):
-    s = str(x).upper().replace(" ", "")
-    m = s.replace("VA", "")
-    if m.isdigit():
-        s = f"VA{int(m):03d}"
-    return s
-    
-
+    # Abschnittshelfer
     def add_section(title, content):
         pdf.set_font("Arial", "B", 12)
         pdf.cell(0, 8, clean_text(title), ln=True)
@@ -85,12 +86,14 @@ def export_va_to_pdf(row):
         pdf.multi_cell(0, 8, clean_text(content))
         pdf.ln(3)
 
+    # Inhalte aus QM_COLUMNS (Index 1: ohne VA_Nr)
     for feld in QM_COLUMNS[1:]:
         add_section(feld, row.get(feld, ""))
 
-    buffer = io.BytesIO()
-    pdf.output(buffer)
-    return buffer.getvalue()
+    # Bytes zurückgeben (robust für PyFPDF)
+    pdf_bytes = pdf.output(dest="S").encode("latin-1")
+    return pdf_bytes
+
 
 # --------------------------
 # Session-Init
