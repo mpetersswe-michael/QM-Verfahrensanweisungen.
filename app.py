@@ -27,15 +27,16 @@ QM_COLUMNS = [
 ]
 
 # --------------------------
-# Imports
-# --------------------------
-import io
-import datetime as dt
-from fpdf import FPDF
-
-# --------------------------
 # PDF-Hilfsfunktionen
 # --------------------------
+
+def norm_va(x):
+    s = str(x).upper().replace(" ", "")
+    m = s.replace("VA", "")
+    if m.isdigit():
+        s = f"VA{int(m):03d}"
+    return s
+
 def clean_text(text):
     if text is None or str(text).strip() == "":
         return "-"
@@ -264,12 +265,6 @@ with tabs[3]:
                     f.write("Name;VA_Nr;Zeitpunkt\n")
                 st.success("✅ Alle Lesebestätigungen wurden zurückgesetzt.")
 
-def norm_va(x):
-    s = str(x).upper().replace(" ", "")
-    m = s.replace("VA", "")
-    if m.isdigit():
-        s = f"VA{int(m):03d}"
-    return s
 
 # --------------------------
 # Sidebar: Login, VA-Status und Fortschritt (einmalig)
