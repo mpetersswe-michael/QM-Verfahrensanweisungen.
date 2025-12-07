@@ -119,6 +119,37 @@ with tab0:
             st.session_state.logged_in = False
             st.sidebar.info("Logout erfolgreich.")
 
+
+# --------------------------
+# Upload für Mitarbeiterliste
+# --------------------------
+st.markdown("## Mitarbeiterliste hochladen")
+
+uploaded_file = st.file_uploader("Bitte die mitarbeiter.csv hochladen", type=["csv"])
+
+if uploaded_file is not None:
+    try:
+        # Datei speichern im App-Verzeichnis
+        with open("mitarbeiter.csv", "wb") as f:
+            f.write(uploaded_file.getbuffer())
+        st.success("Datei 'mitarbeiter.csv' erfolgreich hochgeladen und gespeichert.")
+
+        # Vorschau anzeigen
+        df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig")
+        st.dataframe(df_mitarbeiter)
+
+    except Exception as e:
+        st.error(f"Fehler beim Verarbeiten der Datei: {e}")
+else:
+    if not os.path.exists("mitarbeiter.csv"):
+        st.warning("Noch keine 'mitarbeiter.csv' vorhanden. Bitte hochladen.")
+    else:
+        st.info("Es existiert bereits eine 'mitarbeiter.csv' im App-Verzeichnis.")
+        df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig")
+        st.dataframe(df_mitarbeiter)
+
+
+
 # Sidebar: aktuelles Dokument + Fortschritt
 if st.session_state.selected_va:
     st.sidebar.markdown(f"**Aktuelles Dokument:** {st.session_state.selected_va}")
@@ -126,7 +157,7 @@ if st.session_state.selected_va:
     try:
         # Prüfen, ob mitarbeiter.csv existiert
         if not os.path.exists("mitarbeiter.csv"):
-            st.sidebar.warning("Die Datei 'mitarbeiter.csv' fehlt. Bitte im App-Verzeichnis ablegen.")
+            st.sidebar.warning("Die Datei 'mitarbeiter.csv' fehlt. Bitte im App-Verzeichnis ablegen oder hochladen.")
             raise FileNotFoundError("mitarbeiter.csv fehlt")
 
         # Lesebestätigungen laden
@@ -145,7 +176,7 @@ if st.session_state.selected_va:
             st.sidebar.warning("Spalten 'Vorname' und 'Name' fehlen in mitarbeiter.csv.")
             raise ValueError("Spalten fehlen")
 
-        # VA-Format harmonisieren (VA004 statt VA 004)
+        # VA-Format harmonisieren
         def norm_va(x):
             s = str(x).upper().replace(" ", "")
             m = s.replace("VA", "")
@@ -155,7 +186,7 @@ if st.session_state.selected_va:
 
         va_current = norm_va(st.session_state.selected_va)
 
-        # Mitarbeiter-Zielgruppe für aktuelle VA
+        # Zielgruppe für aktuelle VA
         if "VA_Nr" in df_mitarbeiter.columns:
             df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
             zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == va_current]["Name_full"].dropna().unique()
@@ -181,8 +212,6 @@ if st.session_state.selected_va:
         st.sidebar.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
 else:
     st.sidebar.info("Noch kein Dokument ausgewählt.")
-
-
 
 ## --------------------------
 # Tab 1: VA-Eingabe, Anzeige, Export, PDF
