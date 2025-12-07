@@ -119,75 +119,63 @@ with tab0:
             st.session_state.logged_in = False
             st.sidebar.info("Logout erfolgreich.")
 
-        # Sidebar: aktuelles Dokument + Fortschritt
+# Sidebar: aktuelles Dokument + Fortschritt
 if st.session_state.selected_va:
     st.sidebar.markdown(f"**Aktuelles Dokument:** {st.session_state.selected_va}")
 
     try:
-        # Kenntnisnahmen laden
-        df_kenntnis = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig")
+        # Lesebestätigungen laden
+        df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig")
 
-        # Mitarbeiter laden
+        # Mitarbeiterliste laden
         df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig")
 
-        # Namen vereinheitlichen
-        if "Name" in df_mitarbeiter.columns and "Vorname" in df_mitarbeiter.columns:
-            df_mitarbeiter["Name"] = (
+        # Namen vereinheitlichen: Nachname,Vorname
+        if {"Vorname", "Name"}.issubset(df_mitarbeiter.columns):
+            df_mitarbeiter["Name_full"] = (
                 df_mitarbeiter["Name"].astype(str).str.strip() + "," +
                 df_mitarbeiter["Vorname"].astype(str).str.strip()
             )
-        elif "Name" in df_mitarbeiter.columns:
-            df_mitarbeiter["Name"] = df_mitarbeiter["Name"].astype(str).str.strip()
         else:
-            st.sidebar.warning("Spalte 'Name' fehlt in mitarbeiter.csv.")
-            raise ValueError("Spalte 'Name' fehlt")
+            st.sidebar.warning("Spalten 'Vorname' und 'Name' fehlen in mitarbeiter.csv.")
+            raise ValueError("Spalten fehlen")
 
-        df_kenntnis["Name"] = df_kenntnis["Name"].astype(str).str.strip()
-
-        # VA-Format harmonisieren (z. B. 'VA 004' vs 'VA004')
+        # VA-Format harmonisieren (VA004 statt VA 004)
         def norm_va(x):
             s = str(x).upper().replace(" ", "")
-            # optional: Nullstellen vereinheitlichen: VA004 statt VA4
             m = s.replace("VA", "")
             if m.isdigit():
                 s = f"VA{int(m):03d}"
             return s
 
         va_current = norm_va(st.session_state.selected_va)
-        if "VA_Nr" in df_kenntnis.columns:
-            df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
-        else:
-            st.sidebar.warning("Spalte 'VA_Nr' fehlt in kenntnisnahmen.csv.")
-            raise ValueError("Spalte 'VA_Nr' fehlt")
 
-        # Wenn mitarbeiter.csv eine VA-Zuordnung hat, Zielgruppe filtern
-        has_va_assign = ("VA" in df_mitarbeiter.columns) or ("VA_Nr" in df_mitarbeiter.columns)
-        if has_va_assign:
-            va_col = "VA" if "VA" in df_mitarbeiter.columns else "VA_Nr"
-            df_mitarbeiter["VA_norm"] = df_mitarbeiter[va_col].apply(norm_va)
-            zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == va_current]["Name"].dropna().unique()
+        # Mitarbeiter-Zielgruppe für aktuelle VA
+        if "VA_Nr" in df_mitarbeiter.columns:
+            df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
+            zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == va_current]["Name_full"].dropna().unique()
         else:
-            zielgruppe = df_mitarbeiter["Name"].dropna().unique()
+            zielgruppe = df_mitarbeiter["Name_full"].dropna().unique()
 
         gesamt = len(zielgruppe)
 
-        # Bestätigt: eindeutige Namen für aktuelle VA
-        gelesen = (
-            df_kenntnis[df_kenntnis["VA_Nr_norm"] == va_current]["Name"]
-            .dropna()
-            .unique()
-        )
+        # Lesebestätigungen für aktuelle VA
+        if "VA_Nr" in df_kenntnis.columns:
+            df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
+            gelesen = df_kenntnis[df_kenntnis["VA_Nr_norm"] == va_current]["Name"].dropna().unique()
+        else:
+            st.sidebar.warning("Spalte 'VA_Nr' fehlt in lesebestätigung.csv.")
+            raise ValueError("Spalte 'VA_Nr' fehlt")
 
-        # Schnittmenge (nur wer zur Zielgruppe gehört, zählt)
+        # Schnittmenge: nur Zielgruppe zählt
         gelesen_count = len(set(gelesen) & set(zielgruppe))
 
         fortschritt = (gelesen_count / gesamt) if gesamt > 0 else 0.0
         st.sidebar.progress(fortschritt, text=f"{gelesen_count} von {gesamt} Mitarbeiter (gelesen)")
-    except Exception:
-        st.sidebar.warning("Fortschritt konnte nicht berechnet werden.")
+    except Exception as e:
+        st.sidebar.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
 else:
     st.sidebar.info("Noch kein Dokument ausgewählt.")
-
 
 
 
