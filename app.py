@@ -8,6 +8,12 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import streamlit as st
 
+st.set_page_config(
+    page_title="Verfahrensanweisungen (Auszug aus dem QMH)",
+    page_icon="📘",
+    layout="wide"
+)
+
 # --------------------------
 # Datenkonfiguration
 # --------------------------
