@@ -70,6 +70,14 @@ def export_va_to_pdf(row):
     pdf.cell(0, 10, clean_text(f"QM-Verfahrensanweisung - {row.get('VA_Nr','')}"), ln=True, align="C")
     pdf.ln(5)
 
+    def norm_va(x):
+    s = str(x).upper().replace(" ", "")
+    m = s.replace("VA", "")
+    if m.isdigit():
+        s = f"VA{int(m):03d}"
+    return s
+    
+
     def add_section(title, content):
         pdf.set_font("Arial", "B", 12)
         pdf.cell(0, 8, clean_text(title), ln=True)
@@ -165,7 +173,7 @@ with tabs[1]:
 
 
 # --------------------------
-# Tab 2: Lesebestätigung
+# Tab 2: Lesebestätigung (final)
 # --------------------------
 with tabs[2]:
     st.markdown("## ✅ Lesebestätigung")
@@ -173,35 +181,36 @@ with tabs[2]:
     if not st.session_state.get("logged_in", False):
         st.warning("Bitte zuerst im Tab 'Login' anmelden.")
     else:
-        # VA-Auswahl vorbereiten
+        # VA-Liste für Auswahl
         va_liste = []
         if os.path.exists("qm_verfahrensanweisungen.csv"):
             df_va = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig", dtype=str)
-            df_va["VA_clean"] = df_va["VA_Nr"].apply(norm_va)
-            va_liste = sorted(df_va["VA_clean"].unique())
+            if "VA_Nr" in df_va.columns:
+                df_va["VA_clean"] = df_va["VA_Nr"].apply(norm_va)
+                va_liste = sorted(df_va["VA_clean"].unique())
 
-        # Eingabefelder
+        # Eingaben
         name_raw = st.text_input("Name (Nachname, Vorname)")
         va_nummer = st.selectbox("VA auswählen", options=va_liste, index=None)
 
-        # Session-State setzen für Sidebar
+        # Sidebar-Sync
         if va_nummer:
             st.session_state.selected_va = va_nummer
 
         # Bestätigen
-        if st.button("Bestätigen"):
+        if st.button("Bestätigen", key="confirm_tab2"):
             name_kombi = re.sub(r"\s*,\s*", ",", name_raw.strip())
             if name_kombi and va_nummer:
                 zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
                 eintrag = {"Name": name_kombi, "VA_Nr": va_nummer, "Zeitpunkt": zeitpunkt}
-                df_kenntnis = pd.DataFrame([eintrag])[["Name", "VA_Nr", "Zeitpunkt"]]
+                df_new = pd.DataFrame([eintrag])[["Name", "VA_Nr", "Zeitpunkt"]]
 
-                DATA_FILE_KENNTNIS = "lesebestätigung.csv"
-                file_exists = os.path.exists(DATA_FILE_KENNTNIS)
-                file_empty = (not file_exists) or (os.path.getsize(DATA_FILE_KENNTNIS) == 0)
+                path = "lesebestätigung.csv"
+                file_exists = os.path.exists(path)
+                file_empty = (not file_exists) or (os.path.getsize(path) == 0)
 
-                df_kenntnis.to_csv(
-                    DATA_FILE_KENNTNIS,
+                df_new.to_csv(
+                    path,
                     sep=";",
                     index=False,
                     mode="a" if file_exists and not file_empty else "w",
@@ -213,25 +222,26 @@ with tabs[2]:
 
                 # Optionaler CSV-Download
                 if st.checkbox("Eigenen Nachweis als CSV herunterladen"):
-                    csv_bytes = df_kenntnis.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+                    csv_bytes = df_new.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
                     st.download_button(
                         "Diese Lesebestätigung herunterladen",
                         data=csv_bytes,
                         file_name=f"lesebestaetigung_{va_nummer}_{dt.date.today()}.csv",
-                        mime="text/csv"
+                        mime="text/csv",
+                        key="download_tab2"
                     )
             else:
                 st.error("Bitte Name und VA auswählen.")
 
-        # Tabelle anzeigen
+        # Tabelle: bereits bestätigte Einträge
         st.markdown("---")
         st.markdown("### 📄 Bereits bestätigte Einträge")
-        if os.path.exists("lesebestätigung.csv"):
-            df_alle = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig")
+        path_all = "lesebestätigung.csv"
+        if os.path.exists(path_all):
+            df_alle = pd.read_csv(path_all, sep=";", encoding="utf-8-sig")
             st.dataframe(df_alle.sort_values("Zeitpunkt", ascending=False))
         else:
             st.info("Noch keine Lesebestätigungen vorhanden.")
-
        
 with tabs[3]:
     st.markdown("## 👥 Mitarbeiterliste")
@@ -259,15 +269,8 @@ def norm_va(x):
     return s
 
 # --------------------------
-# Sidebar: Login, VA-Status und Fortschritt
+# Sidebar: Login, VA-Status und Fortschritt (einmalig)
 # --------------------------
-def norm_va(x):
-    s = str(x).upper().replace(" ", "")
-    m = s.replace("VA", "")
-    if m.isdigit():
-        s = f"VA{int(m):03d}"
-    return s
-
 with st.sidebar:
     if st.session_state.get("logged_in", False):
         st.success("✅ Eingeloggt")
@@ -276,15 +279,14 @@ with st.sidebar:
     else:
         st.warning("Nicht eingeloggt")
 
-    # VA-Status und Fortschritt
     if st.session_state.get("selected_va"):
         va_current = norm_va(st.session_state.selected_va)
 
         # Titel anzeigen
         try:
             if os.path.exists("qm_verfahrensanweisungen.csv"):
-                df_va = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig", dtype=str)
-                row = df_va[df_va["VA_Nr"].apply(norm_va) == va_current]
+                df_va_side = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig", dtype=str)
+                row = df_va_side[df_va_side["VA_Nr"].apply(norm_va) == va_current]
                 titel = row["Titel"].values[0] if not row.empty else ""
                 st.markdown(f"**Aktuelles Dokument:** {va_current} – {titel}")
             else:
@@ -301,14 +303,12 @@ with st.sidebar:
                 df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig")
                 df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig")
 
-                # Name zusammenbauen
                 if {"Name", "Vorname"}.issubset(df_mitarbeiter.columns):
                     df_mitarbeiter["Name_full"] = df_mitarbeiter["Name"].str.strip() + "," + df_mitarbeiter["Vorname"].str.strip()
                 else:
                     st.warning("Spalten 'Name' und 'Vorname' fehlen in mitarbeiter.csv.")
                     raise ValueError("Spalten fehlen")
 
-                # Zielgruppe filtern
                 if "VA_Nr" in df_mitarbeiter.columns:
                     df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
                     zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == va_current]["Name_full"].dropna().unique()
@@ -317,7 +317,6 @@ with st.sidebar:
 
                 gesamt = len(zielgruppe)
 
-                # Gelesene Einträge
                 if "VA_Nr" in df_kenntnis.columns:
                     df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
                     gelesen = df_kenntnis[df_kenntnis["VA_Nr_norm"] == va_current]["Name"].dropna().unique()
@@ -327,14 +326,7 @@ with st.sidebar:
 
                 gelesen_count = len(set(gelesen) & set(zielgruppe))
                 fortschritt = gelesen_count / gesamt if gesamt > 0 else 0.0
-
                 st.progress(fortschritt, text=f"{gelesen_count} von {gesamt} Mitarbeiter (gelesen)")
-
-                # Optional: Debug-Ausgabe
-                if st.checkbox("Debug anzeigen"):
-                    st.write("Zielgruppe erkannt:", zielgruppe)
-                    st.write("Gelesen:", gelesen)
-
         except Exception as e:
             st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
     else:
