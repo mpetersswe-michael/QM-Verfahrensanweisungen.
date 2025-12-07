@@ -232,8 +232,8 @@ with tabs[2]:
         else:
             st.info("Noch keine Lesebestätigungen vorhanden.")
 
-    else:
-        st.warning("Bitte zuerst im Tab 'Login' anmelden.")
+        else:
+            st.warning("Bitte zuerst im Tab 'Login' anmelden.")
 
 
 with tabs[3]:
