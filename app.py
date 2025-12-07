@@ -163,50 +163,52 @@ with tabs[2]:
             va_nummer = None
             st.warning("VA-Datei konnte nicht geladen werden.")
 
-        if st.button("Bestätigen & CSV herunterladen", key="lese_button"):
-            name_kombi = re.sub(r"\s*,\s*", ",", name_raw.strip())
-            if name_kombi and va_nummer:
-                zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
-                va_nr_speichern = f"VA{va_nummer}"
+        if st.button("Bestätigen", key="lese_button"):
+    name_kombi = re.sub(r"\s*,\s*", ",", name_raw.strip())
+    if name_kombi and va_nummer:
+        zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
+        va_nr_speichern = f"VA{va_nummer}"
 
-                eintrag = {"Name": name_kombi, "VA_Nr": va_nr_speichern, "Zeitpunkt": zeitpunkt}
-                df_kenntnis = pd.DataFrame([eintrag])[["Name", "VA_Nr", "Zeitpunkt"]]
+        eintrag = {"Name": name_kombi, "VA_Nr": va_nr_speichern, "Zeitpunkt": zeitpunkt}
+        df_kenntnis = pd.DataFrame([eintrag])[["Name", "VA_Nr", "Zeitpunkt"]]
 
-                DATA_FILE_KENNTNIS = "lesebestätigung.csv"
-                file_exists = os.path.exists(DATA_FILE_KENNTNIS)
-                file_empty = (not file_exists) or (os.path.getsize(DATA_FILE_KENNTNIS) == 0)
+        DATA_FILE_KENNTNIS = "lesebestätigung.csv"
+        file_exists = os.path.exists(DATA_FILE_KENNTNIS)
+        file_empty = (not file_exists) or (os.path.getsize(DATA_FILE_KENNTNIS) == 0)
 
-                df_kenntnis.to_csv(
-                    DATA_FILE_KENNTNIS,
-                    sep=";",
-                    index=False,
-                    mode="a" if file_exists and not file_empty else "w",
-                    header=True if file_empty else False,
-                    encoding="utf-8-sig"
-                )
+        df_kenntnis.to_csv(
+            DATA_FILE_KENNTNIS,
+            sep=";",
+            index=False,
+            mode="a" if file_exists and not file_empty else "w",
+            header=True if file_empty else False,
+            encoding="utf-8-sig"
+        )
 
-                # Eindeutiger Download-Name
-                zeitstempel = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d_%H-%M-%S")
-                csv_bytes = df_kenntnis.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
-                st.download_button(
-                    label="Diese Lesebestätigung als CSV herunterladen",
-                    data=csv_bytes,
-                    file_name=f"lesebestaetigung_{va_nr_speichern}_{zeitstempel}.csv",
-                    mime="text/csv",
-                    type="primary"
-                )
+        st.success(f"Bestätigung für {va_nr_speichern} gespeichert.")
 
-                st.success(f"Bestätigung für {va_nr_speichern} gespeichert.")
-            else:
-                st.error("Bitte Name und VA auswählen.")
+        # Optionaler Download-Button
+        if st.checkbox("Eigenen Nachweis als CSV herunterladen"):
+            csv_bytes = df_kenntnis.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+            st.download_button(
+                label="Diese Lesebestätigung herunterladen",
+                data=csv_bytes,
+                file_name=f"lesebestaetigung_{va_nr_speichern}_{dt.date.today()}.csv",
+                mime="text/csv",
+                type="primary"
+            )
     else:
-        st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
+        st.error("Bitte Name und VA auswählen.")
+else:
+    st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
 
 # --------------------------
-# Tab 3: Mitarbeiterliste (Upload)
+# Tab 3: Mitarbeiterliste + Lesebestätigungen
 # --------------------------
 with tabs[3]:
     st.markdown("## 👥 Mitarbeiterliste verwalten")
+
+    # Upload der Mitarbeiterliste
     uploaded_file = st.file_uploader("📄 mitarbeiter.csv hochladen", type=["csv"])
 
     if uploaded_file is not None:
@@ -216,7 +218,7 @@ with tabs[3]:
             st.success("✅ Datei 'mitarbeiter.csv' erfolgreich gespeichert.")
 
             df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig")
-            st.markdown("### Vorschau der geladenen Mitarbeiter:")
+            st.markdown("### Mitarbeiterliste:")
             st.dataframe(df_mitarbeiter)
         except Exception as e:
             st.error(f"Fehler beim Verarbeiten der Datei: {e}")
@@ -225,12 +227,29 @@ with tabs[3]:
             st.info("ℹ️ Es existiert bereits eine 'mitarbeiter.csv'.")
             try:
                 df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig")
-                st.markdown("### Vorschau der aktuellen Mitarbeiterliste:")
+                st.markdown("### Mitarbeiterliste:")
                 st.dataframe(df_mitarbeiter)
             except Exception as e:
                 st.error(f"Fehler beim Laden der vorhandenen Datei: {e}")
         else:
             st.warning("⚠️ Noch keine 'mitarbeiter.csv' vorhanden. Bitte hochladen.")
+
+    # --------------------------
+    # Übersicht der Lesebestätigungen
+    # --------------------------
+    st.markdown("---")
+    st.markdown("## 📄 Aktuelle Lesebestätigungen")
+
+    if os.path.exists("lesebestätigung.csv"):
+        try:
+            df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig")
+            # Sortiert nach Zeitpunkt, neueste oben
+            st.dataframe(df_kenntnis.sort_values("Zeitpunkt", ascending=False))
+        except Exception as e:
+            st.error(f"Fehler beim Laden der Lesebestätigungen: {e}")
+    else:
+        st.info("Noch keine Lesebestätigungen vorhanden.")
+
 
 # --------------------------
 # Sidebar: aktuelles Dokument + Fortschritt
