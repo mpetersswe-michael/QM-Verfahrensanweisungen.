@@ -225,33 +225,41 @@ with st.sidebar:
     else:
         st.warning("Nicht eingeloggt")
 
-    # VA-Status und Fortschritt nur anzeigen, wenn VA ausgewählt
-    if st.session_state.get("selected_va"):
-        # Fortschrittslogik wie gehabt …
-    if st.session_state.get("selected_va"):
-        va_current = norm_va(st.session_state.selected_va)
-        try:
-            df_va = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig", dtype=str)
-            row = df_va[df_va["VA_Nr"].apply(norm_va) == va_current]
-            titel = row["Titel"].values[0] if not row.empty else ""
-            st.markdown(f"**Aktuelles Dokument:** {va_current} – {titel}")
-        except:
-            st.markdown(f"**Aktuelles Dokument:** {va_current}")
+    # --------------------------
+# Sidebar: VA-Status und Fortschritt
+# --------------------------
+if st.session_state.get("selected_va"):
+    va_current = norm_va(st.session_state.selected_va)
 
-        try:
-            df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig")
-            df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig")
-            df_mitarbeiter["Name_full"] = df_mitarbeiter["Name"].str.strip() + "," + df_mitarbeiter["Vorname"].str.strip()
-            df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
-            zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == va_current]["Name_full"].dropna().unique()
-            df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
-            gelesen = df_kenntnis[df_kenntnis["VA_Nr_norm"] == va_current]["Name"].dropna().unique()
-            gelesen_count = len(set(gelesen) & set(zielgruppe))
-            gesamt = len(zielgruppe)
-            fortschritt = gelesen_count / gesamt if gesamt > 0 else 0.0
-            st.progress(fortschritt, text=f"{gelesen_count} von {gesamt} Mitarbeiter (gelesen)")
-        except Exception as e:
-            st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
-    else:
-        st.info("Noch kein Dokument ausgewählt.")
+    # Titel anzeigen
+    try:
+        df_va = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig", dtype=str)
+        row = df_va[df_va["VA_Nr"].apply(norm_va) == va_current]
+        titel = row["Titel"].values[0] if not row.empty else ""
+        st.markdown(f"**Aktuelles Dokument:** {va_current} – {titel}")
+    except Exception:
+        st.markdown(f"**Aktuelles Dokument:** {va_current}")
+
+    # Fortschritt anzeigen
+    try:
+        df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig")
+        df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig")
+
+        # Name zusammenbauen
+        df_mitarbeiter["Name_full"] = df_mitarbeiter["Name"].str.strip() + "," + df_mitarbeiter["Vorname"].str.strip()
+        df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
+        zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == va_current]["Name_full"].dropna().unique()
+
+        df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
+        gelesen = df_kenntnis[df_kenntnis["VA_Nr_norm"] == va_current]["Name"].dropna().unique()
+
+        gelesen_count = len(set(gelesen) & set(zielgruppe))
+        gesamt = len(zielgruppe)
+        fortschritt = gelesen_count / gesamt if gesamt > 0 else 0.0
+
+        st.progress(fortschritt, text=f"{gelesen_count} von {gesamt} Mitarbeiter (gelesen)")
+    except Exception as e:
+        st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
+else:
+    st.info("Noch kein Dokument ausgewählt.")
 
