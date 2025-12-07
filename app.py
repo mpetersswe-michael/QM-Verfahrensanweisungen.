@@ -200,8 +200,8 @@ with tabs[2]:
             )
     else:
         st.error("Bitte Name und VA auswählen.")
-else:
-    st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
+    else:
+        st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
 
 # --------------------------
 # Tab 3: Mitarbeiterliste + Lesebestätigungen
