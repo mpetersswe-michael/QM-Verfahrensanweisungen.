@@ -127,9 +127,13 @@ with tab0:
             st.session_state.logged_in = False
             st.sidebar.info("Logout erfolgreich.")
 
+        # Sidebar: aktuelles Dokument + Fortschritt
         if st.session_state.selected_va:
             st.sidebar.markdown(f"**Aktuelles Dokument:** {st.session_state.selected_va}")
             st.sidebar.progress(0.75, text="Bearbeitungsfortschritt")
+        else:
+            st.sidebar.info("Noch kein Dokument ausgewählt.")
+
 
 ## --------------------------
 # Tab 1: VA-Eingabe, Anzeige, Export, PDF
