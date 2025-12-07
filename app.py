@@ -222,11 +222,10 @@ st.download_button(
     mime="text/csv",
     type="primary"
 )
-
-     # --------------------------
-        # PDF erzeugen
-        # --------------------------
-        st.markdown("### PDF erzeugen")
+# --------------------------
+ # PDF erzeugen
+# --------------------------
+st.markdown("### PDF erzeugen")
 
         if st.session_state.selected_va:
             if st.button("PDF erzeugen für ausgewählte VA", type="primary"):
