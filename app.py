@@ -97,24 +97,22 @@ if "selected_va" not in st.session_state:
 # --------------------------
 tabs = st.tabs(["System & Login", "Verfahrensanweisungen", "Lesebestätigung", "Mitarbeiter"])
 
-# --------------------------
-# --------------------------
-# Tab 0: Login
-# --------------------------
 with tabs[0]:
     st.markdown("## 🔒 Login")
 
     if st.session_state.get("logged_in", False):
         st.success("✅ Bereits eingeloggt")
-        st.button("Logout", on_click=lambda: st.session_state.update({"logged_in": False}))
+        if st.button("Logout", key="logout_tab0"):
+            st.session_state.logged_in = False
     else:
         pw = st.text_input("Passwort", type="password", key="login_pw")
         if st.button("Login", key="login_button"):
-            if pw == "qm2025":
+            if pw == "dein_passwort":
                 st.session_state.logged_in = True
                 st.success("✅ Login erfolgreich.")
             else:
                 st.error("❌ Passwort falsch.")
+
 
 with tabs[1]:
     st.markdown("## 📘 Verfahrensanweisungen")
@@ -244,13 +242,13 @@ def norm_va(x):
     return s
 
 with st.sidebar:
-    # Login-Status
     if st.session_state.get("logged_in", False):
         st.success("✅ Eingeloggt")
         if st.button("Logout", key="logout_sidebar"):
             st.session_state.logged_in = False
     else:
         st.warning("Nicht eingeloggt")
+
 
     # VA-Status und Fortschritt
     if st.session_state.get("selected_va"):
