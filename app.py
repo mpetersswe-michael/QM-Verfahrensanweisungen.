@@ -270,6 +270,7 @@ with tabs[3]:
 # Sidebar: Login, VA-Status und Fortschritt (einmalig)
 # --------------------------
 with st.sidebar:
+    # Login-Status
     if st.session_state.get("logged_in", False):
         st.success("✅ Eingeloggt")
         if st.button("Logout", key="logout_sidebar"):
@@ -277,31 +278,39 @@ with st.sidebar:
     else:
         st.warning("Nicht eingeloggt")
 
-  if st.session_state.get("selected_va"):
-    va_current = norm_va(st.session_state.selected_va)
+    # VA-Status und Fortschritt
+    if st.session_state.get("selected_va"):
+        va_current = norm_va(st.session_state.selected_va)
 
-    # Titel anzeigen
-    try:
-        if os.path.exists("qm_verfahrensanweisungen.csv"):
-            df_va_side = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig", dtype=str)
-            row = df_va_side[df_va_side["VA_Nr"].apply(norm_va) == va_current]
-            titel = row["Titel"].values[0] if not row.empty else ""
-        else:
+        # Titel anzeigen
+        try:
+            if os.path.exists("qm_verfahrensanweisungen.csv"):
+                df_va_side = pd.read_csv(
+                    "qm_verfahrensanweisungen.csv",
+                    sep=";",
+                    encoding="utf-8-sig",
+                    dtype=str
+                )
+                row = df_va_side[df_va_side["VA_Nr"].apply(norm_va) == va_current]
+                titel = row["Titel"].values[0] if not row.empty else ""
+            else:
+                titel = ""
+        except Exception as e:
             titel = ""
-    except Exception as e:
-        titel = ""
-        st.warning(f"Titel konnte nicht geladen werden: {e}")
+            st.warning(f"Titel konnte nicht geladen werden: {e}")
 
-    # Hinweis mit gelbem Hintergrund
-    st.markdown(
-        f"""
-        <div style="background-color:#fff3cd;padding:10px;border-radius:5px;border:1px solid #ffeeba">
-        <strong>Aktuelles Dokument:</strong><br>{va_current} – {titel}
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
+        # Hinweis mit gelbem Hintergrund
+        st.markdown(
+            f"""
+            <div style="background-color:#fff3cd;
+                        padding:10px;
+                        border-radius:5px;
+                        border:1px solid #ffeeba">
+            <strong>Aktuelles Dokument:</strong><br>{va_current} – {titel}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
         # Fortschritt anzeigen
         try:
@@ -311,12 +320,16 @@ with st.sidebar:
                 df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig")
                 df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig")
 
+                # Name zusammenbauen
                 if {"Name", "Vorname"}.issubset(df_mitarbeiter.columns):
-                    df_mitarbeiter["Name_full"] = df_mitarbeiter["Name"].str.strip() + "," + df_mitarbeiter["Vorname"].str.strip()
+                    df_mitarbeiter["Name_full"] = (
+                        df_mitarbeiter["Name"].str.strip() + "," + df_mitarbeiter["Vorname"].str.strip()
+                    )
                 else:
                     st.warning("Spalten 'Name' und 'Vorname' fehlen in mitarbeiter.csv.")
                     raise ValueError("Spalten fehlen")
 
+                # Zielgruppe filtern
                 if "VA_Nr" in df_mitarbeiter.columns:
                     df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
                     zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == va_current]["Name_full"].dropna().unique()
@@ -325,6 +338,7 @@ with st.sidebar:
 
                 gesamt = len(zielgruppe)
 
+                # Gelesene Einträge
                 if "VA_Nr" in df_kenntnis.columns:
                     df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
                     gelesen = df_kenntnis[df_kenntnis["VA_Nr_norm"] == va_current]["Name"].dropna().unique()
@@ -334,6 +348,7 @@ with st.sidebar:
 
                 gelesen_count = len(set(gelesen) & set(zielgruppe))
                 fortschritt = gelesen_count / gesamt if gesamt > 0 else 0.0
+
                 st.progress(fortschritt, text=f"{gelesen_count} von {gesamt} Mitarbeiter (gelesen)")
         except Exception as e:
             st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
