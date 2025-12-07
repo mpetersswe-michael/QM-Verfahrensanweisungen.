@@ -154,6 +154,7 @@ with tabs[1]:
 
                 neuer_eintrag = pd.DataFrame([{
                     "VA_Nr": va_nr_input.strip(),
+                    "Titel": titel_input.strip()
                     "Kapitel": kapitel_input.strip(),
                     "Unterkapitel": unterkapitel_input.strip(),
                     "Revisionsstand": revisionsstand_input.strip(),
