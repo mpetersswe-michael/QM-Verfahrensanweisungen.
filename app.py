@@ -122,9 +122,20 @@ with tab0:
         # Sidebar: aktuelles Dokument + Fortschritt
         if st.session_state.selected_va:
             st.sidebar.markdown(f"**Aktuelles Dokument:** {st.session_state.selected_va}")
-            st.sidebar.progress(0.75, text="Bearbeitungsfortschritt")
+
+            try:
+                df_kenntnis = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig")
+                gelesen = df_kenntnis[df_kenntnis["VA_Nr"] == st.session_state.selected_va]["Name"].nunique()
+            except Exception:
+                gelesen = 0
+
+            gesamt = 25  # Gesamtanzahl Mitarbeiter (fix oder später dynamisch)
+            fortschritt = gelesen / gesamt if gesamt > 0 else 0
+
+            st.sidebar.progress(fortschritt, text=f"{gelesen} von {gesamt} Mitarbeiter (gelesen)")
         else:
             st.sidebar.info("Noch kein Dokument ausgewählt.")
+
 
 
 ## --------------------------
