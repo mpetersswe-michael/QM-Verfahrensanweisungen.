@@ -259,20 +259,34 @@ with tabs[3]:
             st.warning("⚠️ Noch keine 'mitarbeiter.csv' vorhanden. Bitte hochladen.")
 
     # --------------------------
-    # Übersicht der Lesebestätigungen
-    # --------------------------
-    st.markdown("---")
-    st.markdown("## 📄 Aktuelle Lesebestätigungen")
+# Übersicht der Lesebestätigungen
+# --------------------------
+st.markdown("---")
+st.markdown("## 📄 Aktuelle Lesebestätigungen")
 
-    if os.path.exists("lesebestätigung.csv"):
-        try:
-            df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig")
-            # Sortiert nach Zeitpunkt, neueste oben
-            st.dataframe(df_kenntnis.sort_values("Zeitpunkt", ascending=False))
-        except Exception as e:
-            st.error(f"Fehler beim Laden der Lesebestätigungen: {e}")
-    else:
-        st.info("Noch keine Lesebestätigungen vorhanden.")
+if os.path.exists("lesebestätigung.csv"):
+    try:
+        df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig")
+        # Sortiert nach Zeitpunkt, neueste oben
+        st.dataframe(df_kenntnis.sort_values("Zeitpunkt", ascending=False))
+    except Exception as e:
+        st.error(f"Fehler beim Laden der Lesebestätigungen: {e}")
+else:
+    st.info("Noch keine Lesebestätigungen vorhanden.")
+
+st.markdown("---")
+st.markdown("### 🔄 Lesebestätigungen zurücksetzen")
+
+if os.path.exists("lesebestätigung.csv"):
+    if st.checkbox("Ich möchte alle Lesebestätigungen löschen"):
+        if st.button("Jetzt zurücksetzen", type="primary"):
+            try:
+                # Datei leeren (nicht löschen, damit Struktur bleibt)
+                with open("lesebestätigung.csv", "w", encoding="utf-8-sig") as f:
+                    f.write("Name;VA_Nr;Zeitpunkt\n")
+                st.success("✅ Alle Lesebestätigungen wurden zurückgesetzt.")
+            except Exception as e:
+                st.error(f"Fehler beim Zurücksetzen: {e}")
 
 
 # --------------------------
