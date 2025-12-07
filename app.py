@@ -118,17 +118,17 @@ with tabs[0]:
             st.sidebar.info("Logout erfolgreich.")
 
 # --------------------------
-# Tab 1: Verfahrensanweisungen (Eingabe & Auswahl mit alten Feldern)
+# Tab 1: Verfahrensanweisungen (Eingabe & Auswahl mit allen Feldern)
 # --------------------------
 with tabs[1]:
     st.markdown("## 📘 Verfahrensanweisungen")
 
     DATA_FILE_QM = "qm_verfahrensanweisungen.csv"
 
-    # Eingabefelder (alte Struktur)
+    # Eingabefelder (komplette Struktur)
     st.markdown("### Neue/aktualisierte VA eingeben")
     va_nr_input = st.text_input("VA-Nummer (z. B. VA004)", key="va_nr_input")
-    titel_input = st.text_input("Titel" , key="Titel_input")
+    titel_input = st.text_input("Titel", key="titel_input")
     kapitel_input = st.text_input("Kapitel", key="kapitel_input")
     unterkapitel_input = st.text_input("Unterkapitel", key="unterkapitel_input")
     revisionsstand_input = st.text_input("Revisionsstand", key="rev_input")
@@ -138,33 +138,29 @@ with tabs[1]:
     kommentar_input = st.text_area("Kommentar", key="kommentar_input")
     mitgeltende_input = st.text_area("Mitgeltende Unterlagen", key="mitgeltende_input")
 
-    # Speichern (append-only, keine stille Überschreibung)
+    # Speichern
     if st.button("VA speichern", key="save_va"):
         req_ok = all([
             va_nr_input.strip(),
+            titel_input.strip(),
             kapitel_input.strip(),
             unterkapitel_input.strip(),
             revisionsstand_input.strip()
         ])
         if not req_ok:
-            st.error("Bitte mindestens VA-Nummer, Kapitel, Unterkapitel und Revisionsstand ausfüllen.")
+            st.error("Bitte mindestens VA-Nummer, Titel, Kapitel, Unterkapitel und Revisionsstand ausfüllen.")
         else:
             try:
-                # Titel-Fallback für Sidebar/Anzeige (aus Kapitel/Unterkapitel abgeleitet)
-                titel_fallback = f"{kapitel_input.strip()} – {unterkapitel_input.strip()}"
-
                 neuer_eintrag = pd.DataFrame([{
                     "VA_Nr": va_nr_input.strip(),
-                    "Titel": titel_input.strip()
+                    "Titel": titel_input.strip(),
                     "Kapitel": kapitel_input.strip(),
                     "Unterkapitel": unterkapitel_input.strip(),
                     "Revisionsstand": revisionsstand_input.strip(),
                     "Ziel": ziel_input.strip(),
                     "Vorgehensweise": vorgehensweise_input.strip(),
                     "Kommentar": kommentar_input.strip(),
-                    "Mitgeltende_Unterlagen": mitgeltende_input.strip(),
-                    # optionales Feld für Sidebar-Kompatibilität:
-                    "Titel": titel_fallback
+                    "Mitgeltende_Unterlagen": mitgeltende_input.strip()
                 }])
 
                 if os.path.exists(DATA_FILE_QM):
@@ -181,18 +177,11 @@ with tabs[1]:
     st.markdown("---")
     st.markdown("### Bestehende VA auswählen")
 
-    # Auswahl bestehender Einträge (Label aus VA_Nr + Kapitel/Unterkapitel oder Titel)
     try:
         if os.path.exists(DATA_FILE_QM):
             df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str).fillna("")
-            # Label-Logik: Titel, sonst Kapitel – Unterkapitel
-            def make_label(row):
-                if str(row.get("Titel", "")).strip():
-                    return f"{row['VA_Nr']} – {row['Titel']}"
-                else:
-                    return f"{row['VA_Nr']} – {row.get('Kapitel','')} – {row.get('Unterkapitel','')}"
-
-            df_va["Label"] = df_va.apply(make_label, axis=1)
+            # Label: VA_Nr + Titel
+            df_va["Label"] = df_va["VA_Nr"].astype(str) + " – " + df_va["Titel"].astype(str)
 
             sel = st.selectbox(
                 "Dokument auswählen",
@@ -205,12 +194,12 @@ with tabs[1]:
                 st.session_state.selected_va = va_nr
                 st.success(f"Ausgewählt: {sel}")
 
-            # Übersichtstabelle aller VA (optional hilfreich)
+            # Übersichtstabelle aller VA
             st.markdown("#### Übersicht aller Verfahrensanweisungen")
             st.dataframe(
                 df_va[
-                    ["VA_Nr","Kapitel","Unterkapitel","Revisionsstand","Ziel",
-                     "Vorgehensweise","Kommentar","Mitgeltende_Unterlagen","Titel"]
+                    ["VA_Nr","Titel","Kapitel","Unterkapitel","Revisionsstand",
+                     "Ziel","Vorgehensweise","Kommentar","Mitgeltende_Unterlagen"]
                 ],
                 use_container_width=True
             )
