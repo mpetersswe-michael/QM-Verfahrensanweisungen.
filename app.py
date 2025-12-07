@@ -6,9 +6,9 @@ import pandas as pd
 import datetime as dt
 import io
 import os
+import re
 from fpdf import FPDF
 from zoneinfo import ZoneInfo
-import re
 
 # --------------------------
 # Datenkonfiguration
@@ -87,7 +87,7 @@ if "selected_va" not in st.session_state:
     st.session_state.selected_va = ""
 
 # --------------------------
-# App-Titel und Konfiguration
+# App-Titel
 # --------------------------
 st.set_page_config(page_title="Verfahrensanweisungen (Auszug aus dem QMH)")
 st.markdown(
@@ -96,215 +96,211 @@ st.markdown(
 )
 
 # --------------------------
-# Login-Bereich (nur vor Login sichtbar)
+# Tabs
 # --------------------------
-if not st.session_state.logged_in:
-    st.markdown("## Login")
-    password = st.text_input("Passwort", type="password")
-    if st.button("Login", key="login_button", type="primary"):
-        if password == "qm2025":
-            st.session_state.logged_in = True
-            st.success("Login erfolgreich!")
-        else:
-            st.error("Falsches Passwort.")
+tab0, tab1, tab2 = st.tabs(["System & Login", "Verfahrensanweisungen", "Lesebestätigung"])
 
 # --------------------------
-# Hauptinhalt (nur nach Login sichtbar)
+# Tab 0: System & Login
 # --------------------------
-if st.session_state.logged_in:
-    # Sidebar
-    st.sidebar.success("Eingeloggt")
-    if st.sidebar.button("Logout", key="sidebar_logout"):
-        st.session_state.logged_in = False
-        st.sidebar.info("Logout erfolgreich.")
+with tab0:
+    if not st.session_state.logged_in:
+        st.markdown("## Login")
+        password = st.text_input("Passwort", type="password")
+        if st.button("Login", key="login_button", type="primary"):
+            if password == "qm2025":
+                st.session_state.logged_in = True
+                st.success("Login erfolgreich!")
+            else:
+                st.error("Falsches Passwort.")
+    else:
+        st.sidebar.success("Eingeloggt")
+        if st.sidebar.button("Logout", key="sidebar_logout"):
+            st.session_state.logged_in = False
+            st.sidebar.info("Logout erfolgreich.")
 
-    if st.session_state.selected_va:
-        st.sidebar.markdown(f"**Aktuelles Dokument:** {st.session_state.selected_va}")
-        st.sidebar.progress(0.75, text="Bearbeitungsfortschritt")
+        if st.session_state.selected_va:
+            st.sidebar.markdown(f"**Aktuelles Dokument:** {st.session_state.selected_va}")
+            st.sidebar.progress(0.75, text="Bearbeitungsfortschritt")
 
 # --------------------------
 # Tab 1: VA-Eingabe, Anzeige, Export, PDF
 # --------------------------
-tab1, tab2 = st.tabs(["Verfahrensanweisungen", "Lesebestätigung"])
-
 with tab1:
-    st.markdown("## Neue Verfahrensanweisung eingeben")
+    if st.session_state.logged_in:
+        st.markdown("## Neue Verfahrensanweisung eingeben")
 
-with tab2:
-    st.markdown("## Lesebestätigung")
+        kapitel_nr = st.selectbox("Kapitel-Nr", options=list(range(1, 21)), index=0)
+        unterkap_nr = st.selectbox("Unterkapitel-Nr", options=list(range(1, 21)), index=0)
 
-    kapitel_nr = st.selectbox("Kapitel-Nr", options=list(range(1, 21)), index=0)
-    unterkap_nr = st.selectbox("Unterkapitel-Nr", options=list(range(1, 21)), index=0)
+        va_nr = st.text_input("VA-Nr").strip()
+        titel = st.text_input("Titel")
+        kapitel = str(kapitel_nr)
+        unterkapitel = f"Kap. {kapitel_nr}-{unterkap_nr}"
+        revisionsstand = st.text_input("Revisionsstand")
+        ziel = st.text_area("Ziel")
+        geltungsbereich = st.text_area("Geltungsbereich")
+        vorgehensweise = st.text_area("Vorgehensweise")
+        kommentar = st.text_area("Kommentar")
+        mitgeltende_unterlagen = st.text_area("Mitgeltende Unterlagen")
 
-    va_nr = st.text_input("VA-Nr").strip()
-    titel = st.text_input("Titel")
-    kapitel = str(kapitel_nr)
-    unterkapitel = f"Kap. {kapitel_nr}-{unterkap_nr}"
-    revisionsstand = st.text_input("Revisionsstand")
-    ziel = st.text_area("Ziel")
-    geltungsbereich = st.text_area("Geltungsbereich")
-    vorgehensweise = st.text_area("Vorgehensweise")
-    kommentar = st.text_area("Kommentar")
-    mitgeltende_unterlagen = st.text_area("Mitgeltende Unterlagen")
+        if st.button("Speichern (Append-only)", type="primary"):
+            neuer_eintrag = {
+                "VA_Nr": va_nr,
+                "Titel": titel,
+                "Kapitel": kapitel,
+                "Unterkapitel": unterkapitel,
+                "Revisionsstand": revisionsstand,
+                "Ziel": ziel,
+                "Geltungsbereich": geltungsbereich,
+                "Vorgehensweise": vorgehensweise,
+                "Kommentar": kommentar,
+                "Mitgeltende Unterlagen": mitgeltende_unterlagen
+            }
+            df_neu = pd.DataFrame([neuer_eintrag]).reindex(columns=QM_COLUMNS)
 
-    if st.button("Speichern (Append-only)", type="primary"):
-        neuer_eintrag = {
-            "VA_Nr": va_nr,
-            "Titel": titel,
-            "Kapitel": kapitel,
-            "Unterkapitel": unterkapitel,
-            "Revisionsstand": revisionsstand,
-            "Ziel": ziel,
-            "Geltungsbereich": geltungsbereich,
-            "Vorgehensweise": vorgehensweise,
-            "Kommentar": kommentar,
-            "Mitgeltende Unterlagen": mitgeltende_unterlagen
-        }
-        df_neu = pd.DataFrame([neuer_eintrag]).reindex(columns=QM_COLUMNS)
+            if os.path.exists(DATA_FILE_QM):
+                try:
+                    df_alt = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
+                except Exception:
+                    df_alt = pd.DataFrame(columns=QM_COLUMNS)
 
-        if os.path.exists(DATA_FILE_QM):
-            try:
-                df_alt = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
-            except Exception:
-                df_alt = pd.DataFrame(columns=QM_COLUMNS)
-
-            if not df_alt.empty and df_alt["VA_Nr"].astype(str).str.strip().eq(va_nr).any():
-                st.error(f"VA {va_nr} existiert bereits. Append-only: kein Überschreiben, bitte neue VA-Nr wählen.")
+                if not df_alt.empty and df_alt["VA_Nr"].astype(str).str.strip().eq(va_nr).any():
+                    st.error(f"VA {va_nr} existiert bereits. Append-only: kein Überschreiben, bitte neue VA-Nr wählen.")
+                else:
+                    df_neu.to_csv(
+                        DATA_FILE_QM,
+                        sep=";",
+                        index=False,
+                        encoding="utf-8-sig",
+                        mode="a",
+                        header=not os.path.exists(DATA_FILE_QM) or os.path.getsize(DATA_FILE_QM) == 0
+                    )
+                    st.success(f"VA {va_nr} hinzugefügt (Append-only).")
             else:
-                df_neu.to_csv(
-                    DATA_FILE_QM,
-                    sep=";",
-                    index=False,
-                    encoding="utf-8-sig",
-                    mode="a",
-                    header=not os.path.exists(DATA_FILE_QM) or os.path.getsize(DATA_FILE_QM) == 0
-                )
-                st.success(f"VA {va_nr} hinzugefügt (Append-only).")
+                df_neu.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
+                st.success(f"VA {va_nr} gespeichert (neue Datei erstellt, Append-only).")
+
+        # Anzeige und Export
+        st.markdown("## Verfahrensanweisungen anzeigen und exportieren")
+        try:
+            df_all = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
+        except Exception:
+            df_all = pd.DataFrame(columns=QM_COLUMNS)
+
+        if df_all.empty:
+            st.info("Noch keine Verfahrensanweisungen gespeichert.")
         else:
-            df_neu.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-            st.success(f"VA {va_nr} gespeichert (neue Datei erstellt, Append-only).")
-
-    # --------------------------
-    # Anzeige und Export
-    # --------------------------
-    st.markdown("## Verfahrensanweisungen anzeigen und exportieren")
-    try:
-        df_all = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
-    except Exception:
-        df_all = pd.DataFrame(columns=QM_COLUMNS)
-
-    if df_all.empty:
-        st.info("Noch keine Verfahrensanweisungen gespeichert.")
-    else:
-        df_all["VA_Anzeige"] = (
-            df_all["VA_Nr"].astype(str).str.strip()
-            + " – "
-            + df_all["Titel"].astype(str).str.strip()
-        )
-
-        selected_va_display = st.selectbox(
-            "VA auswählen für Anzeige und PDF-Erzeugung",
-            options=[""] + sorted(df_all["VA_Anzeige"].dropna().unique()),
-            index=0,
-            key="va_select_display"
-        )
-
-        selected_va = selected_va_display.split(" – ")[0] if selected_va_display else ""
-        st.session_state.selected_va = selected_va  # ← für Sidebar verfügbar
-
-        df_filtered = (
-            df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va]
-            if selected_va else df_all
-        )
-        st.dataframe(df_filtered, use_container_width=True)
-
-        csv_data = df_all.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
-        st.download_button(
-            label="VA-Tabelle als CSV herunterladen",
-            data=csv_data,
-            file_name=f"qm_va_{dt.date.today()}.csv",
-            mime="text/csv",
-            type="primary"
-        )
-
-    # --------------------------
-    # PDF erzeugen
-    # --------------------------
-    st.markdown("### PDF erzeugen")
-
-    if st.session_state.selected_va:
-        if st.button("PDF erzeugen für ausgewählte VA", type="primary"):
-            df_sel = df_all[df_all["VA_Nr"].astype(str).str.strip() == st.session_state.selected_va]
-            if not df_sel.empty:
-                pdf_bytes = export_va_to_pdf(df_sel.iloc[0].to_dict())
-                st.download_button(
-                    label="VA-PDF herunterladen",
-                    data=pdf_bytes,
-                    file_name=f"{st.session_state.selected_va}_{dt.date.today()}.pdf",
-                    mime="application/pdf",
-                    type="primary"
-                )
-            else:
-                st.error("Keine Daten für die ausgewählte VA gefunden.")
-    else:
-        st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
-# --------------------------
-# Tab 2: Lesebestätigung
-# --------------------------
-with tab2:
-    st.markdown("## Lesebestätigung")
-    st.markdown("Bitte bestätigen Sie, dass Sie die ausgewählte VA gelesen haben.")
-
-    # Eingabe Name
-    name_raw = st.text_input("Name (Nachname,Vorname)", key="lese_name")
-
-    # VA-Auswahl aus gespeicherter Datei
-    try:
-        df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
-        va_list = sorted(
-            df_va["VA_Nr"].dropna().astype(str)
-            .str.replace("VA", "", regex=False)
-            .str.strip()
-        )
-        va_nummer = st.selectbox("VA auswählen", options=va_list, key="lese_va")
-    except Exception:
-        va_nummer = None
-        st.warning("VA-Datei konnte nicht geladen werden.")
-
-    # Bestätigungs-Button
-    if st.button("Bestätigen & CSV herunterladen", key="lese_button"):
-        name_kombi = re.sub(r"\s*,\s*", ",", name_raw.strip())
-        if name_kombi and va_nummer:
-            zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
-            va_nr_speichern = f"VA{va_nummer}"
-
-            eintrag = {"Name": name_kombi, "VA_Nr": va_nr_speichern, "Zeitpunkt": zeitpunkt}
-            df_kenntnis = pd.DataFrame([eintrag])[["Name", "VA_Nr", "Zeitpunkt"]]
-
-            # Append-only Speicherung
-            file_exists = os.path.exists(DATA_FILE_KENNTNIS)
-            file_empty = (not file_exists) or (os.path.getsize(DATA_FILE_KENNTNIS) == 0)
-
-            df_kenntnis.to_csv(
-                DATA_FILE_KENNTNIS,
-                sep=";",
-                index=False,
-                mode="a" if file_exists and not file_empty else "w",
-                header=True if file_empty else False,
-                encoding="utf-8-sig"
+            df_all["VA_Anzeige"] = (
+                df_all["VA_Nr"].astype(str).str.strip()
+                + " – "
+                + df_all["Titel"].astype(str).str.strip()
             )
 
-            # Sofortiger Download
-            csv_bytes = df_kenntnis.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+            selected_va_display = st.selectbox(
+                "VA auswählen für Anzeige und PDF-Erzeugung",
+                options=[""] + sorted(df_all["VA_Anzeige"].dropna().unique()),
+                index=0,
+                key="va_select_display"
+            )
+
+            selected_va = selected_va_display.split(" – ")[0] if selected_va_display else ""
+            st.session_state.selected_va = selected_va
+
+            df_filtered = (
+                df_all[df_all["VA_Nr"].astype(str).str.strip() == selected_va]
+                if selected_va else df_all
+            )
+            st.dataframe(df_filtered, use_container_width=True)
+
+                      csv_data = df_all.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
             st.download_button(
-                label="Diese Lesebestätigung als CSV herunterladen",
-                data=csv_bytes,
-                file_name=f"lesebestaetigung_{va_nr_speichern}_{dt.date.today()}.csv",
+                label="VA-Tabelle als CSV herunterladen",
+                data=csv_data,
+                file_name=f"qm_va_{dt.date.today()}.csv",
                 mime="text/csv",
                 type="primary"
             )
 
-            st.success(f"Bestätigung für {va_nr_speichern} gespeichert.")
+        # --------------------------
+        # PDF erzeugen
+        # --------------------------
+        st.markdown("### PDF erzeugen")
+
+        if st.session_state.selected_va:
+            if st.button("PDF erzeugen für ausgewählte VA", type="primary"):
+                df_sel = df_all[df_all["VA_Nr"].astype(str).str.strip() == st.session_state.selected_va]
+                if not df_sel.empty:
+                    pdf_bytes = export_va_to_pdf(df_sel.iloc[0].to_dict())
+                    st.download_button(
+                        label="VA-PDF herunterladen",
+                        data=pdf_bytes,
+                        file_name=f"{st.session_state.selected_va}_{dt.date.today()}.pdf",
+                        mime="application/pdf",
+                        type="primary"
+                    )
+                else:
+                    st.error("Keine Daten für die ausgewählte VA gefunden.")
         else:
-            st.error("Bitte Name und VA auswählen.")
+            st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
+    else:
+        st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
+
+# --------------------------
+# Tab 2: Lesebestätigung
+# --------------------------
+with tab2:
+    if st.session_state.logged_in:
+        st.markdown("## Lesebestätigung")
+        st.markdown("Bitte bestätigen Sie, dass Sie die ausgewählte VA gelesen haben.")
+
+        name_raw = st.text_input("Name (Nachname,Vorname)", key="lese_name")
+
+        try:
+            df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
+            va_list = sorted(
+                df_va["VA_Nr"].dropna().astype(str)
+                .str.replace("VA", "", regex=False)
+                .str.strip()
+            )
+            va_nummer = st.selectbox("VA auswählen", options=va_list, key="lese_va")
+        except Exception:
+            va_nummer = None
+            st.warning("VA-Datei konnte nicht geladen werden.")
+
+        if st.button("Bestätigen & CSV herunterladen", key="lese_button"):
+            name_kombi = re.sub(r"\s*,\s*", ",", name_raw.strip())
+            if name_kombi and va_nummer:
+                zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
+                va_nr_speichern = f"VA{va_nummer}"
+
+                eintrag = {"Name": name_kombi, "VA_Nr": va_nr_speichern, "Zeitpunkt": zeitpunkt}
+                df_kenntnis = pd.DataFrame([eintrag])[["Name", "VA_Nr", "Zeitpunkt"]]
+
+                file_exists = os.path.exists(DATA_FILE_KENNTNIS)
+                file_empty = (not file_exists) or (os.path.getsize(DATA_FILE_KENNTNIS) == 0)
+
+                df_kenntnis.to_csv(
+                    DATA_FILE_KENNTNIS,
+                    sep=";",
+                    index=False,
+                    mode="a" if file_exists and not file_empty else "w",
+                    header=True if file_empty else False,
+                    encoding="utf-8-sig"
+                )
+
+                csv_bytes = df_kenntnis.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+                st.download_button(
+                    label="Diese Lesebestätigung als CSV herunterladen",
+                    data=csv_bytes,
+                    file_name=f"lesebestaetigung_{va_nr_speichern}_{dt.date.today()}.csv",
+                    mime="text/csv",
+                    type="primary"
+                )
+
+                st.success(f"Bestätigung für {va_nr_speichern} gespeichert.")
+            else:
+                st.error("Bitte Name und VA auswählen.")
+    else:
+        st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
 
