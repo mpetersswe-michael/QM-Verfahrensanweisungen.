@@ -274,6 +274,13 @@ with st.sidebar:
     if st.session_state.get("logged_in", False):
         st.success("✅ Eingeloggt")
 
+if st.session_state.get("logged_in", False):
+    st.success("✅ Eingeloggt")
+    if st.button("Logout", key="logout_sidebar"):
+        st.session_state.logged_in = False
+        st.session_state.selected_va = None  # optional: VA-Auswahl zurücksetzen
+
+        
         # VA-Auswahl
         va_liste = []
         if os.path.exists("qm_verfahrensanweisungen.csv"):
