@@ -188,16 +188,18 @@ with tabs[2]:
 
                 st.success(f"Bestätigung für {va_nr_speichern} gespeichert.")
 
+               
                 # Optionaler Download-Button
-                if st.checkbox("Eigenen Nachweis als CSV herunterladen"):
-                    csv_bytes = df_kenntnis.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
-                    st.download_button(
-                        label="Diese Lesebestätigung herunterladen",
-                        data=csv_bytes,
-                        file_name=f"lesebestaetigung_{va_nr_speichern}_{dt.date.today()}.csv",
-                        mime="text/csv",
-                        type="primary"
-                    )
+            if st.checkbox("Eigenen Nachweis als CSV herunterladen"):
+                csv_bytes = df_kenntnis.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+                st.download_button(
+                label="Diese Lesebestätigung herunterladen",
+                data=csv_bytes,
+                file_name=f"lesebestaetigung_{va_nr_speichern}_{dt.date.today()}.csv",
+                mime="text/csv",
+                type="primary"
+    )
+
             else:
                 st.error("Bitte Name und VA auswählen.")
     else:
