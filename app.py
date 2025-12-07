@@ -123,7 +123,7 @@ with tab0:
             st.sidebar.markdown(f"**Aktuelles Dokument:** {st.session_state.selected_va}")
             st.sidebar.progress(0.75, text="Bearbeitungsfortschritt")
 
-# --------------------------
+## --------------------------
 # Tab 1: VA-Eingabe, Anzeige, Export, PDF
 # --------------------------
 with tab1:
@@ -181,7 +181,9 @@ with tab1:
                 df_neu.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
                 st.success(f"VA {va_nr} gespeichert (neue Datei erstellt, Append-only).")
 
+        # --------------------------
         # Anzeige und Export
+        # --------------------------
         st.markdown("## Verfahrensanweisungen anzeigen und exportieren")
         try:
             df_all = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig")
@@ -213,14 +215,14 @@ with tab1:
             )
             st.dataframe(df_filtered, use_container_width=True)
 
-                  csv_data = df_all.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
-        st.download_button(
-            label="VA-Tabelle als CSV herunterladen",
-            data=csv_data,
-            file_name=f"qm_va_{dt.date.today()}.csv",
-            mime="text/csv",
-            type="primary"
-        )
+            csv_data = df_all.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+            st.download_button(
+                label="VA-Tabelle als CSV herunterladen",
+                data=csv_data,
+                file_name=f"qm_va_{dt.date.today()}.csv",
+                mime="text/csv",
+                type="primary"
+            )
 
         # --------------------------
         # PDF erzeugen
@@ -245,6 +247,7 @@ with tab1:
             st.info("Bitte eine VA auswählen, um ein PDF zu erzeugen.")
     else:
         st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
+
 
 # --------------------------
 # Tab 2: Lesebestätigung
