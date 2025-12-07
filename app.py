@@ -100,11 +100,7 @@ tabs = st.tabs(["System & Login", "Verfahrensanweisungen", "Lesebestätigung", "
 with tabs[0]:
     st.markdown("## 🔒 Login")
 
-    if st.session_state.get("logged_in", False):
-        st.success("✅ Bereits eingeloggt")
-        if st.button("Logout", key="logout_tab0"):
-            st.session_state.logged_in = False
-    else:
+    if not st.session_state.get("logged_in", False):
         pw = st.text_input("Passwort", type="password", key="login_pw")
         if st.button("Login", key="login_button"):
             if pw == "qm2025":
@@ -112,6 +108,9 @@ with tabs[0]:
                 st.success("✅ Login erfolgreich.")
             else:
                 st.error("❌ Passwort falsch.")
+    else:
+        st.info("Du bist bereits eingeloggt. Logout über die Sidebar.")
+
 
 
 with tabs[1]:
@@ -248,7 +247,6 @@ with st.sidebar:
             st.session_state.logged_in = False
     else:
         st.warning("Nicht eingeloggt")
-
 
     # VA-Status und Fortschritt
     if st.session_state.get("selected_va"):
