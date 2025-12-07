@@ -112,7 +112,6 @@ with tabs[0]:
         st.info("Du bist bereits eingeloggt. Logout über die Sidebar.")
 
 
-
 with tabs[1]:
     st.markdown("## 📘 Verfahrensanweisungen")
 
@@ -163,6 +162,8 @@ with tabs[1]:
         if sel:
             st.session_state.selected_va = sel.split(" – ")[0]
             st.success(f"Ausgewählt: {sel}")
+
+
 with tabs[2]:
     if st.session_state.get("logged_in", False):
         st.markdown("## ✅ Lesebestätigung")
@@ -198,6 +199,8 @@ with tabs[2]:
             st.info("Noch keine Lesebestätigungen vorhanden.")
     else:
         st.warning("Bitte zuerst im Tab 'Login' anmelden.")
+
+
 with tabs[3]:
     st.markdown("## 👥 Mitarbeiterliste")
 
@@ -222,13 +225,6 @@ def norm_va(x):
     if m.isdigit():
         s = f"VA{int(m):03d}"
     return s
-
-with st.sidebar:
-    if st.session_state.get("logged_in", False):
-        st.success("✅ Eingeloggt")
-        st.button("Logout", on_click=lambda: st.session_state.update({"logged_in": False}))
-    else:
-        st.warning("Nicht eingeloggt")
 
 # --------------------------
 # Sidebar: Login, VA-Status und Fortschritt
