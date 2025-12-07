@@ -223,9 +223,7 @@ st.download_button(
     type="primary"
 )
 
-            )
-
-        # --------------------------
+     # --------------------------
         # PDF erzeugen
         # --------------------------
         st.markdown("### PDF erzeugen")
