@@ -267,7 +267,6 @@ with tabs[3]:
 
 
 # --------------------------
-# --------------------------
 # Sidebar: Fortschritt + Lesebestätigung
 # --------------------------
 with st.sidebar:
@@ -282,12 +281,16 @@ with st.sidebar:
                 df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig", dtype=str)
                 df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig", dtype=str)
 
+                # Name zusammenbauen
                 if {"Name", "Vorname"}.issubset(df_mitarbeiter.columns):
-                    df_mitarbeiter["Name_full"] = df_mitarbeiter["Name"].str.strip() + "," + df_mitarbeiter["Vorname"].str.strip()
+                    df_mitarbeiter["Name_full"] = (
+                        df_mitarbeiter["Name"].str.strip() + "," + df_mitarbeiter["Vorname"].str.strip()
+                    )
                 else:
                     st.warning("Spalten 'Name' und 'Vorname' fehlen in mitarbeiter.csv.")
                     raise ValueError("Spalten fehlen")
 
+                # Zielgruppe bestimmen
                 if "VA_Nr" in df_mitarbeiter.columns:
                     df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
                     zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == va_current]["Name_full"].dropna().unique()
@@ -296,6 +299,7 @@ with st.sidebar:
 
                 gesamt = len(zielgruppe)
 
+                # Gelesene Einträge
                 if "VA_Nr" in df_kenntnis.columns:
                     df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
                     gelesen = df_kenntnis[df_kenntnis["VA_Nr_norm"] == va_current]["Name"].dropna().unique()
@@ -303,7 +307,10 @@ with st.sidebar:
                     st.warning("Spalte 'VA_Nr' fehlt in lesebestätigung.csv.")
                     raise ValueError("Spalte 'VA_Nr' fehlt")
 
-                gelesen_count = len(set(gelesen) & set(zielgruppe))
+                # Vergleich Zielgruppe vs. Gelesen
+                gelesen_set = set([n.strip() for n in gelesen])
+                zielgruppe_set = set([n.strip() for n in zielgruppe])
+                gelesen_count = len(gelesen_set & zielgruppe_set)
                 fortschritt = gelesen_count / gesamt if gesamt > 0 else 0.0
 
                 st.progress(fortschritt, text=f"{gelesen_count} von {gesamt} Mitarbeiter (gelesen)")
@@ -314,9 +321,10 @@ with st.sidebar:
         st.markdown("### Lesebestätigung")
         name_sidebar = st.text_input("Name (Nachname, Vorname)", key="sidebar_name_input")
         if st.button("Bestätigen", key="sidebar_confirm_button"):
-            if name_sidebar.strip():
+            name_clean = re.sub(r"\s*,\s*", ",", name_sidebar.strip())
+            if name_clean:
                 zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
-                eintrag = {"Name": name_sidebar.strip(), "VA_Nr": va_current, "Zeitpunkt": zeitpunkt}
+                eintrag = {"Name": name_clean, "VA_Nr": va_current, "Zeitpunkt": zeitpunkt}
                 df_new = pd.DataFrame([eintrag])[["Name", "VA_Nr", "Zeitpunkt"]]
 
                 path = "lesebestätigung.csv"
