@@ -70,6 +70,13 @@ def export_va_to_pdf(row):
     pdf.cell(0, 10, clean_text(f"QM-Verfahrensanweisung - {row.get('VA_Nr','')}"), ln=True, align="C")
     pdf.ln(5)
 
+    def norm_va(x):
+    s = str(x).upper().replace(" ", "")
+    m = s.replace("VA", "")
+    if m.isdigit():
+        s = f"VA{int(m):03d}"
+    return s
+
     def add_section(title, content):
         pdf.set_font("Arial", "B", 12)
         pdf.cell(0, 8, clean_text(title), ln=True)
