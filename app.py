@@ -147,25 +147,8 @@ with tabs[1]:
 # --------------------------
 with tabs[2]:
     if st.session_state.get("logged_in", False):
-        st.markdown("## ✅ Lesebestätigung")
-        st.markdown("Bitte bestätigen Sie, dass Sie die ausgewählte VA gelesen haben.")
-
-        name_raw = st.text_input("Name (Nachname,Vorname)", key="lese_name")
-
-        # VA-Auswahl ohne Text (nur Nummern)
-        try:
-            df_va = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig", dtype=str)
-            va_list = sorted(
-                df_va["VA_Nr"].dropna().astype(str).str.replace("VA", "", regex=False).str.strip()
-            )
-            va_nummer = st.selectbox("VA auswählen", options=va_list, key="lese_va")
-        except Exception:
-            va_nummer = None
-            st.warning("VA-Datei konnte nicht geladen werden.")
-
-        if st.button("Bestätigen", key="lese_button"):
-           name_kombi = re.sub(r"\s*,\s*", ",", name_raw.strip())
-    
+    if st.button("Bestätigen", key="lese_button"):
+        name_kombi = re.sub(r"\s*,\s*", ",", name_raw.strip())
         if name_kombi and va_nummer:
             zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
             va_nr_speichern = f"VA{va_nummer}"
@@ -178,30 +161,31 @@ with tabs[2]:
             file_empty = (not file_exists) or (os.path.getsize(DATA_FILE_KENNTNIS) == 0)
 
             df_kenntnis.to_csv(
-            DATA_FILE_KENNTNIS,
-            sep=";",
-            index=False,
-            mode="a" if file_exists and not file_empty else "w",
-            header=True if file_empty else False,
-            encoding="utf-8-sig"
-        )
-
-        st.success(f"Bestätigung für {va_nr_speichern} gespeichert.")
-
-        # Optionaler Download-Button
-        if st.checkbox("Eigenen Nachweis als CSV herunterladen"):
-            csv_bytes = df_kenntnis.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
-            st.download_button(
-                label="Diese Lesebestätigung herunterladen",
-                data=csv_bytes,
-                file_name=f"lesebestaetigung_{va_nr_speichern}_{dt.date.today()}.csv",
-                mime="text/csv",
-                type="primary"
+                DATA_FILE_KENNTNIS,
+                sep=";",
+                index=False,
+                mode="a" if file_exists and not file_empty else "w",
+                header=True if file_empty else False,
+                encoding="utf-8-sig"
             )
-    else:
-        st.error("Bitte Name und VA auswählen.")
-    else:
-        st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
+
+            st.success(f"Bestätigung für {va_nr_speichern} gespeichert.")
+
+            # Optionaler Download-Button
+            if st.checkbox("Eigenen Nachweis als CSV herunterladen"):
+                csv_bytes = df_kenntnis.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
+                st.download_button(
+                    label="Diese Lesebestätigung herunterladen",
+                    data=csv_bytes,
+                    file_name=f"lesebestaetigung_{va_nr_speichern}_{dt.date.today()}.csv",
+                    mime="text/csv",
+                    type="primary"
+                )
+        else:
+            st.error("Bitte Name und VA auswählen.")
+else:
+    st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
+
 
 # --------------------------
 # Tab 3: Mitarbeiterliste + Lesebestätigungen
