@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 # Datenkonfiguration
 # --------------------------
 DATA_FILE_QM = "qm_verfahrensanweisungen.csv"
-DATA_FILE_KENNTNIS = "kenntnisnahmen.csv"
+DATA_FILE_KENNTNIS = "lesebestätigung.csv"
 QM_COLUMNS = [
     "VA_Nr", "Titel", "Kapitel", "Unterkapitel", "Revisionsstand",
     "Ziel", "Geltungsbereich", "Vorgehensweise", "Kommentar", "Mitgeltende Unterlagen"
