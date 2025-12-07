@@ -277,21 +277,31 @@ with st.sidebar:
     else:
         st.warning("Nicht eingeloggt")
 
-    if st.session_state.get("selected_va"):
-        va_current = norm_va(st.session_state.selected_va)
+  if st.session_state.get("selected_va"):
+    va_current = norm_va(st.session_state.selected_va)
 
-        # Titel anzeigen
-        try:
-            if os.path.exists("qm_verfahrensanweisungen.csv"):
-                df_va_side = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig", dtype=str)
-                row = df_va_side[df_va_side["VA_Nr"].apply(norm_va) == va_current]
-                titel = row["Titel"].values[0] if not row.empty else ""
-                st.markdown(f"**Aktuelles Dokument:** {va_current} – {titel}")
-            else:
-                st.markdown(f"**Aktuelles Dokument:** {va_current}")
-        except Exception as e:
-            st.markdown(f"**Aktuelles Dokument:** {va_current}")
-            st.warning(f"Titel konnte nicht geladen werden: {e}")
+    # Titel anzeigen
+    try:
+        if os.path.exists("qm_verfahrensanweisungen.csv"):
+            df_va_side = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig", dtype=str)
+            row = df_va_side[df_va_side["VA_Nr"].apply(norm_va) == va_current]
+            titel = row["Titel"].values[0] if not row.empty else ""
+        else:
+            titel = ""
+    except Exception as e:
+        titel = ""
+        st.warning(f"Titel konnte nicht geladen werden: {e}")
+
+    # Hinweis mit gelbem Hintergrund
+    st.markdown(
+        f"""
+        <div style="background-color:#fff3cd;padding:10px;border-radius:5px;border:1px solid #ffeeba">
+        <strong>Aktuelles Dokument:</strong><br>{va_current} – {titel}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
 
         # Fortschritt anzeigen
         try:
