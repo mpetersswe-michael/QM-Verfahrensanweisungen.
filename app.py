@@ -7,7 +7,7 @@ import datetime as dt
 from zoneinfo import ZoneInfo
 import pandas as pd
 import streamlit as st
-from fpdf import FPDF
+from fpdf import FPDF  
 
 
 st.set_page_config(
