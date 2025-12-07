@@ -118,29 +118,110 @@ with tabs[0]:
             st.sidebar.info("Logout erfolgreich.")
 
 # --------------------------
-# Tab 1: Verfahrensanweisungen (VA-Auswahl)
+# Tab 1: Verfahrensanweisungen (Eingabe & Auswahl mit alten Feldern)
 # --------------------------
 with tabs[1]:
     st.markdown("## 📘 Verfahrensanweisungen")
+
+    DATA_FILE_QM = "qm_verfahrensanweisungen.csv"
+
+    # Eingabefelder (alte Struktur)
+    st.markdown("### Neue/aktualisierte VA eingeben")
+    va_nr_input = st.text_input("VA-Nummer (z. B. VA004)", key="va_nr_input")
+    kapitel_input = st.text_input("Kapitel", key="kapitel_input")
+    unterkapitel_input = st.text_input("Unterkapitel", key="unterkapitel_input")
+    revisionsstand_input = st.text_input("Revisionsstand", key="rev_input")
+    ziel_input = st.text_input("Ziel", key="ziel_input")
+
+    vorgehensweise_input = st.text_area("Vorgehensweise", key="vorgehensweise_input")
+    kommentar_input = st.text_area("Kommentar", key="kommentar_input")
+    mitgeltende_input = st.text_area("Mitgeltende Unterlagen", key="mitgeltende_input")
+
+    # Speichern (append-only, keine stille Überschreibung)
+    if st.button("VA speichern", key="save_va"):
+        req_ok = all([
+            va_nr_input.strip(),
+            kapitel_input.strip(),
+            unterkapitel_input.strip(),
+            revisionsstand_input.strip()
+        ])
+        if not req_ok:
+            st.error("Bitte mindestens VA-Nummer, Kapitel, Unterkapitel und Revisionsstand ausfüllen.")
+        else:
+            try:
+                # Titel-Fallback für Sidebar/Anzeige (aus Kapitel/Unterkapitel abgeleitet)
+                titel_fallback = f"{kapitel_input.strip()} – {unterkapitel_input.strip()}"
+
+                neuer_eintrag = pd.DataFrame([{
+                    "VA_Nr": va_nr_input.strip(),
+                    "Kapitel": kapitel_input.strip(),
+                    "Unterkapitel": unterkapitel_input.strip(),
+                    "Revisionsstand": revisionsstand_input.strip(),
+                    "Ziel": ziel_input.strip(),
+                    "Vorgehensweise": vorgehensweise_input.strip(),
+                    "Kommentar": kommentar_input.strip(),
+                    "Mitgeltende_Unterlagen": mitgeltende_input.strip(),
+                    # optionales Feld für Sidebar-Kompatibilität:
+                    "Titel": titel_fallback
+                }])
+
+                if os.path.exists(DATA_FILE_QM):
+                    df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
+                    df_va = pd.concat([df_va, neuer_eintrag], ignore_index=True)
+                else:
+                    df_va = neuer_eintrag
+
+                df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
+                st.success(f"✅ VA {va_nr_input.strip()} gespeichert.")
+            except Exception as e:
+                st.error(f"Fehler beim Speichern: {e}")
+
+    st.markdown("---")
+    st.markdown("### Bestehende VA auswählen")
+
+    # Auswahl bestehender Einträge (Label aus VA_Nr + Kapitel/Unterkapitel oder Titel)
     try:
-        df_va = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig", dtype=str)
-        # Anzeige mit Text, aber Speicherung nur VA-Nr
-        options = (
-            df_va.dropna(subset=["VA_Nr"])
-                 .assign(Label=lambda d: d["VA_Nr"].astype(str) + " – " + d["Titel"].astype(str))
-        )
-        sel = st.selectbox(
-            "Dokument auswählen",
-            options=options["Label"].tolist(),
-            index=None,
-            placeholder="Bitte wählen…"
-        )
-        if sel:
-            va_nr = sel.split(" – ")[0]  # z. B. "VA004"
-            st.session_state.selected_va = va_nr  # Sidebar bekommt die reine VA-Nummer
-            st.success(f"Ausgewählt: {sel}")
+        if os.path.exists(DATA_FILE_QM):
+            df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str).fillna("")
+            # Label-Logik: Titel, sonst Kapitel – Unterkapitel
+            def make_label(row):
+                if str(row.get("Titel", "")).strip():
+                    return f"{row['VA_Nr']} – {row['Titel']}"
+                else:
+                    return f"{row['VA_Nr']} – {row.get('Kapitel','')} – {row.get('Unterkapitel','')}"
+
+            df_va["Label"] = df_va.apply(make_label, axis=1)
+
+            sel = st.selectbox(
+                "Dokument auswählen",
+                options=df_va["Label"].tolist(),
+                index=None,
+                placeholder="Bitte wählen…"
+            )
+            if sel:
+                va_nr = sel.split(" – ")[0]  # z. B. "VA004"
+                st.session_state.selected_va = va_nr
+                st.success(f"Ausgewählt: {sel}")
+
+            # Übersichtstabelle aller VA (optional hilfreich)
+            st.markdown("#### Übersicht aller Verfahrensanweisungen")
+            st.dataframe(
+                df_va[
+                    ["VA_Nr","Kapitel","Unterkapitel","Revisionsstand","Ziel",
+                     "Vorgehensweise","Kommentar","Mitgeltende_Unterlagen","Titel"]
+                ],
+                use_container_width=True
+            )
+        else:
+            st.info("Noch keine VA-Datei vorhanden. Bitte zuerst eine VA eingeben und speichern.")
     except Exception as e:
         st.warning(f"VA-Datei konnte nicht geladen werden: {e}")
+
+
+
+
+
+
 
 # --------------------------
 # Tab 2: Lesebestätigung
@@ -221,11 +302,6 @@ if os.path.exists("lesebestätigung.csv"):
 else:
     st.info("Noch keine Lesebestätigungen vorhanden.")
 
-
-
-
-
-
 # --------------------------
 # Tab 3: Mitarbeiterliste + Lesebestätigungen
 # --------------------------
@@ -299,46 +375,72 @@ def norm_va(x):
         s = f"VA{int(m):03d}"
     return s
 
-if st.session_state.selected_va:
-    st.sidebar.markdown(f"**Aktuelles Dokument:** {st.session_state.selected_va}")
-    try:
-        if not os.path.exists("mitarbeiter.csv"):
-            st.sidebar.warning("Die Datei 'mitarbeiter.csv' fehlt. Bitte im Tab 'Mitarbeiter' hochladen.")
-            raise FileNotFoundError("mitarbeiter.csv fehlt")
+with st.sidebar:
+    # Login-Status
+    if st.session_state.get("logged_in", False):
+        st.success("✅ Eingeloggt")
+        st.button("Logout", on_click=lambda: st.session_state.update({"logged_in": False}))
+    else:
+        st.warning("Nicht eingeloggt")
 
-        df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig")
-        df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig")
-
-        # Namen vereinheitlichen: Nachname,Vorname
-        if {"Vorname", "Name"}.issubset(df_mitarbeiter.columns):
-            df_mitarbeiter["Name_full"] = (
-                df_mitarbeiter["Name"].astype(str).str.strip() + "," +
-                df_mitarbeiter["Vorname"].astype(str).str.strip()
-            )
-        else:
-            st.sidebar.warning("Spalten 'Vorname' und 'Name' fehlen in mitarbeiter.csv.")
-            raise ValueError("Spalten fehlen")
-
+    # Aktuelles Dokument + Fortschritt
+    if st.session_state.get("selected_va"):
         va_current = norm_va(st.session_state.selected_va)
-        if "VA_Nr" in df_mitarbeiter.columns:
-            df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
-            zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == va_current]["Name_full"].dropna().unique()
-        else:
-            zielgruppe = df_mitarbeiter["Name_full"].dropna().unique()
 
-        gesamt = len(zielgruppe)
+        # Titel der VA aus qm_verfahrensanweisungen.csv laden
+        try:
+            if os.path.exists("qm_verfahrensanweisungen.csv"):
+                df_va = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig", dtype=str)
+                row = df_va[df_va["VA_Nr"].apply(norm_va) == va_current]
+                if not row.empty:
+                    titel = row["Titel"].values[0]
+                    st.markdown(f"**Aktuelles Dokument:** {va_current} – {titel}")
+                else:
+                    st.markdown(f"**Aktuelles Dokument:** {va_current}")
+            else:
+                st.markdown(f"**Aktuelles Dokument:** {va_current}")
+        except Exception as e:
+            st.sidebar.warning(f"Titel konnte nicht geladen werden: {e}")
+            st.markdown(f"**Aktuelles Dokument:** {va_current}")
 
-        if "VA_Nr" in df_kenntnis.columns:
-            df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
-            gelesen = df_kenntnis[df_kenntnis["VA_Nr_norm"] == va_current]["Name"].dropna().unique()
-        else:
-            st.sidebar.warning("Spalte 'VA_Nr' fehlt in lesebestätigung.csv.")
-            raise ValueError("Spalte 'VA_Nr' fehlt")
+        # Fortschritt berechnen
+        try:
+            if not os.path.exists("mitarbeiter.csv"):
+                st.sidebar.warning("Die Datei 'mitarbeiter.csv' fehlt. Bitte im Tab 'Mitarbeiter' hochladen.")
+                raise FileNotFoundError("mitarbeiter.csv fehlt")
 
-        gelesen_count = len(set(gelesen) & set(zielgruppe))
-        fortschritt = (gelesen_count / gesamt) if gesamt > 0 else 0.0
-        st.sidebar.progress(fortschritt, text=f"{gelesen_count} von {gesamt} Mitarbeiter (gelesen)")
-    except Exception as e:
-        st.sidebar.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
-else:
-    st.sidebar.info("Noch kein Dokument ausgewählt.")
+            df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig")
+            df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig")
+
+            # Namen vereinheitlichen: Nachname,Vorname
+            if {"Vorname", "Name"}.issubset(df_mitarbeiter.columns):
+                df_mitarbeiter["Name_full"] = (
+                    df_mitarbeiter["Name"].astype(str).str.strip() + "," +
+                    df_mitarbeiter["Vorname"].astype(str).str.strip()
+                )
+            else:
+                st.sidebar.warning("Spalten 'Vorname' und 'Name' fehlen in mitarbeiter.csv.")
+                raise ValueError("Spalten fehlen")
+
+            if "VA_Nr" in df_mitarbeiter.columns:
+                df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
+                zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == va_current]["Name_full"].dropna().unique()
+            else:
+                zielgruppe = df_mitarbeiter["Name_full"].dropna().unique()
+
+            gesamt = len(zielgruppe)
+
+            if "VA_Nr" in df_kenntnis.columns:
+                df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
+                gelesen = df_kenntnis[df_kenntnis["VA_Nr_norm"] == va_current]["Name"].dropna().unique()
+            else:
+                st.sidebar.warning("Spalte 'VA_Nr' fehlt in lesebestätigung.csv.")
+                raise ValueError("Spalte 'VA_Nr' fehlt")
+
+            gelesen_count = len(set(gelesen) & set(zielgruppe))
+            fortschritt = (gelesen_count / gesamt) if gesamt > 0 else 0.0
+            st.sidebar.progress(fortschritt, text=f"{gelesen_count} von {gesamt} Mitarbeiter (gelesen)")
+        except Exception as e:
+            st.sidebar.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
+    else:
+        st.sidebar.info("Noch kein Dokument ausgewählt.")
