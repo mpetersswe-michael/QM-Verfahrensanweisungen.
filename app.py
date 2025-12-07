@@ -164,19 +164,20 @@ with tabs[2]:
             st.warning("VA-Datei konnte nicht geladen werden.")
 
         if st.button("Bestätigen", key="lese_button"):
-    name_kombi = re.sub(r"\s*,\s*", ",", name_raw.strip())
-    if name_kombi and va_nummer:
-        zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
-        va_nr_speichern = f"VA{va_nummer}"
+           name_kombi = re.sub(r"\s*,\s*", ",", name_raw.strip())
+    
+        if name_kombi and va_nummer:
+            zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
+            va_nr_speichern = f"VA{va_nummer}"
 
-        eintrag = {"Name": name_kombi, "VA_Nr": va_nr_speichern, "Zeitpunkt": zeitpunkt}
-        df_kenntnis = pd.DataFrame([eintrag])[["Name", "VA_Nr", "Zeitpunkt"]]
+            eintrag = {"Name": name_kombi, "VA_Nr": va_nr_speichern, "Zeitpunkt": zeitpunkt}
+            df_kenntnis = pd.DataFrame([eintrag])[["Name", "VA_Nr", "Zeitpunkt"]]
 
-        DATA_FILE_KENNTNIS = "lesebestätigung.csv"
-        file_exists = os.path.exists(DATA_FILE_KENNTNIS)
-        file_empty = (not file_exists) or (os.path.getsize(DATA_FILE_KENNTNIS) == 0)
+            DATA_FILE_KENNTNIS = "lesebestätigung.csv"
+            file_exists = os.path.exists(DATA_FILE_KENNTNIS)
+            file_empty = (not file_exists) or (os.path.getsize(DATA_FILE_KENNTNIS) == 0)
 
-        df_kenntnis.to_csv(
+            df_kenntnis.to_csv(
             DATA_FILE_KENNTNIS,
             sep=";",
             index=False,
