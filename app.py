@@ -396,3 +396,35 @@ with tab2:
                 st.error("Bitte Name und VA auswählen.")
     else:
         st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
+
+with tabs[3]:
+    st.markdown("## 👥 Mitarbeiterliste verwalten")
+
+    uploaded_file = st.file_uploader("📄 mitarbeiter.csv hochladen", type=["csv"])
+
+    if uploaded_file is not None:
+        try:
+            # Datei speichern
+            with open("mitarbeiter.csv", "wb") as f:
+                f.write(uploaded_file.getbuffer())
+            st.success("✅ Datei 'mitarbeiter.csv' erfolgreich gespeichert.")
+
+            # Vorschau anzeigen
+            df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig")
+            st.markdown("### Vorschau der geladenen Mitarbeiter:")
+            st.dataframe(df_mitarbeiter)
+
+        except Exception as e:
+            st.error(f"Fehler beim Verarbeiten der Datei: {e}")
+    else:
+        if os.path.exists("mitarbeiter.csv"):
+            st.info("ℹ️ Es existiert bereits eine 'mitarbeiter.csv'.")
+            try:
+                df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig")
+                st.markdown("### Vorschau der aktuellen Mitarbeiterliste:")
+                st.dataframe(df_mitarbeiter)
+            except Exception as e:
+                st.error(f"Fehler beim Laden der vorhandenen Datei: {e}")
+        else:
+            st.warning("⚠️ Noch keine 'mitarbeiter.csv' vorhanden. Bitte hochladen.")
+
