@@ -94,6 +94,14 @@ st.markdown(
     "<h5 style='text-align:center; color:#444;'>Verfahrensanweisungen (Auszug aus dem QMH)</h5>",
     unsafe_allow_html=True
 )
+# Sidebar: aktuelles Dokument + Fortschritt
+if st.session_state.selected_va:
+    st.sidebar.markdown(f"**Aktuelles Dokument:** {st.session_state.selected_va}")
+
+    # Fortschrittsbalken – hier z.B. 75 %
+    st.sidebar.progress(0.75, text="Bearbeitungsfortschritt")
+else:
+    st.sidebar.info("Noch kein Dokument ausgewählt.")
 
 # --------------------------
 # Tabs
