@@ -98,7 +98,8 @@ st.markdown(
 # --------------------------
 # Tabs
 # --------------------------
-tab0, tab1, tab2 = st.tabs(["System & Login", "Verfahrensanweisungen", "Lesebestätigung"])
+tabs = st.tabs(["System & Login", "Verfahrensanweisungen", "Lesebestätigung", "Mitarbeiter"])
+
 
 # --------------------------
 # Tab 0: System & Login
@@ -396,6 +397,11 @@ with tab2:
                 st.error("Bitte Name und VA auswählen.")
     else:
         st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
+
+
+# --------------------------
+# Tab 3: Mitarbeiterliste hochladen
+# -------------------------
 
 with tabs[3]:
     st.markdown("## 👥 Mitarbeiterliste verwalten")
