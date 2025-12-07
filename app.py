@@ -101,12 +101,21 @@ st.markdown(
 tabs = st.tabs(["System & Login", "Verfahrensanweisungen", "Lesebestätigung", "Mitarbeiter"])
 
 
+# Tabs definieren
+tabs = st.tabs([
+    "System & Login",
+    "Verfahrensanweisungen",
+    "Lesebestätigung",
+    "Mitarbeiter"
+])
+
 # --------------------------
 # Tab 0: System & Login
 # --------------------------
-with tab0:
-    if not st.session_state.logged_in:
-        st.markdown("## Login")
+with tabs[0]:
+    st.markdown("## 🔐 Login")
+
+    if not st.session_state.get("logged_in", False):
         password = st.text_input("Passwort", type="password")
         if st.button("Login", key="login_button", type="primary"):
             if password == "qm2025":
