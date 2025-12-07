@@ -128,6 +128,7 @@ with tabs[1]:
     # Eingabefelder (alte Struktur)
     st.markdown("### Neue/aktualisierte VA eingeben")
     va_nr_input = st.text_input("VA-Nummer (z. B. VA004)", key="va_nr_input")
+    titel_input = st.text_input("Titel" , key="Titel_input")
     kapitel_input = st.text_input("Kapitel", key="kapitel_input")
     unterkapitel_input = st.text_input("Unterkapitel", key="unterkapitel_input")
     revisionsstand_input = st.text_input("Revisionsstand", key="rev_input")
