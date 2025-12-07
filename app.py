@@ -103,27 +103,43 @@ tab0, tab1, tab2 = st.tabs(["System & Login", "Verfahrensanweisungen", "Lesebest
 # --------------------------
 # Tab 0: System & Login
 # --------------------------
-# Sidebar: aktuelles Dokument + Fortschritt
-if st.session_state.selected_va:
-    st.sidebar.markdown(f"**Aktuelles Dokument:** {st.session_state.selected_va}")
+with tab0:
+    if not st.session_state.logged_in:
+        st.markdown("## Login")
+        password = st.text_input("Passwort", type="password")
+        if st.button("Login", key="login_button", type="primary"):
+            if password == "qm2025":
+                st.session_state.logged_in = True
+                st.success("Login erfolgreich!")
+            else:
+                st.error("Falsches Passwort.")
+    else:
+        st.sidebar.success("Eingeloggt")
+        if st.sidebar.button("Logout", key="sidebar_logout"):
+            st.session_state.logged_in = False
+            st.sidebar.info("Logout erfolgreich.")
 
-    try:
-        df_kenntnis = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig")
-        df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig")
+        # Sidebar: aktuelles Dokument + Fortschritt
+        if st.session_state.selected_va:
+            st.sidebar.markdown(f"**Aktuelles Dokument:** {st.session_state.selected_va}")
 
-        # Einheitliches Format: Nachname,Vorname
-        df_kenntnis["Name"] = df_kenntnis["Name"].astype(str).str.strip()
-        df_mitarbeiter["Name"] = df_mitarbeiter["Name"].astype(str).str.strip()
+            try:
+                df_kenntnis = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig")
+                df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig")
 
-        gelesen = df_kenntnis[df_kenntnis["VA_Nr"] == st.session_state.selected_va]["Name"].nunique()
-        gesamt = df_mitarbeiter["Name"].nunique()
+                # Einheitliches Format: Nachname,Vorname
+                df_kenntnis["Name"] = df_kenntnis["Name"].astype(str).str.strip()
+                df_mitarbeiter["Name"] = df_mitarbeiter["Name"].astype(str).str.strip()
 
-        fortschritt = gelesen / gesamt if gesamt > 0 else 0
-        st.sidebar.progress(fortschritt, text=f"{gelesen} von {gesamt} Mitarbeiter (gelesen)")
-    except Exception:
-        st.sidebar.warning("Fortschritt konnte nicht berechnet werden.")
-else:
-    st.sidebar.info("Noch kein Dokument ausgewählt.")
+                gelesen = df_kenntnis[df_kenntnis["VA_Nr"] == st.session_state.selected_va]["Name"].nunique()
+                gesamt = df_mitarbeiter["Name"].nunique()
+
+                fortschritt = gelesen / gesamt if gesamt > 0 else 0
+                st.sidebar.progress(fortschritt, text=f"{gelesen} von {gesamt} Mitarbeiter (gelesen)")
+            except Exception:
+                st.sidebar.warning("Fortschritt konnte nicht berechnet werden.")
+        else:
+            st.sidebar.info("Noch kein Dokument ausgewählt.")
 
 
 
