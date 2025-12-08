@@ -194,9 +194,6 @@ with tabs[1]:
             # PDF direkt nach Speicherung
            
 
-          from fpdf import FPDF
-import io
-
 class CustomPDF(FPDF):
     def footer(self):
         self.set_y(-15)
