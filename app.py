@@ -189,82 +189,64 @@ with tabs[1]:
         else:
             st.error("Pflichtfelder fehlen.")
 
+    # Auswahl + PDF-Vorschau
+    st.markdown("---")
+    st.markdown("### VA auswählen")
+    if os.path.exists(DATA_FILE_QM):
+        df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str).fillna("")
+        df_va["Label"] = df_va["VA_Nr"] + " – " + df_va["Titel"]
+        sel = st.selectbox("Dokument auswählen", df_va["Label"].tolist(), index=None, key="va_auswahl_select")
+        if sel:
+            va_id = sel.split(" – ")[0]
+            st.session_state.selected_va = va_id
+            st.success(f"Ausgewählt: {sel}")
 
-# ----------------------------------
-# Löschbereich ganz unten im Tab
-# ----------------------------------
-st.markdown("---")
-st.markdown(
-    """
-    <div style="background-color:#e7f3fe;
-                padding:15px;
-                border-radius:5px;
-                border:1px solid #b3d7ff;
-                margin-top:20px">
-    <h4 style="color:#31708f">🗑️ VA löschen</h4>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+            # PDF Vorschau erzeugen
+            from fpdf import FPDF
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_font("Arial", size=12)
 
-if os.path.exists(DATA_FILE_QM):
-    df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
-    va_liste = sorted(df_va["VA_Nr"].dropna().unique())
-    va_zum_loeschen = st.selectbox("VA auswählen zum Löschen", options=va_liste, index=None, key="va_loeschen_select")
+            row = df_va[df_va["VA_Nr"] == va_id].iloc[0]
+            pdf.cell(200, 10, txt=f"{row['VA_Nr']} – {row['Titel']}", ln=True)
+            pdf.cell(200, 10, txt=f"Kapitel: {row['Kapitel']}", ln=True)
+            pdf.cell(200, 10, txt=f"Unterkapitel: {row['Unterkapitel']}", ln=True)
+            pdf.cell(200, 10, txt=f"Revisionsstand: {row['Revisionsstand']}", ln=True)
+            pdf.cell(200, 10, txt=f"Geltungsbereich: {row['Geltungsbereich']}", ln=True)
+            pdf.multi_cell(0, 10, txt=f"Ziel:\n{row['Ziel']}")
+            pdf.multi_cell(0, 10, txt=f"Vorgehensweise:\n{row['Vorgehensweise']}")
+            pdf.multi_cell(0, 10, txt=f"Kommentar:\n{row['Kommentar']}")
+            pdf.multi_cell(0, 10, txt=f"Mitgeltende Unterlagen:\n{row['Mitgeltende_Unterlagen']}")
 
-    if va_zum_loeschen and st.button("VA löschen", key="va_loeschen_button"):
-        df_va = df_va[df_va["VA_Nr"] != va_zum_loeschen]
-        df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-        st.success(f"❌ VA {va_zum_loeschen} wurde gelöscht.")
-else:
-    st.info("Noch keine Verfahrensanweisungen vorhanden.")
+            pdf_bytes = pdf.output(dest="S").encode("latin-1")
 
+            st.download_button(
+                label=f"📄 Vorschau anzeigen: {va_id}",
+                data=pdf_bytes,
+                file_name=f"{va_id}_preview.pdf",
+                mime="application/pdf",
+                key=f"preview_{va_id}"
+            )
 
+            if st.button("PDF endgültig speichern", key=f"save_{va_id}"):
+                pdf_path = f"va_pdf/{va_id}.pdf"
+                pdf.output(pdf_path)
+                st.success(f"✅ PDF für {va_id} gespeichert in va_pdf/")
 
-   # Auswahl
-st.markdown("---")
-st.markdown("### VA auswählen")
-if os.path.exists(DATA_FILE_QM):
-    df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str).fillna("")
-    df_va["Label"] = df_va["VA_Nr"] + " – " + df_va["Titel"]
-    sel = st.selectbox("Dokument auswählen", df_va["Label"].tolist(), index=None)
-    if sel:
-        va_id = sel.split(" – ")[0]
-        st.session_state.selected_va = va_id
-        st.success(f"Ausgewählt: {sel}")
-
-        # PDF Vorschau erzeugen
-        from fpdf import FPDF
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=12)
-
-        row = df_va[df_va["VA_Nr"] == va_id].iloc[0]
-        pdf.cell(200, 10, txt=f"{row['VA_Nr']} – {row['Titel']}", ln=True)
-        pdf.cell(200, 10, txt=f"Kapitel: {row['Kapitel']}", ln=True)
-        pdf.cell(200, 10, txt=f"Unterkapitel: {row['Unterkapitel']}", ln=True)
-        pdf.cell(200, 10, txt=f"Revisionsstand: {row['Revisionsstand']}", ln=True)
-        pdf.cell(200, 10, txt=f"Geltungsbereich: {row['Geltungsbereich']}", ln=True)
-        pdf.multi_cell(0, 10, txt=f"Ziel:\n{row['Ziel']}")
-        pdf.multi_cell(0, 10, txt=f"Vorgehensweise:\n{row['Vorgehensweise']}")
-        pdf.multi_cell(0, 10, txt=f"Kommentar:\n{row['Kommentar']}")
-        pdf.multi_cell(0, 10, txt=f"Mitgeltende Unterlagen:\n{row['Mitgeltende_Unterlagen']}")
-
-        pdf_bytes = pdf.output(dest="S").encode("latin-1")
-
-        st.download_button(
-            label=f"📄 Vorschau anzeigen: {va_id}",
-            data=pdf_bytes,
-            file_name=f"{va_id}_preview.pdf",
-            mime="application/pdf",
-            key=f"preview_{va_id}"
-        )
-
-        if st.button("PDF endgültig speichern", key=f"save_{va_id}"):
-            pdf_path = f"va_pdf/{va_id}.pdf"
-            pdf.output(pdf_path)
-            st.success(f"✅ PDF für {va_id} gespeichert in va_pdf/")
-
+    # Löschbereich ganz unten, blau hinterlegt
+    st.markdown("---")
+    st.markdown(
+        """
+        <div style="background-color:#e7f3fe;
+                    padding:15px;
+                    border-radius:5px;
+                    border:1px solid #b3d7ff;
+                    margin-top:20px">
+        <h4 style="color:#31708f">🗑️ VA löschen</h4>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     if os.path.exists(DATA_FILE_QM):
         df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
@@ -277,6 +259,7 @@ if os.path.exists(DATA_FILE_QM):
             st.success(f"❌ VA {va_zum_loeschen} wurde gelöscht.")
     else:
         st.info("Noch keine Verfahrensanweisungen vorhanden.")
+
 
 
 # --------------------------
