@@ -295,7 +295,7 @@ with tabs[1]:
             os.makedirs("va_pdf", exist_ok=True)
 
         # Pfad für die Datei
-        pdf_path = f"va_pdf/{row['VA_Nr']}.pdf"
+            pdf_path = f"va_pdf/{row['VA_Nr']}.pdf"
 
         # PDF aus dem Speicher schreiben
             with open(pdf_path, "wb") as f:
@@ -304,9 +304,9 @@ with tabs[1]:
         # Kontrolle: Dateien im Ordner anzeigen
             st.write("📂 Inhalt von va_pdf:", os.listdir("va_pdf"))
 
-        st.success(f"✅ PDF für {row['VA_Nr']} gespeichert in va_pdf/")
+            st.success(f"✅ PDF für {row['VA_Nr']} gespeichert in va_pdf/")
     else:
-        st.error("❌ VA konnte nicht gefunden werden – PDF-Erzeugung abgebrochen.")
+            st.error("❌ VA konnte nicht gefunden werden – PDF-Erzeugung abgebrochen.")
 
 
     # VA-Auswahl zur Ansicht
