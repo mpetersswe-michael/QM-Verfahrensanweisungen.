@@ -408,19 +408,19 @@ with tabs[3]:
 
 
 # --------------------------
-# Sidebar: Fortschritt + Lesebestätigung (robust & vollständig)
+# Sidebar: VA-Anzeige + Lesebestätigung + Fortschritt
 # --------------------------
 with st.sidebar:
     if st.session_state.get("logged_in", False):
         st.success("✅ Eingeloggt")
 
-        # 🔓 Logout
+        # Logout
         if st.button("Logout", key="logout_sidebar"):
             st.session_state.logged_in = False
             st.session_state.selected_va = None
             st.rerun()
 
-        # 📘 VA-Auswahl
+        # VA-Auswahl
         va_liste = []
         if os.path.exists("qm_verfahrensanweisungen.csv"):
             df_va = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig", dtype=str)
@@ -434,14 +434,10 @@ with st.sidebar:
             va_current = norm_va(va_nummer)
             st.session_state.selected_va = va_current
 
-            # 🔍 Debug-Ausgabe
-            st.write(f"🔍 VA-Nummer gewählt: {va_nummer}")
-            st.write(f"📄 Gesuchter Dateiname: {va_current}.pdf")
-
             row = df_va[df_va["VA_clean"] == va_current]
             titel = row["Titel"].values[0] if not row.empty else ""
 
-            # 📌 Hinweisfeld
+            # Hinweisfeld
             st.markdown(
                 f"""
                 <div style="background-color:#fff3cd;
@@ -455,25 +451,22 @@ with st.sidebar:
                 unsafe_allow_html=True
             )
 
-            # 📄 PDF anzeigen
-            import pathlib
+            # Verfahrensanweisung anzeigen
             pdf_path = pathlib.Path("va_pdf") / f"{va_current}.pdf"
-            if pdf_path.exists():
-                st.success(f"✅ PDF gefunden: {pdf_path}")
-                with open(pdf_path, "rb") as f:
-                    st.download_button(
-                        label=f"📄 PDF öffnen: {va_current}",
-                        data=f.read(),
-                        file_name=f"{va_current}.pdf",
-                        mime="application/pdf",
-                        key=f"download_{va_current}"
-                    )
-            else:
-                st.error(f"❌ PDF nicht gefunden unter: {pdf_path.resolve()}")
-                st.write("📂 Aktuelles Verzeichnis:", os.getcwd())
-                st.write("📄 Dateien in va_pdf:", os.listdir("va_pdf") if os.path.exists("va_pdf") else "Ordner fehlt")
+            if st.button("Verfahrensanweisung anzeigen", key="va_anzeigen_button"):
+                if pdf_path.exists():
+                    with open(pdf_path, "rb") as f:
+                        st.download_button(
+                            label=f"📄 PDF öffnen: {va_current}",
+                            data=f.read(),
+                            file_name=f"{va_current}.pdf",
+                            mime="application/pdf",
+                            key=f"download_{va_current}"
+                        )
+                else:
+                    st.error(f"❌ PDF nicht gefunden unter: {pdf_path.resolve()}")
 
-            # ✅ Lesebestätigung
+            # Lesebestätigung
             st.markdown("### Lesebestätigung")
             name_sidebar = st.text_input("Name (Nachname, Vorname)", key="sidebar_name_input")
             if st.button("Bestätigen", key="sidebar_confirm_button"):
@@ -500,7 +493,7 @@ with st.sidebar:
                 else:
                     st.error("Bitte Name eingeben.")
 
-            # 📊 Fortschritt
+            # Fortschritt
             try:
                 if not os.path.exists("lesebestätigung.csv") or not os.path.exists("mitarbeiter.csv"):
                     st.info("Noch keine Daten vorhanden.")
@@ -537,5 +530,6 @@ with st.sidebar:
                 st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
     else:
         st.warning("Bitte zuerst im Tab 'Login' anmelden.")
+
 
 
