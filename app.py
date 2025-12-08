@@ -310,9 +310,9 @@ with tabs[1]:
             df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
             st.success(f"❌ VA {va_id_del} wurde gelöscht.")
 
-            if st.button("Formular zurücksetzen", key="reset_after_delete_tab1"):
-                reset_form()
-                st.info("Formular wurde geleert."
+        if st.button("Formular zurücksetzen", key="reset_after_delete_tab1"):
+            reset_form()
+            st.info("Formular wurde geleert."
                                
 # --------------------------
 # Tab 2: Lesebestätigung (final)
