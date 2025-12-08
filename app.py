@@ -480,12 +480,12 @@ with st.sidebar:
         if pdf_path.exists():
             st.markdown("### 📘 Verfahrensanweisung als PDF")
             with open(pdf_path, "rb") as f:
-            st.download_button(
-            label=f"📄 PDF öffnen: {pdf_name}",
-            data=f.read(),
-            file_name=pdf_name,
-            mime="application/pdf",
-            key=f"download_{pdf_name}"
+                st.download_button(
+                label=f"📄 PDF öffnen: {pdf_name}",
+                data=f.read(),
+                file_name=pdf_name,
+                mime="application/pdf",
+                key=f"download_{pdf_name}"
         )
     # Wenn keine PDF vorhanden ist, einfach nichts anzeigen
 
