@@ -3,6 +3,7 @@
 # --------------------------
 import os
 import re
+import io
 import datetime as dt
 from zoneinfo import ZoneInfo
 import pandas as pd
@@ -212,7 +213,10 @@ with tabs[1]:
         pdf.multi_cell(190, 10, txt=f"Kommentar:\n{safe(kommentar_input)}")
         pdf.multi_cell(190, 10, txt=f"Mitgeltende Unterlagen:\n{safe(mitgeltende_input)}")
 
-        pdf_bytes = pdf.output(dest="S").encode("latin-1")
+        pdf_buffer = io.BytesIO()
+        pdf.output(pdf_buffer)
+        pdf_bytes = pdf_buffer.getvalue()
+
 
         st.download_button(
             label=f"📄 Vorschau anzeigen: {va_nr_input}",
