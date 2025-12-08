@@ -328,7 +328,7 @@ with tabs[1]:
                 st.write(f"Vorgehensweise: {row['Vorgehensweise']}")
                 st.write(f"Kommentar: {row['Kommentar']}")
                 st.write(f"Mitgeltende Unterlagen: {row['Mitgeltende_Unterlagen']}")
-            else:
+        else:
                 st.warning("Kein Dokument gefunden.")
 
     # VA löschen
