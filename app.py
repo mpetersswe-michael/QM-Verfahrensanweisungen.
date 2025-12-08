@@ -311,13 +311,10 @@ with tabs[1]:
         st.session_state.selected_va = va_id
         st.success(f"Ausgewählt: {sel}")
 
-            va_id = sel.split(" – ")[0]
-            st.session_state.selected_va = va_id
-            st.success(f"Ausgewählt: {sel}")
-
+           
     # Löschbereich ganz unten, blau hinterlegt
-    st.markdown("---")
-    st.markdown(
+        st.markdown("---")
+        st.markdown(
         """
         <div style="background-color:#e7f3fe;
                     padding:15px;
