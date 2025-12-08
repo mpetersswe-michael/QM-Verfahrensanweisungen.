@@ -124,7 +124,7 @@ with tabs[0]:
     else:
         st.info("Du bist bereits eingeloggt. Logout über die Sidebar.")
 
-# --------------------------
+## --------------------------
 # Tab 1: Verfahrensanweisungen
 # --------------------------
 with tabs[1]:
@@ -143,25 +143,12 @@ with tabs[1]:
 
     # Hilfsfunktion: sichere Texte
     def safe(text):
-        return (
-            str(text)
-            .replace("\n", " ")
-            .replace("–", "-")
-            .replace("•", "-")
-            .replace("ä", "ae")
-            .replace("ö", "oe")
-            .replace("ü", "ue")
-            .replace("ß", "ss")
-            .replace("Ä", "Ae")
-            .replace("Ö", "Oe")
-            .replace("Ü", "Ue")
-        )
+        return str(text).replace("\n", " ")
 
     # PDF-Klasse mit Kopf- und Fußzeile
     class CustomPDF(FPDF):
         def header(self):
             self.set_font("Arial", size=9)
-            self.set_text_color(80)
             self.cell(0, 10, safe("Pflegedienst: xy"), ln=0, align="L")
             self.cell(0, 10, safe(f"Verfahrensanweisung Pflege, Kap. {self.unterkapitel}"), ln=0, align="R")
             self.ln(15)
@@ -169,15 +156,16 @@ with tabs[1]:
         def footer(self):
             self.set_y(-15)
             self.set_font("Arial", size=8)
-            self.set_text_color(100)
             self.cell(60, 10, safe(f"{self.va_nr} – {self.va_titel}"), ln=0)
             self.set_x((210 - 90) / 2)
             self.cell(90, 10, safe("Erstellt von: Peters, Michael – Qualitätsbeauftragter"), align="C")
             self.set_x(-30)
             self.cell(0, 10, f"Seite {self.page_no()}", align="R")
 
-    # Eingabeformular
-    st.markdown("### Neue VA eingeben")
+    # --------------------------
+    # 1. VA speichern
+    # --------------------------
+    st.markdown("### 📝 Neue VA eingeben & speichern")
     va_nr_input = st.text_input("VA-Nummer", key="va_nr_input")
     titel_input = st.text_input("Titel", key="titel_input")
     kapitel_input = st.text_input("Kapitel", key="kapitel_input")
@@ -189,16 +177,8 @@ with tabs[1]:
     kommentar_input = st.text_area("Kommentar", key="kommentar_input")
     mitgeltende_input = st.text_area("Mitgeltende Unterlagen", key="mitgeltende_input")
 
-    # Speichern
     if st.button("VA speichern", key="tab_va_speichern"):
-        if all([
-            va_nr_input.strip(),
-            titel_input.strip(),
-            kapitel_input.strip(),
-            unterkapitel_input.strip(),
-            revisionsstand_input.strip(),
-            geltungsbereich_input.strip()
-        ]):
+        if all([va_nr_input.strip(), titel_input.strip(), kapitel_input.strip(), unterkapitel_input.strip()]):
             neuer_eintrag = pd.DataFrame([{
                 "VA_Nr": va_nr_input.strip(),
                 "Titel": titel_input.strip(),
@@ -220,120 +200,90 @@ with tabs[1]:
 
             df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
             st.success(f"✅ VA {va_nr_input} gespeichert.")
-
-            if st.button("Formular zurücksetzen", key="reset_after_save"):
-                reset_form()
-                st.info("Formular wurde geleert.")
-
             st.session_state.last_saved_va = va_nr_input.strip()
         else:
             st.error("Pflichtfelder fehlen.")
 
-   # --------------------------
-# PDF erzeugen & speichern (nach erfolgreichem VA-Speichern)
-# --------------------------
-st.markdown("### 📄 PDF erzeugen & speichern")
+    # --------------------------
+    # 2. PDF erzeugen & speichern
+    # --------------------------
+    st.markdown("### 📄 PDF erzeugen & speichern")
+    if "last_saved_va" in st.session_state:
+        df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
+        match = df_va[df_va["VA_Nr"] == st.session_state.last_saved_va]
 
-if "last_saved_va" in st.session_state:
-    df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
-    match = df_va[df_va["VA_Nr"] == st.session_state.last_saved_va]
+        if not match.empty:
+            row = match.iloc[0]
 
-    if not match.empty:
-        row = match.iloc[0]
+            pdf = CustomPDF()
+            pdf.va_nr = row["VA_Nr"]
+            pdf.va_titel = row["Titel"]
+            pdf.unterkapitel = row["Unterkapitel"]
+            pdf.add_page()
+            pdf.set_font("Arial", size=12)
+            pdf.set_left_margin(10)
+            pdf.set_right_margin(10)
 
-        # PDF erzeugen
-        pdf = CustomPDF()
-        pdf.va_nr = row["VA_Nr"]
-        pdf.va_titel = row["Titel"]
-        pdf.unterkapitel = row["Unterkapitel"]
-        pdf.add_page()
-        pdf.set_font("Arial", size=12)
-        pdf.set_left_margin(10)
-        pdf.set_right_margin(10)
+            for field in ["VA_Nr", "Titel", "Kapitel", "Unterkapitel", "Revisionsstand", "Geltungsbereich"]:
+                pdf.cell(0, 10, txt=f"{field}: {safe(row[field])}", ln=True)
 
-        # Inhalte
-        for field in ["VA_Nr", "Titel", "Kapitel", "Unterkapitel", "Revisionsstand", "Geltungsbereich"]:
-            pdf.cell(0, 10, txt=f"{field}: {safe(row[field])}", ln=True)
+            pdf.ln(5)
+            pdf.set_font("Arial", style="B", size=12)
+            pdf.cell(0, 10, "Ziel:", ln=True)
+            pdf.set_font("Arial", size=12)
+            pdf.multi_cell(0, 8, safe(row["Ziel"]))
 
-        pdf.ln(5)
-        pdf.set_font("Arial", style="B", size=12)
-        pdf.cell(0, 10, "Ziel:", ln=True)
-        pdf.set_font("Arial", size=12)
-        pdf.multi_cell(0, 8, safe(row["Ziel"]))
+            pdf.ln(5)
+            pdf.set_font("Arial", style="B", size=12)
+            pdf.cell(0, 10, "Vorgehensweise:", ln=True)
+            pdf.set_font("Arial", size=12)
+            pdf.multi_cell(0, 8, safe(row["Vorgehensweise"]))
 
-        pdf.ln(5)
-        pdf.set_font("Arial", style="B", size=12)
-        pdf.cell(0, 10, "Vorgehensweise:", ln=True)
-        pdf.set_font("Arial", size=12)
-        pdf.multi_cell(0, 8, safe(row["Vorgehensweise"]))
+            pdf.ln(5)
+            pdf.set_font("Arial", style="B", size=12)
+            pdf.cell(0, 10, "Kommentar:", ln=True)
+            pdf.set_font("Arial", size=12)
+            pdf.multi_cell(0, 8, safe(row["Kommentar"]))
 
-        pdf.ln(5)
-        pdf.set_font("Arial", style="B", size=12)
-        pdf.cell(0, 10, "Kommentar:", ln=True)
-        pdf.set_font("Arial", size=12)
-        pdf.multi_cell(0, 8, safe(row["Kommentar"]))
+            pdf.ln(5)
+            pdf.set_font("Arial", style="B", size=12)
+            pdf.cell(0, 10, "Mitgeltende Unterlagen:", ln=True)
+            pdf.set_font("Arial", size=12)
+            pdf.multi_cell(0, 8, safe(row["Mitgeltende_Unterlagen"]))
 
-        pdf.ln(5)
-        pdf.set_font("Arial", style="B", size=12)
-        pdf.cell(0, 10, "Mitgeltende Unterlagen:", ln=True)
-        pdf.set_font("Arial", size=12)
-        pdf.multi_cell(0, 8, safe(row["Mitgeltende_Unterlagen"]))
+            buffer = io.BytesIO()
+            pdf.output(buffer)
+            pdf_bytes = buffer.getvalue()
 
-        # In Bytes schreiben
-        buffer = io.BytesIO()
-        pdf.output(buffer)
-        pdf_bytes = buffer.getvalue()
-
-        # Vorschau-Download
-        st.download_button(
-            label=f"📄 PDF erzeugen: {row['VA_Nr']}",
-            data=pdf_bytes,
-            file_name=f"{row['VA_Nr']}_preview.pdf",
-            mime="application/pdf",
-            key="pdf_preview_after_save_tab1"
-        )
-
-        # Speichern in va_pdf
-        if st.button("PDF speichern in va_pdf", key="pdf_save_after_va_tab1"):
-            os.makedirs("va_pdf", exist_ok=True)
-            pdf_path = f"va_pdf/{row['VA_Nr']}.pdf"
-            with open(pdf_path, "wb") as f:
-                f.write(pdf_bytes)
-            st.write("📂 Inhalt von va_pdf:", os.listdir("va_pdf"))
-            st.success(f"✅ PDF für {row['VA_Nr']} gespeichert in va_pdf/")
-    else:
-         st.error("❌ VA konnte nicht gefunden werden – PDF-Erzeugung abgebrochen.")
-
-         st.download_button(
+            st.download_button(
                 label=f"📄 PDF erzeugen: {row['VA_Nr']}",
                 data=pdf_bytes,
                 file_name=f"{row['VA_Nr']}_preview.pdf",
                 mime="application/pdf",
-                key="pdf_preview_after_save"
+                key="pdf_preview_after_save_tab1"
             )
 
-    if st.button("PDF speichern in va_pdf", key="pdf_save_after_va"):
+            if st.button("PDF speichern in va_pdf", key="pdf_save_after_va_tab1"):
                 os.makedirs("va_pdf", exist_ok=True)
                 pdf_path = f"va_pdf/{row['VA_Nr']}.pdf"
                 with open(pdf_path, "wb") as f:
                     f.write(pdf_bytes)
                 st.write("📂 Inhalt von va_pdf:", os.listdir("va_pdf"))
                 st.success(f"✅ PDF für {row['VA_Nr']} gespeichert in va_pdf/")
-    else:
-        st.error("❌ VA konnte nicht gefunden werden – PDF-Erzeugung abgebrochen.")
+        else:
+            st.error("❌ VA konnte nicht gefunden werden – PDF-Erzeugung abgebrochen.")
 
-    # VA-Auswahl zur Ansicht
-    st.markdown("---")
-    st.markdown("### VA auswählen")
+    # --------------------------
+    # 3. VA auswählen & löschen
+    # --------------------------
+    st.markdown("### 🔵 VA auswählen & löschen")
     if os.path.exists(DATA_FILE_QM):
         df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str).fillna("")
         df_va["Label"] = df_va["VA_Nr"] + " – " + df_va["Titel"]
+
         sel = st.selectbox("Dokument auswählen", df_va["Label"].tolist(), index=None, key="va_auswahl_select_tab1")
         if sel:
             va_id = sel.split(" – ")[0]
-            st.session_state.selected_va = va_id
-            st.success(f"Ausgewählt: {sel}")
-
             df_va_sel = df_va[df_va["VA_Nr"] == va_id]
             if not df_va_sel.empty:
                 row = df_va_sel.iloc[0]
@@ -346,20 +296,12 @@ if "last_saved_va" in st.session_state:
                 st.write(f"Vorgehensweise: {row['Vorgehensweise']}")
                 st.write(f"Kommentar: {row['Kommentar']}")
                 st.write(f"Mitgeltende Unterlagen: {row['Mitgeltende_Unterlagen']}")
-            else:
-                st.warning("Kein Dokument gefunden.")
 
-    # VA löschen
-    st.markdown("---")
-    st.markdown("### VA löschen")
-    if os.path.exists(DATA_FILE_QM):
-        df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str).fillna("")
-        df_va["Label"] = df_va["VA_Nr"] + " – " + df_va["Titel"]
         sel_del = st.selectbox(
             "VA auswählen zum Löschen",
             df_va["Label"].tolist(),
             index=None,
-            key="va_loeschen_select_tab1"   # eindeutiger Key!
+            key="va_loeschen_select_tab1"
         )
 
         if sel_del and st.button("VA löschen", key="va_loeschen_button_tab1"):
@@ -370,9 +312,8 @@ if "last_saved_va" in st.session_state:
 
             if st.button("Formular zurücksetzen", key="reset_after_delete_tab1"):
                 reset_form()
-                st.info("Formular wurde geleert.")
-
-
+                st.info("Formular wurde geleert."
+                               
 # --------------------------
 # Tab 2: Lesebestätigung (final)
 # --------------------------
