@@ -372,10 +372,10 @@ with tabs[2]:
                     st.error(f"Sammeldatei konnte nicht gespeichert werden: {e}")
         else:
             st.info("Noch keine Lesebestätigungen vorhanden.")
-
         # Sammel-PDF aller Lesebestätigungen
         st.markdown("---")
         st.markdown("### 📄 Sammel-PDF aller Lesebestätigungen")
+
         if os.path.exists(path_all):
             df_all = pd.read_csv(path_all, sep=";", encoding="utf-8-sig")
 
@@ -394,21 +394,34 @@ with tabs[2]:
             pdf.add_page()
             pdf.set_font("Arial", size=12)
 
-            # Tabelle ins PDF schreiben
+            # Tabellenkopf
+            pdf.set_fill_color(230, 230, 230)
+            pdf.set_font("Arial", "B", 11)
+            pdf.cell(60, 10, "Name", 1, 0, "L", True)
+            pdf.cell(30, 10, "VA_Nr", 1, 0, "L", True)
+            pdf.cell(70, 10, "Zeitpunkt", 1, 1, "L", True)
+            pdf.set_font("Arial", size=11)
+
+            # Tabelleninhalt
             for _, r in df_all.iterrows():
                 pdf.cell(60, 10, clean_text(r["Name"]), 1)
                 pdf.cell(30, 10, clean_text(r["VA_Nr"]), 1)
                 pdf.cell(70, 10, clean_text(r["Zeitpunkt"]), 1)
                 pdf.ln()
 
-                pdf_bytes = pdf.output(dest="S").encode("latin-1")
-                st.download_button(
+            # Ausgabe als Bytes (kein encode nötig!)
+            pdf_bytes = pdf.output(dest="S").encode("latin-1") if isinstance(pdf.output(dest="S"), str) else pdf.output(dest="S")
+
+            st.download_button(
                 "📄 Sammel-PDF herunterladen",
                 data=pdf_bytes,
                 file_name="lesebestaetigungen.pdf",
                 mime="application/pdf",
                 key="tab2_pdf_download"
             )
+        else:
+            st.info("Noch keine Lesebestätigungen vorhanden.")
+
 
 # --------------------------
 # Tab 3: Mitarbeiter
