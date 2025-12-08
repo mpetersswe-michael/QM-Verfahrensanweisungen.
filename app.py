@@ -242,12 +242,12 @@ with tabs[1]:
             )
 
     if st.button("PDF speichern in va_pdf", key="pdf_speichern_tab1"):
-          try:
+         try:
             os.makedirs("va_pdf", exist_ok=True)
             clean_va = row["VA_Nr"].replace(" ", "").replace("/", "-")
             pdf_path = os.path.join("va_pdf", f"{clean_va}.pdf")
             with open(pdf_path, "wb") as f:
-            f.write(pdf_bytes)
+             f.write(pdf_bytes)
 
             files = os.listdir("va_pdf")
             st.success(f"✅ PDF für {row['VA_Nr']} gespeichert in va_pdf/")
