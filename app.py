@@ -141,7 +141,7 @@ with tabs[1]:
         ]:
             st.session_state[key] = ""
 
-    # Hilfsfunktion: sichere Texte (keine Fragezeichen)
+    # Hilfsfunktion: sichere Texte (keine Sonderzeichenprobleme)
     def safe(text):
         return (
             str(text)
@@ -182,7 +182,7 @@ with tabs[1]:
             self.set_x(-30)
             self.cell(0, 10, f"Seite {self.page_no()}", align="R")
 
-    # Eingabe
+    # Eingabeformular
     st.markdown("### Neue VA eingeben")
     va_nr_input = st.text_input("VA-Nummer", key="va_nr_input")
     titel_input = st.text_input("Titel", key="titel_input")
@@ -237,12 +237,14 @@ with tabs[1]:
         else:
             st.error("Pflichtfelder fehlen.")
 
-    # PDF-Erzeugung und Speicher-Button (außerhalb des Speicher-Blocks)
+    # PDF-Erzeugung und Speicher-Button
     if "last_saved_va" in st.session_state:
         df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
         match = df_va[df_va["VA_Nr"] == st.session_state.last_saved_va]
+
         if not match.empty:
             row = match.iloc[0]
+
             pdf = CustomPDF()
             pdf.va_nr = row["VA_Nr"]
             pdf.va_titel = row["Titel"]
@@ -290,70 +292,65 @@ with tabs[1]:
                 mime="application/pdf",
                 key="pdf_preview_after_save"
             )
-    if st.button("PDF speichern in va_pdf", key="pdf_save_after_va"):
-        # Ordner erzeugen, falls er noch nicht existiert
-            os.makedirs("va_pdf", exist_ok=True)
 
-        # Pfad für die Datei
-            pdf_path = f"va_pdf/{row['VA_Nr']}.pdf"
-
-        # PDF aus dem Speicher schreiben
-            with open(pdf_path, "wb") as f:
-                f.write(pdf_bytes)
-
-        # Kontrolle: Dateien im Ordner anzeigen
-            st.write("📂 Inhalt von va_pdf:", os.listdir("va_pdf"))
-
-            st.success(f"✅ PDF für {row['VA_Nr']} gespeichert in va_pdf/")
-    else:
+            if st.button("PDF speichern in va_pdf", key="pdf_save_after_va"):
+                os.makedirs("va_pdf", exist_ok=True)
+                pdf_path = f"va_pdf/{row['VA_Nr']}.pdf"
+                with open(pdf_path, "wb") as f:
+                    f.write(pdf_bytes)
+                st.write("📂 Inhalt von va_pdf:", os.listdir("va_pdf"))
+                st.success(f"✅ PDF für {row['VA_Nr']} gespeichert in va_pdf/")
+        else:
             st.error("❌ VA konnte nicht gefunden werden – PDF-Erzeugung abgebrochen.")
-
 
     # VA-Auswahl zur Ansicht
     st.markdown("---")
     st.markdown("### VA auswählen")
     if os.path.exists(DATA_FILE_QM):
-       df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str).fillna("")
-       df_va["Label"] = df_va["VA_Nr"] + " – " + df_va["Titel"]
-       sel = st.selectbox("Dokument auswählen", df_va["Label"].tolist(), index=None, key="va_auswahl_select")
+        df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str).fillna("")
+        df_va["Label"] = df_va["VA_Nr"] + " – " + df_va["Titel"]
+        sel = st.selectbox("Dokument auswählen", df_va["Label"].tolist(), index=None, key="va_auswahl_select")
+        if sel:
+            va_id = sel.split("        if sel:
+            va_id = sel.split(" – ")[0]
+            st.session_state.selected_va = va_id
+            st.success(f"Ausgewählt: {sel}")
 
-    if sel:
-        va_id = sel.split(" – ")[0]
-        st.session_state.selected_va = va_id
-        st.success(f"Ausgewählt: {sel}")
+            # Anzeige des aktuellen Dokuments
+            df_va_sel = df_va[df_va["VA_Nr"] == va_id]
+            if not df_va_sel.empty:
+                row = df_va_sel.iloc[0]
+                st.markdown("### Aktuelles Dokument")
+                st.write(f"{row['VA_Nr']} – {row['Titel']}")
+                st.write(f"Kapitel: {row['Kapitel']}, Unterkapitel: {row['Unterkapitel']}")
+                st.write(f"Revisionsstand: {row['Revisionsstand']}")
+                st.write(f"Geltungsbereich: {row['Geltungsbereich']}")
+                st.write(f"Ziel: {row['Ziel']}")
+                st.write(f"Vorgehensweise: {row['Vorgehensweise']}")
+                st.write(f"Kommentar: {row['Kommentar']}")
+                st.write(f"Mitgeltende Unterlagen: {row['Mitgeltende_Unterlagen']}")
+            else:
+                st.warning("Kein Dokument gefunden.")
 
-           
-    # Löschbereich ganz unten, blau hinterlegt
-        st.markdown("---")
-        st.markdown(
-        """
-        <div style="background-color:#e7f3fe;
-                    padding:15px;
-                    border-radius:5px;
-                    border:1px solid #b3d7ff;
-                    margin-top:20px">
-        <h4 style="color:#31708f">🗑️ VA löschen</h4>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
+    # VA löschen
+    st.markdown("---")
+    st.markdown("### VA löschen")
     if os.path.exists(DATA_FILE_QM):
-        df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
-        va_liste = sorted(df_va["VA_Nr"].dropna().unique())
-        va_zum_loeschen = st.selectbox("VA auswählen zum Löschen", options=va_liste, index=None, key="va_loeschen_select")
+        df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str).fillna("")
+        df_va["Label"] = df_va["VA_Nr"] + " – " + df_va["Titel"]
+        sel_del = st.selectbox("VA auswählen zum Löschen", df_va["Label"].tolist(), index=None, key="va_loeschen_select")
 
-        if va_zum_loeschen and st.button("VA löschen", key="va_loeschen_button"):
-            df_va = df_va[df_va["VA_Nr"] != va_zum_loeschen]
+        if sel_del and st.button("VA löschen", key="va_loeschen_button"):
+            va_id_del = sel_del.split(" – ")[0]
+            df_va = df_va[df_va["VA_Nr"] != va_id_del]
             df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-            st.success(f"❌ VA {va_zum_loeschen} wurde gelöscht.")
+            st.success(f"❌ VA {va_id_del} wurde gelöscht.")
 
-            # Reset-Button nach Löschen
+            # Reset nach Löschen
             if st.button("Formular zurücksetzen", key="reset_after_delete"):
                 reset_form()
                 st.info("Formular wurde geleert.")
-    else:
-        st.info("Noch keine Verfahrensanweisungen vorhanden.")
+
 
 # --------------------------
 # Tab 2: Lesebestätigung (final)
