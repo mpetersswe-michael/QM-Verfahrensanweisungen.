@@ -417,6 +417,7 @@ with st.sidebar:
         if st.button("Logout", key="logout_sidebar"):
             st.session_state.logged_in = False
             st.session_state.selected_va = None
+            st.rerun()  # optional: Seite neu laden nach Logout
 
         # VA-Auswahl
         va_liste = []
@@ -434,7 +435,7 @@ with st.sidebar:
             row = df_va[df_va["VA_clean"] == va_current]
             titel = row["Titel"].values[0] if not row.empty else ""
 
-            # Hinweis
+            # Hinweisfeld
             st.markdown(
                 f"""
                 <div style="background-color:#fff3cd;
@@ -448,7 +449,7 @@ with st.sidebar:
                 unsafe_allow_html=True
             )
 
-            # PDF anzeigen
+            # PDF anzeigen (z. B. VA005.pdf)
             pdf_path = f"va_pdf/{va_current}.pdf"
             if os.path.exists(pdf_path):
                 with open(pdf_path, "rb") as f:
