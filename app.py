@@ -311,8 +311,8 @@ with tabs[1]:
             st.success(f"❌ VA {va_id_del} wurde gelöscht.")
 
         if st.button("Formular zurücksetzen", key="reset_after_delete_tab1"):
-            reset_form()
-            st.info("Formular wurde geleert."
+           reset_form()
+           st.info("Formular wurde geleert."
                                
 # --------------------------
 # Tab 2: Lesebestätigung (final)
