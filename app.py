@@ -117,6 +117,9 @@ if "selected_va" not in st.session_state:
 # --------------------------
 tabs = st.tabs(["System & Login", "Verfahrensanweisungen", "Lesebestätigung", "Mitarbeiter"])
 
+# --------------------------
+# Tab 0: Login
+# --------------------------
 with tabs[0]:
     st.markdown("## 🔒 Login")
 
@@ -131,7 +134,9 @@ with tabs[0]:
     else:
         st.info("Du bist bereits eingeloggt. Logout über die Sidebar.")
 
-
+# --------------------------
+# Tab 1: Verfahrensanweisungen
+# --------------------------
 with tabs[1]:
     st.markdown("## 📘 Verfahrensanweisungen")
 
@@ -157,7 +162,7 @@ with tabs[1]:
             kapitel_input.strip(),
             unterkapitel_input.strip(),
             revisionsstand_input.strip(),
-            geltungsbereich_input.strip()
+            geltungsbereich_input.strip()   # Pflichtfeld ergänzt
         ]):
             neuer_eintrag = pd.DataFrame([{
                 "VA_Nr": va_nr_input.strip(),
@@ -165,7 +170,7 @@ with tabs[1]:
                 "Kapitel": kapitel_input.strip(),
                 "Unterkapitel": unterkapitel_input.strip(),
                 "Revisionsstand": revisionsstand_input.strip(),
-                "Geltungsbereich": geltungsbereich_input.strip(),
+                "Geltungsbereich": geltungsbereich_input.strip(),  # NEU
                 "Ziel": ziel_input.strip(),
                 "Vorgehensweise": vorgehensweise_input.strip(),
                 "Kommentar": kommentar_input.strip(),
@@ -180,6 +185,7 @@ with tabs[1]:
             st.success(f"✅ VA {va_nr_input} gespeichert.")
         else:
             st.error("Pflichtfelder fehlen.")
+
 
 
 if st.button("VA speichern"):
