@@ -432,10 +432,8 @@ with st.sidebar:
         va_nummer = st.selectbox("VA auswählen", options=va_liste, index=None, key="sidebar_va_select")
 
         if va_nummer:
-            va_current = norm_va(va_nummer)
-            st.session_state.selected_va = va_current
-
-            row = df_va[df_va["VA_clean"] == va_current]
+            st.session_state.selected_va = va_nummer
+            row = df_va[df_va["VA_clean"] == va_nummer]
             titel = row["Titel"].values[0] if not row.empty else ""
 
             # Gelb hinterlegte VA-Inhalte
@@ -458,7 +456,7 @@ with st.sidebar:
                                 margin-top:10px;
                                 font-size:14px">
                     <strong>VA-Inhalt:</strong><br><br>
-                    <strong>VA-Nr:</strong> {va_current}<br>
+                    <strong>VA-Nr:</strong> {va_nummer}<br>
                     <strong>Titel:</strong> {titel}<br>
                     <strong>Kapitel:</strong> {kapitel}<br>
                     <strong>Unterkapitel:</strong> {unterkapitel}<br>
@@ -474,16 +472,16 @@ with st.sidebar:
                 )
 
             # PDF anzeigen
-            pdf_path = pathlib.Path("va_pdf") / f"{va_current}.pdf"
+            pdf_path = pathlib.Path("va_pdf") / f"{va_nummer}.pdf"
             if st.button("Verfahrensanweisung anzeigen", key="va_anzeigen_button"):
                 if pdf_path.exists():
                     with open(pdf_path, "rb") as f:
                         st.download_button(
-                            label=f"📄 PDF öffnen: {va_current}",
+                            label=f"📄 PDF öffnen: {va_nummer}",
                             data=f.read(),
-                            file_name=f"{va_current}.pdf",
+                            file_name=f"{va_nummer}.pdf",
                             mime="application/pdf",
-                            key=f"download_{va_current}"
+                            key=f"download_{va_nummer}"
                         )
                 else:
                     st.error(f"❌ PDF nicht gefunden unter: {pdf_path.resolve()}")
@@ -495,7 +493,7 @@ with st.sidebar:
                 name_clean = re.sub(r"\s*,\s*", ",", name_sidebar.strip())
                 if name_clean:
                     zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
-                    eintrag = {"Name": name_clean, "VA_Nr": va_current, "Zeitpunkt": zeitpunkt}
+                    eintrag = {"Name": name_clean, "VA_Nr": va_nummer, "Zeitpunkt": zeitpunkt}
                     df_new = pd.DataFrame([eintrag])[["Name", "VA_Nr", "Zeitpunkt"]]
 
                     path = "lesebestätigung.csv"
@@ -511,7 +509,7 @@ with st.sidebar:
                         encoding="utf-8-sig"
                     )
 
-                    st.success(f"Bestätigung für {va_current} gespeichert.")
+                    st.success(f"Bestätigung für {va_nummer} gespeichert.")
                 else:
                     st.error("Bitte Name eingeben.")
 
@@ -531,7 +529,7 @@ with st.sidebar:
 
                     if "VA_Nr" in df_mitarbeiter.columns:
                         df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
-                        zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == va_current]["Name_full"].dropna().unique()
+                        zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == va_nummer]["Name_full"].dropna().unique()
                     else:
                         zielgruppe = df_mitarbeiter["Name_full"].dropna().unique()
 
@@ -539,7 +537,7 @@ with st.sidebar:
 
                     if "VA_Nr" in df_kenntnis.columns:
                         df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
-                        gelesen = df_kenntnis[df_kenntnis["VA_Nr_norm"] == va_current]["Name"].dropna().unique()
+                        gelesen = df_kenntnis[df_kenntnis["VA_Nr_norm"] == va_nummer]["Name"].dropna().unique()
                     else:
                         st.warning("Spalte 'VA_Nr' fehlt in lesebestätigung.csv.")
                         raise ValueError("Spalte 'VA_Nr' fehlt")
@@ -552,6 +550,7 @@ with st.sidebar:
                 st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
     else:
         st.warning("Bitte zuerst im Tab 'Login' anmelden.")
+
 
 
 
