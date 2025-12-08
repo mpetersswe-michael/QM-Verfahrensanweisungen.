@@ -192,21 +192,39 @@ with tabs[1]:
                 st.info("Formular wurde geleert.")
 
             # PDF direkt nach Speicherung
-            import io
-            from fpdf import FPDF
+           
 
             class CustomPDF(FPDF):
-                def footer(self):
-                    self.set_y(-15)
-                    self.set_font("Arial", size=8)
-                    self.set_text_color(100)
+                 def footer(self):
+                     self.set_y(-15)
+                     self.set_font("Arial", size=8)
+                     self.set_text_color(100)
+
+           # Linksbündig: VA-Nr und Titel
                     left_text = f"{self.va_nr} – {self.va_titel}"
-                    center_text = "Erstellt von: Peters, Michael – Qualitätsbeauftragter"
-                    self.cell(60, 10, left_text.encode("latin-1", "replace").decode("latin-1"), ln=0)
-                    self.set_x((210 - 90) / 2)
-                    self.cell(90, 10, center_text.encode("latin-1", "replace").decode("latin-1"), align="C")
-                    self.set_x(-30)
-                    self.cell(0, 10, f"Seite {self.page_no()}", align="R")
+                    self.cell(60, 10, safe(left_text), ln=0)
+
+          # Zentriert: Name und Funktion
+                   center_text = "Erstellt von: Peters, Michael – Qualitätsbeauftragter"
+                   self.set_x((210 - 90) / 2)
+                   self.cell(90, 10, safe(center_text), align="C")
+
+         # Rechts: Seitenzahl
+                  self.set_x(-30)
+                  self.cell(0, 10, f"Seite {self.page_no()}", align="R")
+
+        # Hilfsfunktion: ersetzt Umlaute und Sonderzeichen
+            def safe(text):
+                return (
+                  str(text)
+                  .replace("–", "-")
+                  .replace("•", "-")
+                  .replace("ä", "ae")
+                  .replace("ö", "oe")
+                 .replace("ü", "ue")
+                 .replace("ß", "ss")
+    )
+
 
             def safe(text):
                 return str(text).replace("\n", " ").replace("–", "-").replace("•", "-")
