@@ -312,7 +312,7 @@ if "last_saved_va" in st.session_state:
                 key="pdf_preview_after_save"
             )
 
-        if st.button("PDF speichern in va_pdf", key="pdf_save_after_va"):
+    if st.button("PDF speichern in va_pdf", key="pdf_save_after_va"):
                 os.makedirs("va_pdf", exist_ok=True)
                 pdf_path = f"va_pdf/{row['VA_Nr']}.pdf"
                 with open(pdf_path, "wb") as f:
