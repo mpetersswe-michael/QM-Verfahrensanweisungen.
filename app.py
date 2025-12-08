@@ -533,5 +533,32 @@ with st.sidebar:
     else:
         st.warning("Bitte zuerst im Tab 'Login' anmelden.")
 
+# --------------------------
+# Verfahrensanweisung anzeigen (robust & klar)
+# --------------------------
+import pathlib
+
+# VA-Nummer aus Session holen
+va_current = st.session_state.get("selected_va", None)
+
+st.markdown("### 📘 Verfahrensanweisung anzeigen")
+
+if not va_current:
+    st.info("Bitte zuerst eine Verfahrensanweisung auswählen.")
+else:
+    pdf_path = pathlib.Path("va_pdf") / f"{va_current}.pdf"
+
+    if st.button("Verfahrensanweisung anzeigen", key="va_anzeigen_button"):
+        if pdf_path.exists():
+            with open(pdf_path, "rb") as f:
+                st.download_button(
+                    label=f"📄 PDF öffnen: {va_current}",
+                    data=f.read(),
+                    file_name=f"{va_current}.pdf",
+                    mime="application/pdf",
+                    key=f"download_{va_current}"
+                )
+        else:
+            st.error(f"❌ PDF nicht gefunden unter: {pdf_path.resolve()}")
 
 
