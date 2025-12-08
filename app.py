@@ -273,23 +273,41 @@ with tabs[2]:
         else:
             st.info("Noch keine Lesebestätigungen vorhanden.")
        
+# --------------------------
+# Tab 3: Mitarbeiter
+# --------------------------
 with tabs[3]:
-    st.markdown("## 👥 Mitarbeiterliste")
+    st.markdown("## 👥 Mitarbeiterverwaltung")
 
-    if os.path.exists("mitarbeiter.csv"):
-        df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig")
-        st.dataframe(df_mitarbeiter)
+    DATA_FILE_MA = "mitarbeiter.csv"
+
+    # Drag & Drop Upload
+    uploaded_file = st.file_uploader("Mitarbeiterliste hochladen (CSV)", type=["csv"], key="upload_mitarbeiter")
+
+    if uploaded_file is not None:
+        try:
+            df_ma = pd.read_csv(uploaded_file, sep=";", encoding="utf-8-sig", dtype=str)
+            df_ma.to_csv(DATA_FILE_MA, sep=";", index=False, encoding="utf-8-sig")
+            st.success("✅ Mitarbeiterliste erfolgreich hochgeladen und gespeichert.")
+        except Exception as e:
+            st.error(f"Fehler beim Einlesen der Datei: {e}")
+
+    # Reset-Funktion
+    if st.button("Mitarbeiterliste zurücksetzen", key="reset_mitarbeiter"):
+        if os.path.exists(DATA_FILE_MA):
+            os.remove(DATA_FILE_MA)
+            st.warning("⚠️ Mitarbeiterliste wurde zurückgesetzt (Datei gelöscht).")
+        else:
+            st.info("Keine Mitarbeiterliste vorhanden, nichts zu löschen.")
+
+    # Anzeige der aktuellen Mitarbeiterliste
+    if os.path.exists(DATA_FILE_MA):
+        st.markdown("### Aktuelle Mitarbeiterliste")
+        df_ma = pd.read_csv(DATA_FILE_MA, sep=";", encoding="utf-8-sig", dtype=str)
+        st.dataframe(df_ma)
     else:
         st.info("Noch keine Mitarbeiterliste vorhanden.")
 
-    st.markdown("---")
-    st.markdown("### 🔄 Lesebestätigungen zurücksetzen")
-    if os.path.exists("lesebestätigung.csv"):
-        if st.checkbox("Ich möchte alle Lesebestätigungen löschen"):
-            if st.button("Jetzt zurücksetzen"):
-                with open("lesebestätigung.csv", "w", encoding="utf-8-sig") as f:
-                    f.write("Name;VA_Nr;Zeitpunkt\n")
-                st.success("✅ Alle Lesebestätigungen wurden zurückgesetzt.")
 
 
 # --------------------------
