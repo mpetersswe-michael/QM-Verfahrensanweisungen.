@@ -132,6 +132,15 @@ with tabs[1]:
 
     DATA_FILE_QM = "qm_verfahrensanweisungen.csv"
 
+    # Hilfsfunktion: Formular zurücksetzen
+    def reset_form():
+        for key in [
+            "va_nr_input", "titel_input", "kapitel_input", "unterkapitel_input",
+            "revisionsstand_input", "geltungsbereich_input", "ziel_input",
+            "vorgehensweise_input", "kommentar_input", "mitgeltende_input"
+        ]:
+            st.session_state[key] = ""
+
     # Eingabe
     st.markdown("### Neue VA eingeben")
     va_nr_input = st.text_input("VA-Nummer", key="va_nr_input")
@@ -177,34 +186,31 @@ with tabs[1]:
             df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
             st.success(f"✅ VA {va_nr_input} gespeichert.")
 
+            # Reset-Button nach Speichern
+            if st.button("Formular zurücksetzen", key="reset_after_save"):
+                reset_form()
+                st.info("Formular wurde geleert.")
+
             # PDF direkt nach Speicherung
             import io
             from fpdf import FPDF
 
             class CustomPDF(FPDF):
                 def footer(self):
-                    # Position 15 mm vom unteren Rand
                     self.set_y(-15)
                     self.set_font("Arial", size=8)
                     self.set_text_color(100)
-
-                # Linksbündig: VA-Nr und Titel
                     left_text = f"{self.va_nr} – {self.va_titel}"
-                    self.cell(60, 10, left_text.encode("latin-1", "replace").decode("latin-1"), ln=0)
-
-                # Zentriert: Name und Funktion
                     center_text = "Erstellt von: Peters, Michael – Qualitätsbeauftragter"
+                    self.cell(60, 10, left_text.encode("latin-1", "replace").decode("latin-1"), ln=0)
                     self.set_x((210 - 90) / 2)
                     self.cell(90, 10, center_text.encode("latin-1", "replace").decode("latin-1"), align="C")
-
-               # Rechts: Seitenzahl
                     self.set_x(-30)
                     self.cell(0, 10, f"Seite {self.page_no()}", align="R")
 
             def safe(text):
                 return str(text).replace("\n", " ").replace("–", "-").replace("•", "-")
 
-            df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
             match = df_va[df_va["VA_Nr"] == va_nr_input.strip()]
             if not match.empty:
                 row = match.iloc[0]
@@ -301,10 +307,14 @@ with tabs[1]:
             df_va = df_va[df_va["VA_Nr"] != va_zum_loeschen]
             df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
             st.success(f"❌ VA {va_zum_loeschen} wurde gelöscht.")
+
+            # Reset-Button nach Löschen
+            if st.button("Formular zurücksetzen", key="reset_after_delete"):
+                reset_form()
+                st.info("Formular wurde geleert.")
+  
     else:
         st.info("Noch keine Verfahrensanweisungen vorhanden.")
-
-
 
 
 # --------------------------
