@@ -198,8 +198,8 @@ with tabs[1]:
                     self.cell(90, 10, center_text.encode("latin-1", "replace").decode("latin-1"), align="C")
 
                # Rechts: Seitenzahl
-                   self.set_x(-30)
-                   self.cell(0, 10, f"Seite {self.page_no()}", align="R")
+                    self.set_x(-30)
+                    self.cell(0, 10, f"Seite {self.page_no()}", align="R")
 
             def safe(text):
                 return str(text).replace("\n", " ").replace("–", "-").replace("•", "-")
