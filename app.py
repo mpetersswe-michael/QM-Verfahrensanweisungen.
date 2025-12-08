@@ -411,6 +411,8 @@ with tabs[3]:
 # --------------------------
 # Sidebar: VA-Inhalte + PDF + Lesebestätigung + Fortschritt
 # --------------------------
+import pathlib
+
 with st.sidebar:
     if st.session_state.get("logged_in", False):
         st.success("✅ Eingeloggt")
@@ -471,20 +473,26 @@ with st.sidebar:
                     unsafe_allow_html=True
                 )
 
-            # PDF anzeigen
-            pdf_path = pathlib.Path("va_pdf") / f"{va_nummer}.pdf"
+            # PDF anzeigen (robust abgesichert)
+            pdf_name = f"{norm_va(va_nummer)}.pdf"
+            pdf_path = pathlib.Path("va_pdf") / pdf_name
+
+            st.markdown("### 📘 Verfahrensanweisung anzeigen")
             if st.button("Verfahrensanweisung anzeigen", key="va_anzeigen_button"):
-                if pdf_path.exists():
-                    with open(pdf_path, "rb") as f:
-                        st.download_button(
-                            label=f"📄 PDF öffnen: {va_nummer}",
-                            data=f.read(),
-                            file_name=f"{va_nummer}.pdf",
-                            mime="application/pdf",
-                            key=f"download_{va_nummer}"
-                        )
-                else:
-                    st.error(f"❌ PDF nicht gefunden unter: {pdf_path.resolve()}")
+                try:
+                    if pdf_path.exists():
+                        with open(pdf_path, "rb") as f:
+                            st.download_button(
+                                label=f"📄 PDF öffnen: {pdf_name}",
+                                data=f.read(),
+                                file_name=pdf_name,
+                                mime="application/pdf",
+                                key=f"download_{pdf_name}"
+                            )
+                    else:
+                        st.error(f"❌ PDF nicht gefunden unter: {pdf_path.resolve()}")
+                except Exception as e:
+                    st.error(f"❌ PDF konnte nicht geladen werden: {e}")
 
             # Lesebestätigung
             st.markdown("### Lesebestätigung")
@@ -550,6 +558,7 @@ with st.sidebar:
                 st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
     else:
         st.warning("Bitte zuerst im Tab 'Login' anmelden.")
+
 
 
 
