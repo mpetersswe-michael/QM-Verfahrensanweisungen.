@@ -366,12 +366,39 @@ with tabs[2]:
                     self.set_y(-15)
                     self.set_font("Arial", size=8)
                     self.cell(0, 10, f"Seite {self.page_no()}", align="C")
-
-               
+       
     # PDF-Block hier
             pdf = ConfirmPDF()
             pdf.add_page()
             pdf.set_font("Arial", size=12)
+
+        # Sammel-CSV aller Lesebestätigungen
+        st.markdown("---")
+        st.markdown("### 📄 Sammel-CSV aller Lesebestätigungen")
+        ziel_path = os.path.join("va_app", "sammeldatei.csv")
+
+        if os.path.exists(path_all):
+            df_all = pd.read_csv(path_all, sep=";", encoding="utf-8-sig")
+
+            if st.button("Sammeldatei speichern", key="save_collective_csv"):
+                try:
+                    os.makedirs("va_app", exist_ok=True)
+                    df_all[["Name", "VA_Nr", "Zeitpunkt"]].to_csv(
+                        ziel_path,
+                        sep=";",
+                        index=False,
+                        encoding="utf-8-sig"
+                    )
+                    st.success(f"Sammeldatei gespeichert unter: {ziel_path}")
+                except Exception as e:
+                    st.error(f"Sammeldatei konnte nicht gespeichert werden: {e}")
+        else:
+            st.info("Noch keine Lesebestätigungen vorhanden.")
+
+
+
+
+
 
 # --------------------------
 # Tab 3: Mitarbeiter
