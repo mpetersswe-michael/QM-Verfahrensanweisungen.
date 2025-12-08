@@ -367,6 +367,8 @@ with tabs[2]:
                     self.set_font("Arial", size=8)
                     self.cell(0, 10, f"Seite {self.page_no()}", align="C")
 
+               
+    # PDF-Block hier
             pdf = ConfirmPDF()
             pdf.add_page()
             pdf.set_font("Arial", size=12)
@@ -408,19 +410,19 @@ with tabs[3]:
 
 
 # --------------------------
-# Sidebar: VA-Anzeige + Lesebestätigung + Fortschritt
+# Sidebar: VA anzeigen + Lesebestätigung + Fortschritt
 # --------------------------
 with st.sidebar:
     if st.session_state.get("logged_in", False):
         st.success("✅ Eingeloggt")
 
-        # Logout
+        # 🔓 Logout
         if st.button("Logout", key="logout_sidebar"):
             st.session_state.logged_in = False
             st.session_state.selected_va = None
             st.rerun()
 
-        # VA-Auswahl
+        # 📘 VA-Auswahl
         va_liste = []
         if os.path.exists("qm_verfahrensanweisungen.csv"):
             df_va = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig", dtype=str)
@@ -437,7 +439,7 @@ with st.sidebar:
             row = df_va[df_va["VA_clean"] == va_current]
             titel = row["Titel"].values[0] if not row.empty else ""
 
-            # Hinweisfeld
+            # 📌 Hinweisfeld
             st.markdown(
                 f"""
                 <div style="background-color:#fff3cd;
@@ -451,7 +453,7 @@ with st.sidebar:
                 unsafe_allow_html=True
             )
 
-            # Verfahrensanweisung anzeigen
+            # 📄 Verfahrensanweisung anzeigen
             pdf_path = pathlib.Path("va_pdf") / f"{va_current}.pdf"
             if st.button("Verfahrensanweisung anzeigen", key="va_anzeigen_button"):
                 if pdf_path.exists():
@@ -466,7 +468,7 @@ with st.sidebar:
                 else:
                     st.error(f"❌ PDF nicht gefunden unter: {pdf_path.resolve()}")
 
-            # Lesebestätigung
+            # ✅ Lesebestätigung
             st.markdown("### Lesebestätigung")
             name_sidebar = st.text_input("Name (Nachname, Vorname)", key="sidebar_name_input")
             if st.button("Bestätigen", key="sidebar_confirm_button"):
@@ -493,7 +495,7 @@ with st.sidebar:
                 else:
                     st.error("Bitte Name eingeben.")
 
-            # Fortschritt
+            # 📊 Fortschritt
             try:
                 if not os.path.exists("lesebestätigung.csv") or not os.path.exists("mitarbeiter.csv"):
                     st.info("Noch keine Daten vorhanden.")
