@@ -141,7 +141,7 @@ with tabs[1]:
         ]:
             st.session_state[key] = ""
 
-    # Hilfsfunktion: sichere Texte (keine Sonderzeichenprobleme)
+    # Hilfsfunktion: sichere Texte
     def safe(text):
         return (
             str(text)
@@ -162,23 +162,17 @@ with tabs[1]:
         def header(self):
             self.set_font("Arial", size=9)
             self.set_text_color(80)
-            # Linksbündig: Pflegedienst
-            left_text = "Pflegedienst: xy"
-            self.cell(0, 10, safe(left_text), ln=0, align="L")
-            # Rechtsbündig: Verfahrensanweisung Pflege + Unterkapitel
-            right_text = f"Verfahrensanweisung Pflege, Kap. {self.unterkapitel}"
-            self.cell(0, 10, safe(right_text), ln=0, align="R")
+            self.cell(0, 10, safe("Pflegedienst: xy"), ln=0, align="L")
+            self.cell(0, 10, safe(f"Verfahrensanweisung Pflege, Kap. {self.unterkapitel}"), ln=0, align="R")
             self.ln(15)
 
         def footer(self):
             self.set_y(-15)
             self.set_font("Arial", size=8)
             self.set_text_color(100)
-            left_text = f"{self.va_nr} – {self.va_titel}"
-            self.cell(60, 10, safe(left_text), ln=0)
-            center_text = "Erstellt von: Peters, Michael – Qualitätsbeauftragter"
+            self.cell(60, 10, safe(f"{self.va_nr} – {self.va_titel}"), ln=0)
             self.set_x((210 - 90) / 2)
-            self.cell(90, 10, safe(center_text), align="C")
+            self.cell(90, 10, safe("Erstellt von: Peters, Michael – Qualitätsbeauftragter"), align="C")
             self.set_x(-30)
             self.cell(0, 10, f"Seite {self.page_no()}", align="R")
 
@@ -227,12 +221,10 @@ with tabs[1]:
             df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
             st.success(f"✅ VA {va_nr_input} gespeichert.")
 
-            # Reset-Button nach Speichern
             if st.button("Formular zurücksetzen", key="reset_after_save"):
                 reset_form()
                 st.info("Formular wurde geleert.")
 
-            # Merken für PDF-Erzeugung
             st.session_state.last_saved_va = va_nr_input.strip()
         else:
             st.error("Pflichtfelder fehlen.")
@@ -309,56 +301,19 @@ with tabs[1]:
     if os.path.exists(DATA_FILE_QM):
         df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str).fillna("")
         df_va["Label"] = df_va["VA_Nr"] + " – " + df_va["Titel"]
-        sel = st.selectbox("Dokument auswählen", df_va["Label"].tolist(), index=None, key="va_auswahl_select")
-    if sel:
-        va_id = sel.split(" – ")[0]
-        st.session_state.selected_va = va_id
-        st.success(f"Ausgewählt: {sel}")
+        sel = st.selectbox("Dokument auswählen", df_va["Label"].tolist(), index=None, key="va_auswahl_select_tab1")
+        if sel:
+            va_id = sel.split(" – ")[0]
+            st.session_state.selected_va = va_id
+            st.success(f"Ausgewählt: {sel}")
 
-     # Anzeige des aktuellen Dokuments
-        df_va_sel = df_va[df_va["VA_Nr"] == va_id]
-        if not df_va_sel.empty:
-                row = df_va_sel.iloc[0]
-                st.markdown("### Aktuelles Dokument")
-                st.write(f"{row['VA_Nr']} – {row['Titel']}")
-                st.write(f"Kapitel: {row['Kapitel']}, Unterkapitel: {row['Unterkapitel']}")
-                st.write(f"Revisionsstand: {row['Revisionsstand']}")
-                st.write(f"Geltungsbereich: {row['Geltungsbereich']}")
-                st.write(f"Ziel: {row['Ziel']}")
-                st.write(f"Vorgehensweise: {row['Vorgehensweise']}")
-                st.write(f"Kommentar: {row['Kommentar']}")
-                st.write(f"Mitgeltende Unterlagen: {row['Mitgeltende_Unterlagen']}")
-        else:
-                st.warning("Kein Dokument gefunden.")
-
-    # VA löschen
-    st.markdown("---")
-    st.markdown("### VA löschen")
-    if os.path.exists(DATA_FILE_QM):
-        df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str).fillna("")
-        df_va["Label"] = df_va["VA_Nr"] + " – " + df_va["Titel"]
-        sel_del = st.selectbox("VA auswählen zum Löschen", df_va["Label"].tolist(), index=None, key="va_loeschen_select")
-
-        if sel_del and st.button("VA löschen", key="va_loeschen_button"):
-            va_id_del = sel_del.split(" – ")[0]
-            df_va = df_va[df_va["VA_Nr"] != va_id_del]
-            df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-            st.success(f"❌ VA {va_id_del} wurde gelöscht.")
-
-            # Reset nach Löschen
-            if st.button("Formular zurücksetzen", key="reset_after_delete"):
-                reset_form()
-                st.info("Formular wurde geleert.")
-
-
-            # Anzeige des aktuellen Dokuments
             df_va_sel = df_va[df_va["VA_Nr"] == va_id]
             if not df_va_sel.empty:
                 row = df_va_sel.iloc[0]
                 st.markdown("### Aktuelles Dokument")
                 st.write(f"{row['VA_Nr']} – {row['Titel']}")
                 st.write(f"Kapitel: {row['Kapitel']}, Unterkapitel: {row['Unterkapitel']}")
-                st.write(f"Revisionsstand: {row['Revisionsstand']}")
+                               st.write(f"Revisionsstand: {row['Revisionsstand']}")
                 st.write(f"Geltungsbereich: {row['Geltungsbereich']}")
                 st.write(f"Ziel: {row['Ziel']}")
                 st.write(f"Vorgehensweise: {row['Vorgehensweise']}")
@@ -373,16 +328,20 @@ with tabs[1]:
     if os.path.exists(DATA_FILE_QM):
         df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str).fillna("")
         df_va["Label"] = df_va["VA_Nr"] + " – " + df_va["Titel"]
-        sel_del = st.selectbox("VA auswählen zum Löschen", df_va["Label"].tolist(), index=None, key="va_loeschen_select")
+        sel_del = st.selectbox(
+            "VA auswählen zum Löschen",
+            df_va["Label"].tolist(),
+            index=None,
+            key="va_loeschen_select_tab1"   # eindeutiger Key!
+        )
 
-        if sel_del and st.button("VA löschen", key="va_loeschen_button"):
+        if sel_del and st.button("VA löschen", key="va_loeschen_button_tab1"):
             va_id_del = sel_del.split(" – ")[0]
             df_va = df_va[df_va["VA_Nr"] != va_id_del]
             df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
             st.success(f"❌ VA {va_id_del} wurde gelöscht.")
 
-            # Reset nach Löschen
-            if st.button("Formular zurücksetzen", key="reset_after_delete"):
+            if st.button("Formular zurücksetzen", key="reset_after_delete_tab1"):
                 reset_form()
                 st.info("Formular wurde geleert.")
 
