@@ -279,16 +279,13 @@ with tabs[1]:
         reset_form()
         st.info("Formular wurde geleert.")
 
-# --------------------------
-# Tab 2: Lesebestätigung (bereinigt & stabil)
-# --------------------------
 with tabs[2]:
     st.markdown("## ✅ Lesebestätigung")
 
     if not st.session_state.get("logged_in", False):
         st.warning("Bitte zuerst im Tab 'Login' anmelden.")
     else:
-        # VA-Liste für Auswahl
+        # VA-Auswahl
         va_liste = []
         if os.path.exists("qm_verfahrensanweisungen.csv"):
             df_va = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig", dtype=str)
@@ -296,21 +293,21 @@ with tabs[2]:
                 df_va["VA_clean"] = df_va["VA_Nr"].apply(norm_va)
                 va_liste = sorted(df_va["VA_clean"].unique())
 
-        # Eingaben
         name_raw = st.text_input("Name (Nachname, Vorname)", key="tab2_name_input")
         va_nummer = st.selectbox("VA auswählen", options=va_liste, index=None, key="tab2_va_select")
 
-        # Sidebar-Sync
         if va_nummer:
             st.session_state.selected_va = va_nummer
 
-        # Bestätigen
         if st.button("Bestätigen", key="tab2_confirm_button"):
             name_kombi = re.sub(r"\s*,\s*", ",", name_raw.strip())
             if name_kombi and va_nummer:
                 zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
-                eintrag = {"Name": name_kombi, "VA_Nr": va_nummer, "Zeitpunkt": zeitpunkt}
-                df_new = pd.DataFrame([eintrag])[["Name", "VA_Nr", "Zeitpunkt"]]
+                df_new = pd.DataFrame([{
+                    "Name": name_kombi,
+                    "VA_Nr": va_nummer,
+                    "Zeitpunkt": zeitpunkt
+                }])[["Name", "VA_Nr", "Zeitpunkt"]]
 
                 path = "lesebestätigung.csv"
                 file_exists = os.path.exists(path)
@@ -327,7 +324,6 @@ with tabs[2]:
 
                 st.success(f"Bestätigung für {va_nummer} gespeichert.")
 
-                # Optionaler CSV-Download für den einzelnen Eintrag
                 if st.checkbox("Eigenen Nachweis als CSV herunterladen", key="tab2_csv_checkbox"):
                     csv_bytes = df_new.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
                     st.download_button(
@@ -340,24 +336,21 @@ with tabs[2]:
             else:
                 st.error("Bitte Name und VA auswählen.")
 
-        # Tabelle: bereits bestätigte Einträge
+        # Übersicht
         st.markdown("---")
         st.markdown("### 📄 Bereits bestätigte Einträge")
         path_all = "lesebestätigung.csv"
         if os.path.exists(path_all):
-            df_alle = pd.read_csv(path_all, sep=";", encoding="utf-8-sig")
-            st.dataframe(df_alle.sort_values("Zeitpunkt", ascending=False))
+            df_all = pd.read_csv(path_all, sep=";", encoding="utf-8-sig")
+            st.dataframe(df_all.sort_values("Zeitpunkt", ascending=False))
         else:
             st.info("Noch keine Lesebestätigungen vorhanden.")
 
-        # Sammel-CSV aller Lesebestätigungen
+        # Sammel-CSV
         st.markdown("---")
         st.markdown("### 📄 Sammel-CSV aller Lesebestätigungen")
         ziel_path = os.path.join("va_app", "sammeldatei.csv")
-
         if os.path.exists(path_all):
-            df_all = pd.read_csv(path_all, sep=";", encoding="utf-8-sig")
-
             if st.button("Sammeldatei speichern", key="save_collective_csv"):
                 try:
                     os.makedirs("va_app", exist_ok=True)
@@ -372,10 +365,10 @@ with tabs[2]:
                     st.error(f"Sammeldatei konnte nicht gespeichert werden: {e}")
         else:
             st.info("Noch keine Lesebestätigungen vorhanden.")
-        # Sammel-PDF aller Lesebestätigungen
+
+        # Sammel-PDF
         st.markdown("---")
         st.markdown("### 📄 Sammel-PDF aller Lesebestätigungen")
-
         if os.path.exists(path_all):
             df_all = pd.read_csv(path_all, sep=";", encoding="utf-8-sig")
 
@@ -392,9 +385,7 @@ with tabs[2]:
 
             pdf = ConfirmPDF()
             pdf.add_page()
-            pdf.set_font("Arial", size=12)
-
-            # Tabellenkopf
+            pdf.set_font("Arial", size=11)
             pdf.set_fill_color(230, 230, 230)
             pdf.set_font("Arial", "B", 11)
             pdf.cell(60, 10, "Name", 1, 0, "L", True)
@@ -402,15 +393,13 @@ with tabs[2]:
             pdf.cell(70, 10, "Zeitpunkt", 1, 1, "L", True)
             pdf.set_font("Arial", size=11)
 
-            # Tabelleninhalt
             for _, r in df_all.iterrows():
                 pdf.cell(60, 10, clean_text(r["Name"]), 1)
                 pdf.cell(30, 10, clean_text(r["VA_Nr"]), 1)
                 pdf.cell(70, 10, clean_text(r["Zeitpunkt"]), 1)
                 pdf.ln()
 
-            # Ausgabe als Bytes (kein encode nötig!)
-            pdf_bytes = pdf.output(dest="S").encode("latin-1") if isinstance(pdf.output(dest="S"), str) else pdf.output(dest="S")
+            pdf_bytes = pdf.output(dest="S") if isinstance(pdf.output(dest="S"), bytes) else pdf.output(dest="S").encode("latin-1")
 
             st.download_button(
                 "📄 Sammel-PDF herunterladen",
@@ -421,7 +410,6 @@ with tabs[2]:
             )
         else:
             st.info("Noch keine Lesebestätigungen vorhanden.")
-
 
 # --------------------------
 # Tab 3: Mitarbeiter
