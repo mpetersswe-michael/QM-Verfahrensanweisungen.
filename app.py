@@ -141,7 +141,7 @@ with tabs[1]:
         ]:
             st.session_state[key] = ""
 
-    # Hilfsfunktion: sichere Texte
+    # Hilfsfunktion: sichere Texte für PDF (latin-1)
     def safe(text):
         return str(text).encode("latin-1", "replace").decode("latin-1")
 
@@ -202,8 +202,8 @@ with tabs[1]:
         else:
             st.error("Pflichtfelder fehlen.")
 
-    # 📄 PDF erzeugen & speichern
-    st.markdown("### 📄 PDF erzeugen & speichern")
+    # 📄 PDF erzeugen & manuell herunterladen
+    st.markdown("### 📄 PDF erzeugen & herunterladen")
     if "last_saved_va" in st.session_state:
         df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
         match = df_va[df_va["VA_Nr"] == st.session_state.last_saved_va]
@@ -234,27 +234,14 @@ with tabs[1]:
             pdf_bytes = buffer.getvalue()
 
             st.download_button(
-                label=f"📄 PDF erzeugen: {row['VA_Nr']}",
+                label=f"📄 PDF herunterladen: {row['VA_Nr']}",
                 data=pdf_bytes,
-                file_name=f"{row['VA_Nr']}_preview.pdf",
+                file_name=f"{row['VA_Nr'].replace(' ', '')}.pdf",
                 mime="application/pdf",
-                key="pdf_preview_tab1"
+                key="pdf_download_tab1"
             )
-
-    if st.button("PDF speichern in va_pdf", key="pdf_speichern_tab1"):
-         try:
-            os.makedirs("va_pdf", exist_ok=True)
-            clean_va = row["VA_Nr"].replace(" ", "").replace("/", "-")
-            pdf_path = os.path.join("va_pdf", f"{clean_va}.pdf")
-            with open(pdf_path, "wb") as f:
-             f.write(pdf_bytes)
-
-            files = os.listdir("va_pdf")
-            st.success(f"✅ PDF für {row['VA_Nr']} gespeichert in va_pdf/")
-            st.write("📂 Inhalt von va_pdf:", files)
-         except Exception as e:
-            st.error(f"❌ Fehler beim Speichern: {e}")
-
+        else:
+            st.error("❌ VA konnte nicht gefunden werden – PDF-Erzeugung abgebrochen.")
 
     # 🔵 VA-Auswahl & Löschung
     st.markdown("### 🔵 VA auswählen & löschen")
@@ -262,6 +249,29 @@ with tabs[1]:
         df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str).fillna("")
         df_va["Label"] = df_va["VA_Nr"] + " – " + df_va["Titel"]
 
+                sel = st.selectbox("Dokument auswählen", df_va["Label"].tolist(), index=None, key="va_auswahl_tab1")
+        if sel:
+            va_id = sel.split(" – ")[0]
+            df_va_sel = df_va[df_va["VA_Nr"] == va_id]
+            if not df_va_sel.empty:
+                row = df_va_sel.iloc[0]
+                st.markdown("### Aktuelles Dokument")
+                st.write(f"{row['VA_Nr']} – {row['Titel']}")
+                st.write(f"Kapitel: {row['Kapitel']}, Unterkapitel: {row['Unterkapitel']}")
+                st.write(f"Revisionsstand: {row['Revisionsstand']}")
+                st.write(f"Geltungsbereich: {row['Geltungsbereich']}")
+                st.write(f"Ziel: {row['Ziel']}")
+                st.write(f"Vorgehensweise: {row['Vorgehensweise']}")
+                st.write(f"Kommentar: {row['Kommentar']}")
+                st.write(f"Mitgeltende Unterlagen: {row['Mitgeltende_Unterlagen']}")
+
+    # 🔵 VA-Auswahl & Löschung
+    st.markdown("### 🔵 VA auswählen & löschen")
+    if os.path.exists(DATA_FILE_QM):
+        df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str).fillna("")
+        df_va["Label"] = df_va["VA_Nr"] + " – " + df_va["Titel"]
+
+        # Auswahlfeld: Dokument anzeigen
         sel = st.selectbox("Dokument auswählen", df_va["Label"].tolist(), index=None, key="va_auswahl_tab1")
         if sel:
             va_id = sel.split(" – ")[0]
@@ -278,6 +288,7 @@ with tabs[1]:
                 st.write(f"Kommentar: {row['Kommentar']}")
                 st.write(f"Mitgeltende Unterlagen: {row['Mitgeltende_Unterlagen']}")
 
+        # Auswahlfeld: Dokument löschen
         sel_del = st.selectbox("VA auswählen zum Löschen", df_va["Label"].tolist(), index=None, key="va_loeschen_tab1")
         if sel_del and st.button("VA löschen", key="va_loeschen_button_tab1"):
             va_id_del = sel_del.split(" – ")[0]
@@ -289,6 +300,12 @@ with tabs[1]:
     if st.button("Formular zurücksetzen", key="reset_tab1"):
         reset_form()
         st.info("Formular wurde geleert.")
+
+
+
+
+
+
 
 
 # --------------------------
