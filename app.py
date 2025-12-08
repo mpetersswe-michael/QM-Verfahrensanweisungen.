@@ -343,8 +343,6 @@ with tabs[1]:
                 st.info("Formular wurde geleert.")
     else:
         st.info("Noch keine Verfahrensanweisungen vorhanden.")
-s
-
 
 # --------------------------
 # Tab 2: Lesebestätigung (final)
