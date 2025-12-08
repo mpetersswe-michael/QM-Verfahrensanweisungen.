@@ -290,19 +290,24 @@ with tabs[1]:
                 mime="application/pdf",
                 key="pdf_preview_after_save"
             )
+    if st.button("PDF speichern in va_pdf", key="pdf_save_after_va"):
+        # Ordner erzeugen, falls er noch nicht existiert
+            os.makedirs("va_pdf", exist_ok=True)
 
-            if st.button("PDF speichern in va_pdf", key="pdf_save_after_va"):
-                # Ordner erzeugen, falls er noch nicht existiert
-                os.makedirs("va_pdf", exist_ok=True)
+        # Pfad für die Datei
+        pdf_path = f"va_pdf/{row['VA_Nr']}.pdf"
 
-                pdf_path = f"va_pdf/{row['VA_Nr']}.pdf"
-                with open(pdf_path, "wb") as f:
-                    f.write(pdf_bytes)
+        # PDF aus dem Speicher schreiben
+            with open(pdf_path, "wb") as f:
+                f.write(pdf_bytes)
 
-                st.success(f"✅ PDF für {row['VA_Nr']} gespeichert in va_pdf/")
+        # Kontrolle: Dateien im Ordner anzeigen
+            st.write("📂 Inhalt von va_pdf:", os.listdir("va_pdf"))
 
-        else:
-            st.error("❌ VA konnte nicht gefunden werden – PDF-Erzeugung abgebrochen.")
+        st.success(f"✅ PDF für {row['VA_Nr']} gespeichert in va_pdf/")
+    else:
+        st.error("❌ VA konnte nicht gefunden werden – PDF-Erzeugung abgebrochen.")
+
 
     # VA-Auswahl zur Ansicht
     st.markdown("---")
