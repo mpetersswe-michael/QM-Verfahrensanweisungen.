@@ -186,56 +186,49 @@ with tabs[1]:
 
             df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
             st.success(f"✅ VA {va_nr_input} gespeichert.")
+            st.session_state.va_just_saved = va_nr_input
         else:
             st.error("Pflichtfelder fehlen.")
 
+    # PDF direkt nach Speicherung
+    if st.session_state.get("va_just_saved"):
+        from fpdf import FPDF
 
-    # PDF erzeugen nach erfolgreichem Speichern
-if all([
-    va_nr_input.strip(),
-    titel_input.strip(),
-    kapitel_input.strip(),
-    unterkapitel_input.strip(),
-    revisionsstand_input.strip(),
-    geltungsbereich_input.strip()
-]):
-    from fpdf import FPDF
+        def safe(text):
+            return str(text).replace("\n", " ").replace("–", "-").replace("•", "-")
 
-    def safe(text):
-        return str(text).replace("\n", " ").replace("–", "-").replace("•", "-")
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
 
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
+        pdf.cell(190, 10, txt=f"VA_Nr: {safe(va_nr_input)}", ln=True)
+        pdf.cell(190, 10, txt=f"Titel: {safe(titel_input)}", ln=True)
+        pdf.cell(190, 10, txt=f"Kapitel: {safe(kapitel_input)}", ln=True)
+        pdf.cell(190, 10, txt=f"Unterkapitel: {safe(unterkapitel_input)}", ln=True)
+        pdf.cell(190, 10, txt=f"Revisionsstand: {safe(revisionsstand_input)}", ln=True)
+        pdf.cell(190, 10, txt=f"Geltungsbereich: {safe(geltungsbereich_input)}", ln=True)
+        pdf.multi_cell(190, 10, txt=f"Ziel:\n{safe(ziel_input)}")
+        pdf.multi_cell(190, 10, txt=f"Vorgehensweise:\n{safe(vorgehensweise_input)}")
+        pdf.multi_cell(190, 10, txt=f"Kommentar:\n{safe(kommentar_input)}")
+        pdf.multi_cell(190, 10, txt=f"Mitgeltende Unterlagen:\n{safe(mitgeltende_input)}")
 
-    pdf.cell(200, 10, txt=f"VA_Nr: {safe(va_nr_input)}", ln=True)
-    pdf.cell(200, 10, txt=f"Titel: {safe(titel_input)}", ln=True)
-    pdf.cell(200, 10, txt=f"Kapitel: {safe(kapitel_input)}", ln=True)
-    pdf.cell(200, 10, txt=f"Unterkapitel: {safe(unterkapitel_input)}", ln=True)
-    pdf.cell(200, 10, txt=f"Revisionsstand: {safe(revisionsstand_input)}", ln=True)
-    pdf.cell(200, 10, txt=f"Geltungsbereich: {safe(geltungsbereich_input)}", ln=True)
-    pdf.multi_cell(190, 10, txt=f"Ziel:\n{safe(ziel_input)}")
-    pdf.multi_cell(190, 10, txt=f"Vorgehensweise:\n{safe(vorgehensweise_input)}")
-    pdf.multi_cell(190, 10, txt=f"Kommentar:\n{safe(kommentar_input)}")
-    pdf.multi_cell(190, 10, txt=f"Mitgeltende Unterlagen:\n{safe(mitgeltende_input)}")
+        pdf_bytes = pdf.output(dest="S").encode("latin-1")
 
-    pdf_bytes = pdf.output(dest="S").encode("latin-1")
+        st.download_button(
+            label=f"📄 Vorschau anzeigen: {va_nr_input}",
+            data=pdf_bytes,
+            file_name=f"{va_nr_input}_preview.pdf",
+            mime="application/pdf",
+            key=f"preview_after_save"
+        )
 
-    st.download_button(
-        label=f"📄 Vorschau anzeigen: {va_nr_input}",
-        data=pdf_bytes,
-        file_name=f"{va_nr_input}_preview.pdf",
-        mime="application/pdf",
-        key=f"preview_after_save"
-    )
+        if st.button("PDF endgültig speichern", key="save_after_va"):
+            pdf_path = f"va_pdf/{va_nr_input}.pdf"
+            pdf.output(pdf_path)
+            st.success(f"✅ PDF für {va_nr_input} gespeichert in va_pdf/")
+            st.session_state.va_just_saved = None
 
-    if st.button("PDF endgültig speichern", key="save_after_va"):
-        pdf_path = f"va_pdf/{va_nr_input}.pdf"
-        pdf.output(pdf_path)
-        st.success(f"✅ PDF für {va_nr_input} gespeichert in va_pdf/")
-
-
-    # Auswahl + PDF-Vorschau
+    # VA-Auswahl zur Ansicht
     st.markdown("---")
     st.markdown("### VA auswählen")
     if os.path.exists(DATA_FILE_QM):
@@ -246,35 +239,6 @@ if all([
             va_id = sel.split(" – ")[0]
             st.session_state.selected_va = va_id
             st.success(f"Ausgewählt: {sel}")
-
-            # PDF Vorschau erzeugen
-            from fpdf import FPDF
-            pdf = FPDF()
-            pdf.add_page()
-            pdf.set_font("Arial", size=12)
-
-            row = df_va[df_va["VA_Nr"] == va_id].iloc[0]
-            for field in ["VA_Nr", "Titel", "Kapitel", "Unterkapitel", "Revisionsstand", "Geltungsbereich"]:
-                pdf.cell(200, 10, txt=f"{field}: {row[field]}", ln=True)
-            pdf.multi_cell(0, 10, txt=f"Ziel:\n{row['Ziel']}")
-            pdf.multi_cell(0, 10, txt=f"Vorgehensweise:\n{row['Vorgehensweise']}")
-            pdf.multi_cell(0, 10, txt=f"Kommentar:\n{row['Kommentar']}")
-            pdf.multi_cell(0, 10, txt=f"Mitgeltende Unterlagen:\n{row['Mitgeltende_Unterlagen']}")
-
-            pdf_bytes = pdf.output(dest="S").encode("latin-1")
-
-            st.download_button(
-                label=f"📄 Vorschau anzeigen: {va_id}",
-                data=pdf_bytes,
-                file_name=f"{va_id}_preview.pdf",
-                mime="application/pdf",
-                key=f"preview_{va_id}"
-            )
-
-            if st.button("PDF endgültig speichern", key=f"save_{va_id}"):
-                pdf_path = f"va_pdf/{va_id}.pdf"
-                pdf.output(pdf_path)
-                st.success(f"✅ PDF für {va_id} gespeichert in va_pdf/")
 
     # Löschbereich ganz unten, blau hinterlegt
     st.markdown("---")
@@ -302,8 +266,6 @@ if all([
             st.success(f"❌ VA {va_zum_loeschen} wurde gelöscht.")
     else:
         st.info("Noch keine Verfahrensanweisungen vorhanden.")
-
-
 
 
 # --------------------------
