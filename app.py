@@ -292,10 +292,12 @@ with tabs[1]:
             )
 
             if st.button("PDF speichern in va_pdf", key="pdf_save_after_va"):
-                os.makedirs("va_pdf", exist_ok=True)  # ← Ordner erzeugen, falls nötig
+                os.makedirs("va_pdf", exist_ok=True)
                 pdf_path = f"va_pdf/{row['VA_Nr']}.pdf"
-                pdf.output(pdf_path)
+                with open(pdf_path, "wb") as f:
+                    f.write(pdf_bytes)
                 st.success(f"✅ PDF für {row['VA_Nr']} gespeichert in va_pdf/")
+
 
         else:
             st.error("❌ VA konnte nicht gefunden werden – PDF-Erzeugung abgebrochen.")
