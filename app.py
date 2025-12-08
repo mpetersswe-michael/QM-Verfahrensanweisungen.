@@ -229,53 +229,80 @@ with tabs[1]:
         else:
             st.error("Pflichtfelder fehlen.")
 
-    # PDF-Erzeugung und Speicher-Button
-    if "last_saved_va" in st.session_state:
-        df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
-        match = df_va[df_va["VA_Nr"] == st.session_state.last_saved_va]
+   # --------------------------
+# PDF erzeugen & speichern (nach erfolgreichem VA-Speichern)
+# --------------------------
+st.markdown("### 📄 PDF erzeugen & speichern")
 
-        if not match.empty:
-            row = match.iloc[0]
+if "last_saved_va" in st.session_state:
+    df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
+    match = df_va[df_va["VA_Nr"] == st.session_state.last_saved_va]
 
-            pdf = CustomPDF()
-            pdf.va_nr = row["VA_Nr"]
-            pdf.va_titel = row["Titel"]
-            pdf.unterkapitel = row["Unterkapitel"]
-            pdf.add_page()
-            pdf.set_font("Arial", size=12)
-            pdf.set_left_margin(10)
-            pdf.set_right_margin(10)
+    if not match.empty:
+        row = match.iloc[0]
 
-            for field in ["VA_Nr", "Titel", "Kapitel", "Unterkapitel", "Revisionsstand", "Geltungsbereich"]:
-                pdf.cell(0, 10, txt=f"{field}: {safe(row[field])}", ln=True)
+        # PDF erzeugen
+        pdf = CustomPDF()
+        pdf.va_nr = row["VA_Nr"]
+        pdf.va_titel = row["Titel"]
+        pdf.unterkapitel = row["Unterkapitel"]
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        pdf.set_left_margin(10)
+        pdf.set_right_margin(10)
 
-            pdf.ln(5)
-            pdf.set_font("Arial", style="B", size=12)
-            pdf.cell(0, 10, "Ziel:", ln=True)
-            pdf.set_font("Arial", size=12)
-            pdf.multi_cell(0, 8, safe(row["Ziel"]))
+        # Inhalte
+        for field in ["VA_Nr", "Titel", "Kapitel", "Unterkapitel", "Revisionsstand", "Geltungsbereich"]:
+            pdf.cell(0, 10, txt=f"{field}: {safe(row[field])}", ln=True)
 
-            pdf.ln(5)
-            pdf.set_font("Arial", style="B", size=12)
-            pdf.cell(0, 10, "Vorgehensweise:", ln=True)
-            pdf.set_font("Arial", size=12)
-            pdf.multi_cell(0, 8, safe(row["Vorgehensweise"]))
+        pdf.ln(5)
+        pdf.set_font("Arial", style="B", size=12)
+        pdf.cell(0, 10, "Ziel:", ln=True)
+        pdf.set_font("Arial", size=12)
+        pdf.multi_cell(0, 8, safe(row["Ziel"]))
 
-            pdf.ln(5)
-            pdf.set_font("Arial", style="B", size=12)
-            pdf.cell(0, 10, "Kommentar:", ln=True)
-            pdf.set_font("Arial", size=12)
-            pdf.multi_cell(0, 8, safe(row["Kommentar"]))
+        pdf.ln(5)
+        pdf.set_font("Arial", style="B", size=12)
+        pdf.cell(0, 10, "Vorgehensweise:", ln=True)
+        pdf.set_font("Arial", size=12)
+        pdf.multi_cell(0, 8, safe(row["Vorgehensweise"]))
 
-            pdf.ln(5)
-            pdf.set_font("Arial", style="B", size=12)
-            pdf.cell(0, 10, "Mitgeltende Unterlagen:", ln=True)
-            pdf.set_font("Arial", size=12)
-            pdf.multi_cell(0, 8, safe(row["Mitgeltende_Unterlagen"]))
+        pdf.ln(5)
+        pdf.set_font("Arial", style="B", size=12)
+        pdf.cell(0, 10, "Kommentar:", ln=True)
+        pdf.set_font("Arial", size=12)
+        pdf.multi_cell(0, 8, safe(row["Kommentar"]))
 
-            buffer = io.BytesIO()
-            pdf.output(buffer)
-            pdf_bytes = buffer.getvalue()
+        pdf.ln(5)
+        pdf.set_font("Arial", style="B", size=12)
+        pdf.cell(0, 10, "Mitgeltende Unterlagen:", ln=True)
+        pdf.set_font("Arial", size=12)
+        pdf.multi_cell(0, 8, safe(row["Mitgeltende_Unterlagen"]))
+
+        # In Bytes schreiben
+        buffer = io.BytesIO()
+        pdf.output(buffer)
+        pdf_bytes = buffer.getvalue()
+
+        # Vorschau-Download
+        st.download_button(
+            label=f"📄 PDF erzeugen: {row['VA_Nr']}",
+            data=pdf_bytes,
+            file_name=f"{row['VA_Nr']}_preview.pdf",
+            mime="application/pdf",
+            key="pdf_preview_after_save_tab1"
+        )
+
+        # Speichern in va_pdf
+        if st.button("PDF speichern in va_pdf", key="pdf_save_after_va_tab1"):
+            os.makedirs("va_pdf", exist_ok=True)
+            pdf_path = f"va_pdf/{row['VA_Nr']}.pdf"
+            with open(pdf_path, "wb") as f:
+                f.write(pdf_bytes)
+            st.write("📂 Inhalt von va_pdf:", os.listdir("va_pdf"))
+            st.success(f"✅ PDF für {row['VA_Nr']} gespeichert in va_pdf/")
+    else:
+        st.error("❌ VA konnte nicht gefunden werden – PDF-Erzeugung abgebrochen.")
 
             st.download_button(
                 label=f"📄 PDF erzeugen: {row['VA_Nr']}",
