@@ -301,11 +301,16 @@ with tabs[1]:
     # VA-Auswahl zur Ansicht
     st.markdown("---")
     st.markdown("### VA auswählen")
-    if os.path.exists(DATA_FILE_QM):
-        df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str).fillna("")
-        df_va["Label"] = df_va["VA_Nr"] + " – " + df_va["Titel"]
-               sel = st.selectbox("Dokument auswählen", df_va["Label"].tolist(), index=None, key="va_auswahl_select")
-        if sel:
+   if os.path.exists(DATA_FILE_QM):
+       df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str).fillna("")
+       df_va["Label"] = df_va["VA_Nr"] + " – " + df_va["Titel"]
+       sel = st.selectbox("Dokument auswählen", df_va["Label"].tolist(), index=None, key="va_auswahl_select")
+
+    if sel:
+        va_id = sel.split(" – ")[0]
+        st.session_state.selected_va = va_id
+        st.success(f"Ausgewählt: {sel}")
+
             va_id = sel.split(" – ")[0]
             st.session_state.selected_va = va_id
             st.success(f"Ausgewählt: {sel}")
