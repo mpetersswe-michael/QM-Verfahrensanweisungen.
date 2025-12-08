@@ -141,6 +141,42 @@ with tabs[1]:
         ]:
             st.session_state[key] = ""
 
+    # Hilfsfunktion: sichere Texte (keine Fragezeichen)
+    def safe(text):
+        return (
+            str(text)
+            .replace("\n", " ")
+            .replace("–", "-")
+            .replace("•", "-")
+            .replace("ä", "ae")
+            .replace("ö", "oe")
+            .replace("ü", "ue")
+            .replace("ß", "ss")
+            .replace("Ä", "Ae")
+            .replace("Ö", "Oe")
+            .replace("Ü", "Ue")
+        )
+
+    # PDF-Klasse mit Fußzeile
+    class CustomPDF(FPDF):
+        def footer(self):
+            self.set_y(-15)
+            self.set_font("Arial", size=8)
+            self.set_text_color(100)
+
+            # Linksbündig: VA-Nr und Titel
+            left_text = f"{self.va_nr} – {self.va_titel}"
+            self.cell(60, 10, safe(left_text), ln=0)
+
+            # Zentriert: Name und Funktion
+            center_text = "Erstellt von: Peters, Michael – Qualitätsbeauftragter"
+            self.set_x((210 - 90) / 2)
+            self.cell(90, 10, safe(center_text), align="C")
+
+            # Rechts: Seitenzahl
+            self.set_x(-30)
+            self.cell(0, 10, f"Seite {self.page_no()}", align="R")
+
     # Eingabe
     st.markdown("### Neue VA eingeben")
     va_nr_input = st.text_input("VA-Nummer", key="va_nr_input")
@@ -192,46 +228,6 @@ with tabs[1]:
                 st.info("Formular wurde geleert.")
 
             # PDF direkt nach Speicherung
-           
-
-class CustomPDF(FPDF):
-    def footer(self):
-        self.set_y(-15)
-        self.set_font("Arial", size=8)
-        self.set_text_color(100)
-
-        # Linksbündig: VA-Nr und Titel
-        left_text = f"{self.va_nr} – {self.va_titel}"
-        self.cell(60, 10, safe(left_text), ln=0)
-
-        # Zentriert: Name und Funktion
-        center_text = "Erstellt von: Peters, Michael – Qualitätsbeauftragter"
-        self.set_x((210 - 90) / 2)
-        self.cell(90, 10, safe(center_text), align="C")
-
-        # Rechts: Seitenzahl
-        self.set_x(-30)
-        self.cell(0, 10, f"Seite {self.page_no()}", align="R")
-
-def safe(text):
-    return (
-        str(text)
-        .replace("–", "-")
-        .replace("•", "-")
-        .replace("ä", "ae")
-        .replace("ö", "oe")
-        .replace("ü", "ue")
-        .replace("ß", "ss")
-        .replace("Ä", "Ae")
-        .replace("Ö", "Oe")
-        .replace("Ü", "Ue")
-    )
-
-
-
-            def safe(text):
-                return str(text).replace("\n", " ").replace("–", "-").replace("•", "-")
-
             match = df_va[df_va["VA_Nr"] == va_nr_input.strip()]
             if not match.empty:
                 row = match.iloc[0]
@@ -324,7 +320,7 @@ def safe(text):
         va_liste = sorted(df_va["VA_Nr"].dropna().unique())
         va_zum_loeschen = st.selectbox("VA auswählen zum Löschen", options=va_liste, index=None, key="va_loeschen_select")
 
-        if va_zum_loeschen and st.button("VA löschen", key="va_loeschen_button"):
+       if va_zum_loeschen and st.button("VA löschen", key="va_loeschen_button"):
             df_va = df_va[df_va["VA_Nr"] != va_zum_loeschen]
             df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
             st.success(f"❌ VA {va_zum_loeschen} wurde gelöscht.")
@@ -333,7 +329,6 @@ def safe(text):
             if st.button("Formular zurücksetzen", key="reset_after_delete"):
                 reset_form()
                 st.info("Formular wurde geleert.")
-  
     else:
         st.info("Noch keine Verfahrensanweisungen vorhanden.")
 
