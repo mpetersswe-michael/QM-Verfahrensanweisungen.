@@ -407,9 +407,8 @@ with tabs[3]:
         st.info("Noch keine Mitarbeiterliste vorhanden.")
 
 
-
 # --------------------------
-# Sidebar: Fortschritt + Lesebestätigung
+# Sidebar: Fortschritt + Lesebestätigung (mit PDF-Prüfung)
 # --------------------------
 with st.sidebar:
     if st.session_state.get("logged_in", False):
@@ -430,8 +429,13 @@ with st.sidebar:
         va_nummer = st.selectbox("VA auswählen", options=va_liste, index=None, key="sidebar_va_select")
 
         if va_nummer:
-            st.session_state.selected_va = va_nummer
             va_current = norm_va(va_nummer)
+            st.session_state.selected_va = va_current
+
+            # Debug-Ausgabe zur Kontrolle
+            st.write(f"🔍 VA-Nummer gewählt: {va_nummer}")
+            st.write(f"📄 Gesuchter Dateiname: {va_current}.pdf")
+
             row = df_va[df_va["VA_clean"] == va_current]
             titel = row["Titel"].values[0] if not row.empty else ""
 
@@ -449,9 +453,10 @@ with st.sidebar:
                 unsafe_allow_html=True
             )
 
-            # PDF anzeigen (z. B. VA005.pdf)
-            pdf_path = f"va_pdf/{va_current}.pdf"
+            # PDF prüfen und anzeigen
+            pdf_path = os.path.join("va_pdf", f"{va_current}.pdf")
             if os.path.exists(pdf_path):
+                st.success(f"✅ PDF gefunden: {pdf_path}")
                 with open(pdf_path, "rb") as f:
                     pdf_bytes = f.read()
                 st.download_button(
@@ -462,7 +467,7 @@ with st.sidebar:
                     key=f"download_{va_current}"
                 )
             else:
-                st.info("PDF noch nicht vorhanden – bitte zuerst erzeugen.")
+                st.error(f"❌ PDF nicht gefunden unter: {pdf_path}")
 
             # Lesebestätigung
             st.markdown("### Lesebestätigung")
@@ -528,3 +533,4 @@ with st.sidebar:
                 st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
     else:
         st.warning("Bitte zuerst im Tab 'Login' anmelden.")
+
