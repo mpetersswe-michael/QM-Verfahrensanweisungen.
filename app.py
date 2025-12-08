@@ -241,15 +241,14 @@ with tabs[1]:
                 key="pdf_preview_tab1"
             )
 
-            if st.button("PDF speichern in va_pdf", key="pdf_speichern_tab1"):
-                os.makedirs("va_pdf", exist_ok=True)
-                pdf_path = f"va_pdf/{row['VA_Nr']}.pdf"
-                with open(pdf_path, "wb") as f:
-                    f.write(pdf_bytes)
-                st.write("📂 Inhalt von va_pdf:", os.listdir("va_pdf"))
-                st.success(f"✅ PDF für {row['VA_Nr']} gespeichert in va_pdf/")
-        else:
-            st.error("❌ VA konnte nicht gefunden werden – PDF-Erzeugung abgebrochen.")
+     if st.button("PDF speichern in va_pdf", key="pdf_speichern_tab1"):
+        os.makedirs("va_pdf", exist_ok=True)  # Ordner wird angelegt, falls nicht vorhanden
+        pdf_path = f"va_pdf/{row['VA_Nr']}.pdf"  # Dateiname z. B. VA001.pdf
+        with open(pdf_path, "wb") as f:
+            f.write(pdf_bytes)
+        st.write("📂 Inhalt von va_pdf:", os.listdir("va_pdf"))
+        st.success(f"✅ PDF für {row['VA_Nr']} gespeichert in va_pdf/")
+
 
     # 🔵 VA-Auswahl & Löschung
     st.markdown("### 🔵 VA auswählen & löschen")
