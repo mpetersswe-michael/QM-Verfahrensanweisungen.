@@ -182,15 +182,24 @@ with tabs[1]:
             from fpdf import FPDF
 
             class CustomPDF(FPDF):
-                def footer(self):
-                    self.set_y(-15)
-                    self.set_font("Arial", size=8)
-                    self.set_text_color(100)
-                    self.cell(60, 10, f"Erstellt von: {self.va_nr}", ln=0)
-                    self.set_x((210 - 90) / 2)
-                    self.cell(90, 10, "Peters, Michael – Qualitätsbeauftragter".encode("latin-1", "replace").decode("latin-1"), align="C")
-                    self.set_x(-30)
-                    self.cell(0, 10, f"Seite {self.page_no()}", align="R")
+               def footer(self):
+                   self.set_y(-15)
+                   self.set_font("Arial", size=8)
+                   self.set_text_color(100)
+
+                  # Linksbündig: VA-Nr und Titel
+                  left_text = f"{self.va_nr} – {self.va_titel}"
+                  self.cell(60, 10, left_text.encode("latin-1", "replace").decode("latin-1"), ln=0)
+
+                 # Zentriert: Name und Funktion
+                  center_text = "Erstellt von: Peters, Michael – Qualitätsbeauftragter"
+                  self.set_x((210 - 90) / 2)
+                  self.cell(90, 10, center_text.encode("latin-1", "replace").decode("latin-1"), align="C")
+
+                 # Rechts: Seitenzahl
+                  self.set_x(-30)
+                  self.cell(0, 10, f"Seite {self.page_no()}", align="R")
+
 
             def safe(text):
                 return str(text).replace("\n", " ").replace("–", "-").replace("•", "-")
@@ -201,6 +210,7 @@ with tabs[1]:
 
                 pdf = CustomPDF()
                 pdf.va_nr = row["VA_Nr"]
+                pdf.va_titel = row["Titel"]
                 pdf.add_page()
                 pdf.set_font("Arial", size=12)
                 pdf.set_left_margin(10)
