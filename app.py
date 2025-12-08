@@ -479,7 +479,7 @@ with st.sidebar:
 
         if pdf_path.exists():
             st.markdown("### 📘 Verfahrensanweisung als PDF")
-        with open(pdf_path, "rb") as f:
+            with open(pdf_path, "rb") as f:
             st.download_button(
             label=f"📄 PDF öffnen: {pdf_name}",
             data=f.read(),
