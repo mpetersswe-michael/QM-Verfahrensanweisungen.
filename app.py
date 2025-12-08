@@ -176,33 +176,32 @@ with tabs[1]:
 
             df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
             st.success(f"✅ VA {va_nr_input} gespeichert.")
-            st.session_state.va_just_saved = neuer_eintrag.iloc[0]
+            st.session_state.va_just_saved_nr = va_nr_input.strip()
         else:
             st.error("Pflichtfelder fehlen.")
 
     # PDF direkt nach Speicherung
-    if st.session_state.get("va_just_saved"):
-        from fpdf import FPDF
+    if st.session_state.get("va_just_saved_nr"):
         import io
+        from fpdf import FPDF
 
         class CustomPDF(FPDF):
             def footer(self):
                 self.set_y(-15)
                 self.set_font("Arial", size=8)
                 self.set_text_color(100)
-                # Links: VA-Nr
                 self.cell(60, 10, f"Erstellt von: {self.va_nr}", ln=0)
-                # Mitte: Name + Rolle
                 self.set_x((210 - 90) / 2)
                 self.cell(90, 10, "Peters, Michael – Qualitätsbeauftragter", align="C")
-                # Rechts: Seitenzahl
                 self.set_x(-30)
                 self.cell(0, 10, f"Seite {self.page_no()}", align="R")
 
         def safe(text):
             return str(text).replace("\n", " ").replace("–", "-").replace("•", "-")
 
-        row = st.session_state.va_just_saved
+        df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
+        row = df_va[df_va["VA_Nr"] == st.session_state.va_just_saved_nr].iloc[0]
+
         pdf = CustomPDF()
         pdf.va_nr = row["VA_Nr"]
         pdf.add_page()
@@ -253,7 +252,7 @@ with tabs[1]:
             pdf_path = f"va_pdf/{row['VA_Nr']}.pdf"
             pdf.output(pdf_path)
             st.success(f"✅ PDF für {row['VA_Nr']} gespeichert in va_pdf/")
-            st.session_state.va_just_saved = None
+            st.session_state.va_just_saved_nr = None
 
     # VA-Auswahl zur Ansicht
     st.markdown("---")
@@ -293,8 +292,6 @@ with tabs[1]:
             st.success(f"❌ VA {va_zum_loeschen} wurde gelöscht.")
     else:
         st.info("Noch keine Verfahrensanweisungen vorhanden.")
-
-
 
 # --------------------------
 # Tab 2: Lesebestätigung (final)
