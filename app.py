@@ -327,7 +327,7 @@ with tabs[2]:
 
                 st.success(f"Bestätigung für {va_nummer} gespeichert.")
 
-                # Optionaler CSV-Download
+                # Optionaler CSV-Download für den einzelnen Eintrag
                 if st.checkbox("Eigenen Nachweis als CSV herunterladen", key="tab2_csv_checkbox"):
                     csv_bytes = df_new.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
                     st.download_button(
@@ -349,28 +349,6 @@ with tabs[2]:
             st.dataframe(df_alle.sort_values("Zeitpunkt", ascending=False))
         else:
             st.info("Noch keine Lesebestätigungen vorhanden.")
-
-        # Sammel-PDF aller Lesebestätigungen
-        st.markdown("---")
-        st.markdown("### 📄 Sammel-PDF aller Lesebestätigungen")
-        if os.path.exists(path_all):
-            df_all = pd.read_csv(path_all, sep=";", encoding="utf-8-sig")
-
-            class ConfirmPDF(FPDF):
-                def header(self):
-                    self.set_font("Arial", "B", 12)
-                    self.cell(0, 10, clean_text("Lesebestätigungen – Übersicht"), ln=True, align="C")
-                    self.ln(5)
-
-                def footer(self):
-                    self.set_y(-15)
-                    self.set_font("Arial", size=8)
-                    self.cell(0, 10, f"Seite {self.page_no()}", align="C")
-       
-    # PDF-Block hier
-            pdf = ConfirmPDF()
-            pdf.add_page()
-            pdf.set_font("Arial", size=12)
 
         # Sammel-CSV aller Lesebestätigungen
         st.markdown("---")
@@ -395,10 +373,42 @@ with tabs[2]:
         else:
             st.info("Noch keine Lesebestätigungen vorhanden.")
 
+        # Sammel-PDF aller Lesebestätigungen
+        st.markdown("---")
+        st.markdown("### 📄 Sammel-PDF aller Lesebestätigungen")
+        if os.path.exists(path_all):
+            df_all = pd.read_csv(path_all, sep=";", encoding="utf-8-sig")
 
+            class ConfirmPDF(FPDF):
+                def header(self):
+                    self.set_font("Arial", "B", 12)
+                    self.cell(0, 10, clean_text("Lesebestätigungen – Übersicht"), ln=True, align="C")
+                    self.ln(5)
 
+                def footer(self):
+                    self.set_y(-15)
+                    self.set_font("Arial", size=8)
+                    self.cell(0, 10, f"Seite {self.page_no()}", align="C")
 
+            pdf = ConfirmPDF()
+            pdf.add_page()
+            pdf.set_font("Arial", size=12)
 
+            # Tabelle ins PDF schreiben
+            for _, r in df_all.iterrows():
+                pdf.cell(60, 10, clean_text(r["Name"]), 1)
+                pdf.cell(30, 10, clean_text(r["VA_Nr"]), 1)
+                pdf.cell(70, 10, clean_text(r["Zeitpunkt"]), 1)
+                pdf.ln()
+
+            pdf_bytes = pdf.output(dest="S").encode("latin-1")
+            st.download_button(
+                "📄 Sammel-PDF herunterladen",
+                data=pdf_bytes,
+                file_name="lesebestaetigungen.pdf",
+                mime="application/pdf",
+                key="tab2_pdf_download"
+            )
 
 # --------------------------
 # Tab 3: Mitarbeiter
