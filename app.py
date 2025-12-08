@@ -401,8 +401,8 @@ with tabs[2]:
                 pdf.cell(70, 10, clean_text(r["Zeitpunkt"]), 1)
                 pdf.ln()
 
-            pdf_bytes = pdf.output(dest="S").encode("latin-1")
-            st.download_button(
+                pdf_bytes = pdf.output(dest="S").encode("latin-1")
+                st.download_button(
                 "📄 Sammel-PDF herunterladen",
                 data=pdf_bytes,
                 file_name="lesebestaetigungen.pdf",
