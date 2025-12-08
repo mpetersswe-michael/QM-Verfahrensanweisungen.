@@ -408,21 +408,20 @@ with tabs[3]:
     else:
         st.info("Noch keine Mitarbeiterliste vorhanden.")
 
-
 # --------------------------
-# Sidebar: VA anzeigen + Lesebestätigung + Fortschritt
+# Sidebar: VA-Inhalte + PDF + Lesebestätigung + Fortschritt
 # --------------------------
 with st.sidebar:
     if st.session_state.get("logged_in", False):
         st.success("✅ Eingeloggt")
 
-        # 🔓 Logout
+        # Logout
         if st.button("Logout", key="logout_sidebar"):
             st.session_state.logged_in = False
             st.session_state.selected_va = None
             st.rerun()
 
-        # 📘 VA-Auswahl
+        # VA-Auswahl
         va_liste = []
         if os.path.exists("qm_verfahrensanweisungen.csv"):
             df_va = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig", dtype=str)
@@ -439,21 +438,42 @@ with st.sidebar:
             row = df_va[df_va["VA_clean"] == va_current]
             titel = row["Titel"].values[0] if not row.empty else ""
 
-            # 📌 Hinweisfeld
-            st.markdown(
-                f"""
-                <div style="background-color:#fff3cd;
-                            padding:10px;
-                            border-radius:5px;
-                            border:1px solid #ffeeba;
-                            margin-bottom:10px">
-                <strong>Aktuelles Dokument:</strong><br>{va_current} – {titel}
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+            # Gelb hinterlegte VA-Inhalte
+            if not row.empty:
+                kapitel = row["Kapitel"].values[0] if "Kapitel" in row.columns else ""
+                unterkapitel = row["Unterkapitel"].values[0] if "Unterkapitel" in row.columns else ""
+                revision = row["Revisionsstand"].values[0] if "Revisionsstand" in row.columns else ""
+                geltung = row["Geltungsbereich"].values[0] if "Geltungsbereich" in row.columns else ""
+                ziel = row["Ziel"].values[0] if "Ziel" in row.columns else ""
+                vorgang = row["Vorgehensweise"].values[0] if "Vorgehensweise" in row.columns else ""
+                kommentar = row["Kommentar"].values[0] if "Kommentar" in row.columns else ""
+                unterlagen = row["Mitgeltende Unterlagen"].values[0] if "Mitgeltende Unterlagen" in row.columns else ""
 
-            # 📄 Verfahrensanweisung anzeigen
+                st.markdown(
+                    f"""
+                    <div style="background-color:#fff3cd;
+                                padding:10px;
+                                border-radius:5px;
+                                border:1px solid #ffeeba;
+                                margin-top:10px;
+                                font-size:14px">
+                    <strong>VA-Inhalt:</strong><br><br>
+                    <strong>VA-Nr:</strong> {va_current}<br>
+                    <strong>Titel:</strong> {titel}<br>
+                    <strong>Kapitel:</strong> {kapitel}<br>
+                    <strong>Unterkapitel:</strong> {unterkapitel}<br>
+                    <strong>Revisionsstand:</strong> {revision}<br>
+                    <strong>Geltungsbereich:</strong> {geltung}<br>
+                    <strong>Ziel:</strong> {ziel}<br>
+                    <strong>Vorgehensweise:</strong> {vorgang}<br>
+                    <strong>Kommentar:</strong> {kommentar}<br>
+                    <strong>Mitgeltende Unterlagen:</strong> {unterlagen}
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+            # PDF anzeigen
             pdf_path = pathlib.Path("va_pdf") / f"{va_current}.pdf"
             if st.button("Verfahrensanweisung anzeigen", key="va_anzeigen_button"):
                 if pdf_path.exists():
@@ -468,7 +488,7 @@ with st.sidebar:
                 else:
                     st.error(f"❌ PDF nicht gefunden unter: {pdf_path.resolve()}")
 
-            # ✅ Lesebestätigung
+            # Lesebestätigung
             st.markdown("### Lesebestätigung")
             name_sidebar = st.text_input("Name (Nachname, Vorname)", key="sidebar_name_input")
             if st.button("Bestätigen", key="sidebar_confirm_button"):
@@ -495,7 +515,7 @@ with st.sidebar:
                 else:
                     st.error("Bitte Name eingeben.")
 
-            # 📊 Fortschritt
+            # Fortschritt
             try:
                 if not os.path.exists("lesebestätigung.csv") or not os.path.exists("mitarbeiter.csv"):
                     st.info("Noch keine Daten vorhanden.")
@@ -533,32 +553,5 @@ with st.sidebar:
     else:
         st.warning("Bitte zuerst im Tab 'Login' anmelden.")
 
-# --------------------------
-# Verfahrensanweisung anzeigen (robust & klar)
-# --------------------------
-import pathlib
-
-# VA-Nummer aus Session holen
-va_current = st.session_state.get("selected_va", None)
-
-st.markdown("### 📘 Verfahrensanweisung anzeigen")
-
-if not va_current:
-    st.info("Bitte zuerst eine Verfahrensanweisung auswählen.")
-else:
-    pdf_path = pathlib.Path("va_pdf") / f"{va_current}.pdf"
-
-    if st.button("Verfahrensanweisung anzeigen", key="va_anzeigen_button"):
-        if pdf_path.exists():
-            with open(pdf_path, "rb") as f:
-                st.download_button(
-                    label=f"📄 PDF öffnen: {va_current}",
-                    data=f.read(),
-                    file_name=f"{va_current}.pdf",
-                    mime="application/pdf",
-                    key=f"download_{va_current}"
-                )
-        else:
-            st.error(f"❌ PDF nicht gefunden unter: {pdf_path.resolve()}")
 
 
