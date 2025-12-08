@@ -175,7 +175,7 @@ with tabs[1]:
     kommentar_input = st.text_area("Kommentar", key="kommentar_input")
     mitgeltende_input = st.text_area("Mitgeltende Unterlagen", key="mitgeltende_input")
 
-    if st.button("VA speichern", key="va_speichern_tab1"):
+    if st.button("VA speichern", key="va_speichern_button_tab1"):
         if all([va_nr_input.strip(), titel_input.strip(), kapitel_input.strip(), unterkapitel_input.strip()]):
             neuer_eintrag = pd.DataFrame([{
                 "VA_Nr": va_nr_input.strip(),
@@ -249,7 +249,8 @@ with tabs[1]:
         df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str).fillna("")
         df_va["Label"] = df_va["VA_Nr"] + " – " + df_va["Titel"]
 
-        sel = st.selectbox("Dokument auswählen", df_va["Label"].tolist(), index=None, key="va_auswahl_tab1")
+        # Auswahlfeld zur Anzeige
+        sel = st.selectbox("Dokument auswählen", df_va["Label"].tolist(), index=None, key="va_anzeige_select_tab1")
         if sel:
             va_id = sel.split(" – ")[0]
             df_va_sel = df_va[df_va["VA_Nr"] == va_id]
@@ -265,31 +266,8 @@ with tabs[1]:
                 st.write(f"Kommentar: {row['Kommentar']}")
                 st.write(f"Mitgeltende Unterlagen: {row['Mitgeltende_Unterlagen']}")
 
-    # 🔵 VA-Auswahl & Löschung
-    st.markdown("### 🔵 VA auswählen & löschen")
-    if os.path.exists(DATA_FILE_QM):
-        df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str).fillna("")
-        df_va["Label"] = df_va["VA_Nr"] + " – " + df_va["Titel"]
-
-        # Auswahlfeld: Dokument anzeigen
-        sel = st.selectbox("Dokument auswählen", df_va["Label"].tolist(), index=None, key="va_auswahl_tab1")
-        if sel:
-            va_id = sel.split(" – ")[0]
-            df_va_sel = df_va[df_va["VA_Nr"] == va_id]
-            if not df_va_sel.empty:
-                row = df_va_sel.iloc[0]
-                st.markdown("### Aktuelles Dokument")
-                st.write(f"{row['VA_Nr']} – {row['Titel']}")
-                st.write(f"Kapitel: {row['Kapitel']}, Unterkapitel: {row['Unterkapitel']}")
-                st.write(f"Revisionsstand: {row['Revisionsstand']}")
-                st.write(f"Geltungsbereich: {row['Geltungsbereich']}")
-                st.write(f"Ziel: {row['Ziel']}")
-                st.write(f"Vorgehensweise: {row['Vorgehensweise']}")
-                st.write(f"Kommentar: {row['Kommentar']}")
-                st.write(f"Mitgeltende Unterlagen: {row['Mitgeltende_Unterlagen']}")
-
-        # Auswahlfeld: Dokument löschen
-        sel_del = st.selectbox("VA auswählen zum Löschen", df_va["Label"].tolist(), index=None, key="va_loeschen_tab1")
+        # Auswahlfeld zum Löschen
+        sel_del = st.selectbox("VA auswählen zum Löschen", df_va["Label"].tolist(), index=None, key="va_loeschen_select_tab1")
         if sel_del and st.button("VA löschen", key="va_loeschen_button_tab1"):
             va_id_del = sel_del.split(" – ")[0]
             df_va = df_va[df_va["VA_Nr"] != va_id_del]
@@ -300,13 +278,6 @@ with tabs[1]:
     if st.button("Formular zurücksetzen", key="reset_tab1"):
         reset_form()
         st.info("Formular wurde geleert.")
-
-
-
-
-
-
-
 
 # --------------------------
 # Tab 2: Lesebestätigung (final)
