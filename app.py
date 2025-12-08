@@ -310,11 +310,46 @@ with tabs[1]:
         df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str).fillna("")
         df_va["Label"] = df_va["VA_Nr"] + " – " + df_va["Titel"]
         sel = st.selectbox("Dokument auswählen", df_va["Label"].tolist(), index=None, key="va_auswahl_select")
-        if sel:
-            va_id = sel.split("        if sel:
+                if sel:
             va_id = sel.split(" – ")[0]
             st.session_state.selected_va = va_id
             st.success(f"Ausgewählt: {sel}")
+
+            # Anzeige des aktuellen Dokuments
+            df_va_sel = df_va[df_va["VA_Nr"] == va_id]
+            if not df_va_sel.empty:
+                row = df_va_sel.iloc[0]
+                st.markdown("### Aktuelles Dokument")
+                st.write(f"{row['VA_Nr']} – {row['Titel']}")
+                st.write(f"Kapitel: {row['Kapitel']}, Unterkapitel: {row['Unterkapitel']}")
+                st.write(f"Revisionsstand: {row['Revisionsstand']}")
+                st.write(f"Geltungsbereich: {row['Geltungsbereich']}")
+                st.write(f"Ziel: {row['Ziel']}")
+                st.write(f"Vorgehensweise: {row['Vorgehensweise']}")
+                st.write(f"Kommentar: {row['Kommentar']}")
+                st.write(f"Mitgeltende Unterlagen: {row['Mitgeltende_Unterlagen']}")
+            else:
+                st.warning("Kein Dokument gefunden.")
+
+    # VA löschen
+    st.markdown("---")
+    st.markdown("### VA löschen")
+    if os.path.exists(DATA_FILE_QM):
+        df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str).fillna("")
+        df_va["Label"] = df_va["VA_Nr"] + " – " + df_va["Titel"]
+        sel_del = st.selectbox("VA auswählen zum Löschen", df_va["Label"].tolist(), index=None, key="va_loeschen_select")
+
+        if sel_del and st.button("VA löschen", key="va_loeschen_button"):
+            va_id_del = sel_del.split(" – ")[0]
+            df_va = df_va[df_va["VA_Nr"] != va_id_del]
+            df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
+            st.success(f"❌ VA {va_id_del} wurde gelöscht.")
+
+            # Reset nach Löschen
+            if st.button("Formular zurücksetzen", key="reset_after_delete"):
+                reset_form()
+                st.info("Formular wurde geleert.")
+
 
             # Anzeige des aktuellen Dokuments
             df_va_sel = df_va[df_va["VA_Nr"] == va_id]
