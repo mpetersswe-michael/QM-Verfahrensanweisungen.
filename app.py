@@ -335,12 +335,11 @@ with tabs[3]:
 # Sidebar: Fortschritt + Lesebestätigung
 # --------------------------
 with st.sidebar:
-    # Login-Status
     if st.session_state.get("logged_in", False):
         st.success("✅ Eingeloggt")
         if st.button("Logout", key="logout_sidebar"):
             st.session_state.logged_in = False
-            st.session_state.selected_va = None  # optional: VA-Auswahl zurücksetzen
+            st.session_state.selected_va = None
 
         # VA-Auswahl
         va_liste = []
@@ -358,7 +357,7 @@ with st.sidebar:
             row = df_va[df_va["VA_clean"] == va_current]
             titel = row["Titel"].values[0] if not row.empty else ""
 
-            # 🔔 Gelber Hinweis
+            # Hinweis
             st.markdown(
                 f"""
                 <div style="background-color:#fff3cd;
@@ -372,7 +371,7 @@ with st.sidebar:
                 unsafe_allow_html=True
             )
 
-            # 📄 PDF aus Ordner va_pdf laden und anzeigen
+            # PDF anzeigen
             pdf_path = f"va_pdf/{va_current}.pdf"
             if os.path.exists(pdf_path):
                 with open(pdf_path, "rb") as f:
@@ -414,7 +413,7 @@ with st.sidebar:
                 else:
                     st.error("Bitte Name eingeben.")
 
-            # Fortschritt anzeigen
+            # Fortschritt
             try:
                 if not os.path.exists("lesebestätigung.csv") or not os.path.exists("mitarbeiter.csv"):
                     st.info("Noch keine Daten vorhanden.")
