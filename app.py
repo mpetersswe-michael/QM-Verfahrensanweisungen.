@@ -182,7 +182,7 @@ with tabs[1]:
             from fpdf import FPDF
 
             class CustomPDF(FPDF):
-                ef footer(self):
+                def footer(self):
                     # Position 15 mm vom unteren Rand
                     self.set_y(-15)
                     self.set_font("Arial", size=8)
