@@ -144,47 +144,50 @@ with tabs[1]:
 
     # Eingabe nur hier im Tab
     st.markdown("### Neue VA eingeben")
-    va_nr_input = st.text_input("VA-Nummer")
-    titel_input = st.text_input("Titel")
-    kapitel_input = st.text_input("Kapitel")
-    unterkapitel_input = st.text_input("Unterkapitel")
-    revisionsstand_input = st.text_input("Revisionsstand")
-    geltungsbereich_input = st.text_input("Geltungsbereich")  # <-- NEU
-    ziel_input = st.text_input("Ziel")
-    vorgehensweise_input = st.text_area("Vorgehensweise")
-    kommentar_input = st.text_area("Kommentar")
-    mitgeltende_input = st.text_area("Mitgeltende Unterlagen")
+    va_nr_input = st.text_input("VA-Nummer", key="va_nr_input")
+    titel_input = st.text_input("Titel", key="titel_input")
+    kapitel_input = st.text_input("Kapitel", key="kapitel_input")
+    unterkapitel_input = st.text_input("Unterkapitel", key="unterkapitel_input")
+    revisionsstand_input = st.text_input("Revisionsstand", key="revisionsstand_input")
+    geltungsbereich_input = st.text_input("Geltungsbereich", key="geltungsbereich_input")  # NEU
+    ziel_input = st.text_input("Ziel", key="ziel_input")
+    vorgehensweise_input = st.text_area("Vorgehensweise", key="vorgehensweise_input")
+    kommentar_input = st.text_area("Kommentar", key="kommentar_input")
+    mitgeltende_input = st.text_area("Mitgeltende Unterlagen", key="mitgeltende_input")
 
-   if st.button("VA speichern", key="tab_va_speichern"):
-    if all([
-        va_nr_input.strip(),
-        titel_input.strip(),
-        kapitel_input.strip(),
-        unterkapitel_input.strip(),
-        revisionsstand_input.strip(),
-        geltungsbereich_input.strip()
-    ]):
-        neuer_eintrag = pd.DataFrame([{
-            "VA_Nr": va_nr_input.strip(),
-            "Titel": titel_input.strip(),
-            "Kapitel": kapitel_input.strip(),
-            "Unterkapitel": unterkapitel_input.strip(),
-            "Revisionsstand": revisionsstand_input.strip(),
-            "Geltungsbereich": geltungsbereich_input.strip(),
-            "Ziel": ziel_input.strip(),
-            "Vorgehensweise": vorgehensweise_input.strip(),
-            "Kommentar": kommentar_input.strip(),
-            "Mitgeltende_Unterlagen": mitgeltende_input.strip()
-        }])
-        if os.path.exists(DATA_FILE_QM):
-            df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
-            df_va = pd.concat([df_va, neuer_eintrag], ignore_index=True)
+    if st.button("VA speichern", key="tab_va_speichern"):
+        if all([
+            va_nr_input.strip(),
+            titel_input.strip(),
+            kapitel_input.strip(),
+            unterkapitel_input.strip(),
+            revisionsstand_input.strip(),
+            geltungsbereich_input.strip()
+        ]):
+            neuer_eintrag = pd.DataFrame([{
+                "VA_Nr": va_nr_input.strip(),
+                "Titel": titel_input.strip(),
+                "Kapitel": kapitel_input.strip(),
+                "Unterkapitel": unterkapitel_input.strip(),
+                "Revisionsstand": revisionsstand_input.strip(),
+                "Geltungsbereich": geltungsbereich_input.strip(),
+                "Ziel": ziel_input.strip(),
+                "Vorgehensweise": vorgehensweise_input.strip(),
+                "Kommentar": kommentar_input.strip(),
+                "Mitgeltende_Unterlagen": mitgeltende_input.strip()
+            }])
+
+            if os.path.exists(DATA_FILE_QM):
+                df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
+                df_va = pd.concat([df_va, neuer_eintrag], ignore_index=True)
+            else:
+                df_va = neuer_eintrag
+
+            df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
+            st.success(f"✅ VA {va_nr_input} gespeichert.")
         else:
-            df_va = neuer_eintrag
-        df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-        st.success(f"✅ VA {va_nr_input} gespeichert.")
-    else:
-        st.error("Pflichtfelder fehlen.")
+            st.error("Pflichtfelder fehlen.")
+
 
 
     # Auswahl
