@@ -313,7 +313,7 @@ with tabs[1]:
                 st.markdown("### Aktuelles Dokument")
                 st.write(f"{row['VA_Nr']} – {row['Titel']}")
                 st.write(f"Kapitel: {row['Kapitel']}, Unterkapitel: {row['Unterkapitel']}")
-                               st.write(f"Revisionsstand: {row['Revisionsstand']}")
+                st.write(f"Revisionsstand: {row['Revisionsstand']}")
                 st.write(f"Geltungsbereich: {row['Geltungsbereich']}")
                 st.write(f"Ziel: {row['Ziel']}")
                 st.write(f"Vorgehensweise: {row['Vorgehensweise']}")
