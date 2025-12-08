@@ -157,23 +157,28 @@ with tabs[1]:
             .replace("Ü", "Ue")
         )
 
-    # PDF-Klasse mit Fußzeile
+    # PDF-Klasse mit Kopf- und Fußzeile
     class CustomPDF(FPDF):
+        def header(self):
+            self.set_font("Arial", size=9)
+            self.set_text_color(80)
+            # Linksbündig: Pflegedienst
+            left_text = "Pflegedienst: xy"
+            self.cell(0, 10, safe(left_text), ln=0, align="L")
+            # Rechtsbündig: Verfahrensanweisung Pflege + Unterkapitel
+            right_text = f"Verfahrensanweisung Pflege, Kap. {self.unterkapitel}"
+            self.cell(0, 10, safe(right_text), ln=0, align="R")
+            self.ln(15)
+
         def footer(self):
             self.set_y(-15)
             self.set_font("Arial", size=8)
             self.set_text_color(100)
-
-            # Linksbündig: VA-Nr und Titel
             left_text = f"{self.va_nr} – {self.va_titel}"
             self.cell(60, 10, safe(left_text), ln=0)
-
-            # Zentriert: Name und Funktion
             center_text = "Erstellt von: Peters, Michael – Qualitätsbeauftragter"
             self.set_x((210 - 90) / 2)
             self.cell(90, 10, safe(center_text), align="C")
-
-            # Rechts: Seitenzahl
             self.set_x(-30)
             self.cell(0, 10, f"Seite {self.page_no()}", align="R")
 
@@ -227,66 +232,71 @@ with tabs[1]:
                 reset_form()
                 st.info("Formular wurde geleert.")
 
-            # PDF direkt nach Speicherung
-            match = df_va[df_va["VA_Nr"] == va_nr_input.strip()]
-            if not match.empty:
-                row = match.iloc[0]
-
-                pdf = CustomPDF()
-                pdf.va_nr = row["VA_Nr"]
-                pdf.va_titel = row["Titel"]
-                pdf.add_page()
-                pdf.set_font("Arial", size=12)
-                pdf.set_left_margin(10)
-                pdf.set_right_margin(10)
-
-                for field in ["VA_Nr", "Titel", "Kapitel", "Unterkapitel", "Revisionsstand", "Geltungsbereich"]:
-                    pdf.cell(0, 10, txt=f"{field}: {safe(row[field])}", ln=True)
-
-                pdf.ln(5)
-                pdf.set_font("Arial", style="B", size=12)
-                pdf.cell(0, 10, "Ziel:", ln=True)
-                pdf.set_font("Arial", size=12)
-                pdf.multi_cell(0, 8, safe(row["Ziel"]))
-
-                pdf.ln(5)
-                pdf.set_font("Arial", style="B", size=12)
-                pdf.cell(0, 10, "Vorgehensweise:", ln=True)
-                pdf.set_font("Arial", size=12)
-                pdf.multi_cell(0, 8, safe(row["Vorgehensweise"]))
-
-                pdf.ln(5)
-                pdf.set_font("Arial", style="B", size=12)
-                pdf.cell(0, 10, "Kommentar:", ln=True)
-                pdf.set_font("Arial", size=12)
-                pdf.multi_cell(0, 8, safe(row["Kommentar"]))
-
-                pdf.ln(5)
-                pdf.set_font("Arial", style="B", size=12)
-                pdf.cell(0, 10, "Mitgeltende Unterlagen:", ln=True)
-                pdf.set_font("Arial", size=12)
-                pdf.multi_cell(0, 8, safe(row["Mitgeltende_Unterlagen"]))
-
-                buffer = io.BytesIO()
-                pdf.output(buffer)
-                pdf_bytes = buffer.getvalue()
-
-                st.download_button(
-                    label=f"📄 PDF erzeugen: {row['VA_Nr']}",
-                    data=pdf_bytes,
-                    file_name=f"{row['VA_Nr']}_preview.pdf",
-                    mime="application/pdf",
-                    key="pdf_preview_after_save"
-                )
-
-                if st.button("PDF speichern in va_pdf", key="pdf_save_after_va"):
-                    pdf_path = f"va_pdf/{row['VA_Nr']}.pdf"
-                    pdf.output(pdf_path)
-                    st.success(f"✅ PDF für {row['VA_Nr']} gespeichert in va_pdf/")
-            else:
-                st.error("❌ VA konnte nicht gefunden werden – PDF-Erzeugung abgebrochen.")
+            # Merken für PDF-Erzeugung
+            st.session_state.last_saved_va = va_nr_input.strip()
         else:
             st.error("Pflichtfelder fehlen.")
+
+    # PDF-Erzeugung und Speicher-Button (außerhalb des Speicher-Blocks)
+    if "last_saved_va" in st.session_state:
+        df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
+        match = df_va[df_va["VA_Nr"] == st.session_state.last_saved_va]
+        if not match.empty:
+            row = match.iloc[0]
+            pdf = CustomPDF()
+            pdf.va_nr = row["VA_Nr"]
+            pdf.va_titel = row["Titel"]
+            pdf.unterkapitel = row["Unterkapitel"]
+            pdf.add_page()
+            pdf.set_font("Arial", size=12)
+            pdf.set_left_margin(10)
+            pdf.set_right_margin(10)
+
+            for field in ["VA_Nr", "Titel", "Kapitel", "Unterkapitel", "Revisionsstand", "Geltungsbereich"]:
+                pdf.cell(0, 10, txt=f"{field}: {safe(row[field])}", ln=True)
+
+            pdf.ln(5)
+            pdf.set_font("Arial", style="B", size=12)
+            pdf.cell(0, 10, "Ziel:", ln=True)
+            pdf.set_font("Arial", size=12)
+            pdf.multi_cell(0, 8, safe(row["Ziel"]))
+
+            pdf.ln(5)
+            pdf.set_font("Arial", style="B", size=12)
+            pdf.cell(0, 10, "Vorgehensweise:", ln=True)
+            pdf.set_font("Arial", size=12)
+            pdf.multi_cell(0, 8, safe(row["Vorgehensweise"]))
+
+            pdf.ln(5)
+            pdf.set_font("Arial", style="B", size=12)
+            pdf.cell(0, 10, "Kommentar:", ln=True)
+            pdf.set_font("Arial", size=12)
+            pdf.multi_cell(0, 8, safe(row["Kommentar"]))
+
+            pdf.ln(5)
+            pdf.set_font("Arial", style="B", size=12)
+            pdf.cell(0, 10, "Mitgeltende Unterlagen:", ln=True)
+            pdf.set_font("Arial", size=12)
+            pdf.multi_cell(0, 8, safe(row["Mitgeltende_Unterlagen"]))
+
+            buffer = io.BytesIO()
+            pdf.output(buffer)
+            pdf_bytes = buffer.getvalue()
+
+            st.download_button(
+                label=f"📄 PDF erzeugen: {row['VA_Nr']}",
+                data=pdf_bytes,
+                file_name=f"{row['VA_Nr']}_preview.pdf",
+                mime="application/pdf",
+                key="pdf_preview_after_save"
+            )
+
+            if st.button("PDF speichern in va_pdf", key="pdf_save_after_va"):
+                pdf_path = f"va_pdf/{row['VA_Nr']}.pdf"
+                pdf.output(pdf_path)
+                st.success(f"✅ PDF für {row['VA_Nr']} gespeichert in va_pdf/")
+        else:
+            st.error("❌ VA konnte nicht gefunden werden – PDF-Erzeugung abgebrochen.")
 
     # VA-Auswahl zur Ansicht
     st.markdown("---")
@@ -294,7 +304,7 @@ with tabs[1]:
     if os.path.exists(DATA_FILE_QM):
         df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str).fillna("")
         df_va["Label"] = df_va["VA_Nr"] + " – " + df_va["Titel"]
-        sel = st.selectbox("Dokument auswählen", df_va["Label"].tolist(), index=None, key="va_auswahl_select")
+               sel = st.selectbox("Dokument auswählen", df_va["Label"].tolist(), index=None, key="va_auswahl_select")
         if sel:
             va_id = sel.split(" – ")[0]
             st.session_state.selected_va = va_id
@@ -320,17 +330,18 @@ with tabs[1]:
         va_liste = sorted(df_va["VA_Nr"].dropna().unique())
         va_zum_loeschen = st.selectbox("VA auswählen zum Löschen", options=va_liste, index=None, key="va_loeschen_select")
 
-    if va_zum_loeschen and st.button("VA löschen", key="va_loeschen_button"):
-        df_va = df_va[df_va["VA_Nr"] != va_zum_loeschen]
-        df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-        st.success(f"❌ VA {va_zum_loeschen} wurde gelöscht.")
+        if va_zum_loeschen and st.button("VA löschen", key="va_loeschen_button"):
+            df_va = df_va[df_va["VA_Nr"] != va_zum_loeschen]
+            df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
+            st.success(f"❌ VA {va_zum_loeschen} wurde gelöscht.")
 
-    # Reset-Button nach Löschen
-        if st.button("Formular zurücksetzen", key="reset_after_delete"):
-            reset_form()
-            st.info("Formular wurde geleert.")
-        else:
-           st.info("Noch keine Verfahrensanweisungen vorhanden.")
+            # Reset-Button nach Löschen
+            if st.button("Formular zurücksetzen", key="reset_after_delete"):
+                reset_form()
+                st.info("Formular wurde geleert.")
+    else:
+        st.info("Noch keine Verfahrensanweisungen vorhanden.")
+s
 
 
 # --------------------------
