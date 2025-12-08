@@ -194,36 +194,42 @@ with tabs[1]:
             # PDF direkt nach Speicherung
            
 
-            class CustomPDF(FPDF):
-                 def footer(self):
-                     self.set_y(-15)
-                     self.set_font("Arial", size=8)
-                     self.set_text_color(100)
+          from fpdf import FPDF
+import io
 
-           # Linksbündig: VA-Nr und Titel
-                    left_text = f"{self.va_nr} – {self.va_titel}"
-                    self.cell(60, 10, safe(left_text), ln=0)
+class CustomPDF(FPDF):
+    def footer(self):
+        self.set_y(-15)
+        self.set_font("Arial", size=8)
+        self.set_text_color(100)
 
-          # Zentriert: Name und Funktion
-                   center_text = "Erstellt von: Peters, Michael – Qualitätsbeauftragter"
-                   self.set_x((210 - 90) / 2)
-                   self.cell(90, 10, safe(center_text), align="C")
+        # Linksbündig: VA-Nr und Titel
+        left_text = f"{self.va_nr} – {self.va_titel}"
+        self.cell(60, 10, safe(left_text), ln=0)
 
-         # Rechts: Seitenzahl
-                  self.set_x(-30)
-                  self.cell(0, 10, f"Seite {self.page_no()}", align="R")
+        # Zentriert: Name und Funktion
+        center_text = "Erstellt von: Peters, Michael – Qualitätsbeauftragter"
+        self.set_x((210 - 90) / 2)
+        self.cell(90, 10, safe(center_text), align="C")
 
-        # Hilfsfunktion: ersetzt Umlaute und Sonderzeichen
-            def safe(text):
-                return (
-                  str(text)
-                  .replace("–", "-")
-                  .replace("•", "-")
-                  .replace("ä", "ae")
-                  .replace("ö", "oe")
-                 .replace("ü", "ue")
-                 .replace("ß", "ss")
+        # Rechts: Seitenzahl
+        self.set_x(-30)
+        self.cell(0, 10, f"Seite {self.page_no()}", align="R")
+
+def safe(text):
+    return (
+        str(text)
+        .replace("–", "-")
+        .replace("•", "-")
+        .replace("ä", "ae")
+        .replace("ö", "oe")
+        .replace("ü", "ue")
+        .replace("ß", "ss")
+        .replace("Ä", "Ae")
+        .replace("Ö", "Oe")
+        .replace("Ü", "Ue")
     )
+
 
 
             def safe(text):
