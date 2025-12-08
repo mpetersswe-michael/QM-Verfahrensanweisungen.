@@ -280,7 +280,7 @@ with tabs[1]:
         st.info("Formular wurde geleert.")
 
 # --------------------------
-# Tab 2: Lesebestätigung (final)
+# Tab 2: Lesebestätigung (bereinigt & stabil)
 # --------------------------
 with tabs[2]:
     st.markdown("## ✅ Lesebestätigung")
@@ -297,15 +297,15 @@ with tabs[2]:
                 va_liste = sorted(df_va["VA_clean"].unique())
 
         # Eingaben
-        name_raw = st.text_input("Name (Nachname, Vorname)")
-        va_nummer = st.selectbox("VA auswählen", options=va_liste, index=None)
+        name_raw = st.text_input("Name (Nachname, Vorname)", key="tab2_name_input")
+        va_nummer = st.selectbox("VA auswählen", options=va_liste, index=None, key="tab2_va_select")
 
         # Sidebar-Sync
         if va_nummer:
             st.session_state.selected_va = va_nummer
 
         # Bestätigen
-        if st.button("Bestätigen", key="confirm_tab2"):
+        if st.button("Bestätigen", key="tab2_confirm_button"):
             name_kombi = re.sub(r"\s*,\s*", ",", name_raw.strip())
             if name_kombi and va_nummer:
                 zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
@@ -328,14 +328,14 @@ with tabs[2]:
                 st.success(f"Bestätigung für {va_nummer} gespeichert.")
 
                 # Optionaler CSV-Download
-                if st.checkbox("Eigenen Nachweis als CSV herunterladen"):
+                if st.checkbox("Eigenen Nachweis als CSV herunterladen", key="tab2_csv_checkbox"):
                     csv_bytes = df_new.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
                     st.download_button(
                         "Diese Lesebestätigung herunterladen",
                         data=csv_bytes,
                         file_name=f"lesebestaetigung_{va_nummer}_{dt.date.today()}.csv",
                         mime="text/csv",
-                        key="download_tab2"
+                        key="tab2_csv_download"
                     )
             else:
                 st.error("Bitte Name und VA auswählen.")
@@ -356,33 +356,20 @@ with tabs[2]:
         if os.path.exists(path_all):
             df_all = pd.read_csv(path_all, sep=";", encoding="utf-8-sig")
 
-            from fpdf import FPDF
-            pdf = FPDF()
+            class ConfirmPDF(FPDF):
+                def header(self):
+                    self.set_font("Arial", "B", 12)
+                    self.cell(0, 10, clean_text("Lesebestätigungen – Übersicht"), ln=True, align="C")
+                    self.ln(5)
+
+                def footer(self):
+                    self.set_y(-15)
+                    self.set_font("Arial", size=8)
+                    self.cell(0, 10, f"Seite {self.page_no()}", align="C")
+
+            pdf = ConfirmPDF()
             pdf.add_page()
             pdf.set_font("Arial", size=12)
-
-            pdf.cell(200, 10, txt="Lesebestätigungen – Übersicht", ln=True)
-            pdf.ln(10)
-
-            for _, row in df_all.iterrows():
-                pdf.cell(200, 10, txt=f"{row['Zeitpunkt']} – {row['Name']} – {row['VA_Nr']}", ln=True)
-
-            pdf_bytes = pdf.output(dest="S").encode("latin-1")
-
-            st.download_button(
-                label="📄 Sammel-PDF herunterladen",
-                data=pdf_bytes,
-                file_name=f"lesebestaetigungen_{dt.date.today()}.pdf",
-                mime="application/pdf",
-                key="download_all_confirmations"
-            )
-
-            if st.button("Sammel-PDF speichern", key="save_all_confirmations"):
-                pdf_path = f"va_pdf/lesebestaetigungen_{dt.date.today()}.pdf"
-                pdf.output(pdf_path)
-                st.success(f"✅ Sammel-PDF gespeichert in va_pdf/")
-        else:
-            st.info("Noch keine Lesebestätigungen vorhanden.")
 
 # --------------------------
 # Tab 3: Mitarbeiter
