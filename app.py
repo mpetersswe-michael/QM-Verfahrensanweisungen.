@@ -189,31 +189,50 @@ with tabs[1]:
         else:
             st.error("Pflichtfelder fehlen.")
 
-    # Auswahl
-    st.markdown("---")
-    st.markdown("### VA auswählen")
-    if os.path.exists(DATA_FILE_QM):
-        df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str).fillna("")
-        df_va["Label"] = df_va["VA_Nr"] + " – " + df_va["Titel"]
-        sel = st.selectbox("Dokument auswählen", df_va["Label"].tolist(), index=None)
-        if sel:
-            st.session_state.selected_va = sel.split(" – ")[0]
-            st.success(f"Ausgewählt: {sel}")
+   # Auswahl
+st.markdown("---")
+st.markdown("### VA auswählen")
+if os.path.exists(DATA_FILE_QM):
+    df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str).fillna("")
+    df_va["Label"] = df_va["VA_Nr"] + " – " + df_va["Titel"]
+    sel = st.selectbox("Dokument auswählen", df_va["Label"].tolist(), index=None)
+    if sel:
+        va_id = sel.split(" – ")[0]
+        st.session_state.selected_va = va_id
+        st.success(f"Ausgewählt: {sel}")
 
-    # Löschbereich ganz unten, blau hinterlegt
-    st.markdown("---")
-    st.markdown(
-        """
-        <div style="background-color:#e7f3fe;
-                    padding:15px;
-                    border-radius:5px;
-                    border:1px solid #b3d7ff;
-                    margin-top:20px">
-        <h4 style="color:#31708f">🗑️ VA löschen</h4>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+        # PDF Vorschau erzeugen
+        from fpdf import FPDF
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+
+        row = df_va[df_va["VA_Nr"] == va_id].iloc[0]
+        pdf.cell(200, 10, txt=f"{row['VA_Nr']} – {row['Titel']}", ln=True)
+        pdf.cell(200, 10, txt=f"Kapitel: {row['Kapitel']}", ln=True)
+        pdf.cell(200, 10, txt=f"Unterkapitel: {row['Unterkapitel']}", ln=True)
+        pdf.cell(200, 10, txt=f"Revisionsstand: {row['Revisionsstand']}", ln=True)
+        pdf.cell(200, 10, txt=f"Geltungsbereich: {row['Geltungsbereich']}", ln=True)
+        pdf.multi_cell(0, 10, txt=f"Ziel:\n{row['Ziel']}")
+        pdf.multi_cell(0, 10, txt=f"Vorgehensweise:\n{row['Vorgehensweise']}")
+        pdf.multi_cell(0, 10, txt=f"Kommentar:\n{row['Kommentar']}")
+        pdf.multi_cell(0, 10, txt=f"Mitgeltende Unterlagen:\n{row['Mitgeltende_Unterlagen']}")
+
+        pdf_bytes = pdf.output(dest="S").encode("latin-1")
+
+        st.download_button(
+            label=f"📄 Vorschau anzeigen: {va_id}",
+            data=pdf_bytes,
+            file_name=f"{va_id}_preview.pdf",
+            mime="application/pdf",
+            key=f"preview_{va_id}"
+        )
+
+        if st.button("PDF endgültig speichern", key=f"save_{va_id}"):
+            pdf_path = f"va_pdf/{va_id}.pdf"
+            pdf.output(pdf_path)
+            st.success(f"✅ PDF für {va_id} gespeichert in va_pdf/")
+
 
     if os.path.exists(DATA_FILE_QM):
         df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
@@ -298,7 +317,41 @@ with tabs[2]:
             st.dataframe(df_alle.sort_values("Zeitpunkt", ascending=False))
         else:
             st.info("Noch keine Lesebestätigungen vorhanden.")
-       
+
+        # Sammel-PDF aller Lesebestätigungen
+        st.markdown("---")
+        st.markdown("### 📄 Sammel-PDF aller Lesebestätigungen")
+        if os.path.exists(path_all):
+            df_all = pd.read_csv(path_all, sep=";", encoding="utf-8-sig")
+
+            from fpdf import FPDF
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_font("Arial", size=12)
+
+            pdf.cell(200, 10, txt="Lesebestätigungen – Übersicht", ln=True)
+            pdf.ln(10)
+
+            for _, row in df_all.iterrows():
+                pdf.cell(200, 10, txt=f"{row['Zeitpunkt']} – {row['Name']} – {row['VA_Nr']}", ln=True)
+
+            pdf_bytes = pdf.output(dest="S").encode("latin-1")
+
+            st.download_button(
+                label="📄 Sammel-PDF herunterladen",
+                data=pdf_bytes,
+                file_name=f"lesebestaetigungen_{dt.date.today()}.pdf",
+                mime="application/pdf",
+                key="download_all_confirmations"
+            )
+
+            if st.button("Sammel-PDF speichern", key="save_all_confirmations"):
+                pdf_path = f"va_pdf/lesebestaetigungen_{dt.date.today()}.pdf"
+                pdf.output(pdf_path)
+                st.success(f"✅ Sammel-PDF gespeichert in va_pdf/")
+        else:
+            st.info("Noch keine Lesebestätigungen vorhanden.")
+
 # --------------------------
 # Tab 3: Mitarbeiter
 # --------------------------
