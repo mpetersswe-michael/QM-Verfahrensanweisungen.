@@ -189,6 +189,52 @@ with tabs[1]:
         else:
             st.error("Pflichtfelder fehlen.")
 
+
+    # PDF erzeugen nach erfolgreichem Speichern
+if all([
+    va_nr_input.strip(),
+    titel_input.strip(),
+    kapitel_input.strip(),
+    unterkapitel_input.strip(),
+    revisionsstand_input.strip(),
+    geltungsbereich_input.strip()
+]):
+    from fpdf import FPDF
+
+    def safe(text):
+        return str(text).replace("\n", " ").replace("–", "-").replace("•", "-")
+
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+
+    pdf.cell(200, 10, txt=f"VA_Nr: {safe(va_nr_input)}", ln=True)
+    pdf.cell(200, 10, txt=f"Titel: {safe(titel_input)}", ln=True)
+    pdf.cell(200, 10, txt=f"Kapitel: {safe(kapitel_input)}", ln=True)
+    pdf.cell(200, 10, txt=f"Unterkapitel: {safe(unterkapitel_input)}", ln=True)
+    pdf.cell(200, 10, txt=f"Revisionsstand: {safe(revisionsstand_input)}", ln=True)
+    pdf.cell(200, 10, txt=f"Geltungsbereich: {safe(geltungsbereich_input)}", ln=True)
+    pdf.multi_cell(190, 10, txt=f"Ziel:\n{safe(ziel_input)}")
+    pdf.multi_cell(190, 10, txt=f"Vorgehensweise:\n{safe(vorgehensweise_input)}")
+    pdf.multi_cell(190, 10, txt=f"Kommentar:\n{safe(kommentar_input)}")
+    pdf.multi_cell(190, 10, txt=f"Mitgeltende Unterlagen:\n{safe(mitgeltende_input)}")
+
+    pdf_bytes = pdf.output(dest="S").encode("latin-1")
+
+    st.download_button(
+        label=f"📄 Vorschau anzeigen: {va_nr_input}",
+        data=pdf_bytes,
+        file_name=f"{va_nr_input}_preview.pdf",
+        mime="application/pdf",
+        key=f"preview_after_save"
+    )
+
+    if st.button("PDF endgültig speichern", key="save_after_va"):
+        pdf_path = f"va_pdf/{va_nr_input}.pdf"
+        pdf.output(pdf_path)
+        st.success(f"✅ PDF für {va_nr_input} gespeichert in va_pdf/")
+
+
     # Auswahl + PDF-Vorschau
     st.markdown("---")
     st.markdown("### VA auswählen")
