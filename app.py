@@ -57,17 +57,6 @@ def clean_text(text):
         .replace("ß", "ss")
     )
 
-class CustomPDF(FPDF):
-    def footer(self):
-        self.set_y(-15)
-        self.set_font("Arial", "I", 10)
-        va_name = getattr(self, "va_name", "")
-        self.cell(60, 10, clean_text(va_name), align="L")
-        text = f"Erstellt von Peters, Michael - Qualitaetsbeauftragter am {dt.date.today().strftime('%d.%m.%Y')}"
-        self.cell(70, 10, clean_text(text), align="C")
-        page_text = f"Seite {self.page_no()} von {{nb}}"
-        self.cell(0, 10, clean_text(page_text), align="R")
-
 def export_va_to_pdf(row):
     pdf = CustomPDF()
     pdf.alias_nb_pages()
@@ -187,49 +176,83 @@ with tabs[1]:
 
             df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
             st.success(f"✅ VA {va_nr_input} gespeichert.")
-            st.session_state.va_just_saved = va_nr_input
+            st.session_state.va_just_saved = neuer_eintrag.iloc[0]
         else:
             st.error("Pflichtfelder fehlen.")
 
     # PDF direkt nach Speicherung
     if st.session_state.get("va_just_saved"):
         from fpdf import FPDF
+        import io
+
+        class CustomPDF(FPDF):
+            def footer(self):
+                self.set_y(-15)
+                self.set_font("Arial", size=8)
+                self.set_text_color(100)
+                # Links: VA-Nr
+                self.cell(60, 10, f"Erstellt von: {self.va_nr}", ln=0)
+                # Mitte: Name + Rolle
+                self.set_x((210 - 90) / 2)
+                self.cell(90, 10, "Peters, Michael – Qualitätsbeauftragter", align="C")
+                # Rechts: Seitenzahl
+                self.set_x(-30)
+                self.cell(0, 10, f"Seite {self.page_no()}", align="R")
 
         def safe(text):
             return str(text).replace("\n", " ").replace("–", "-").replace("•", "-")
 
-        pdf = FPDF()
+        row = st.session_state.va_just_saved
+        pdf = CustomPDF()
+        pdf.va_nr = row["VA_Nr"]
         pdf.add_page()
         pdf.set_font("Arial", size=12)
+        pdf.set_left_margin(10)
+        pdf.set_right_margin(10)
 
-        pdf.cell(190, 10, txt=f"VA_Nr: {safe(va_nr_input)}", ln=True)
-        pdf.cell(190, 10, txt=f"Titel: {safe(titel_input)}", ln=True)
-        pdf.cell(190, 10, txt=f"Kapitel: {safe(kapitel_input)}", ln=True)
-        pdf.cell(190, 10, txt=f"Unterkapitel: {safe(unterkapitel_input)}", ln=True)
-        pdf.cell(190, 10, txt=f"Revisionsstand: {safe(revisionsstand_input)}", ln=True)
-        pdf.cell(190, 10, txt=f"Geltungsbereich: {safe(geltungsbereich_input)}", ln=True)
-        pdf.multi_cell(190, 10, txt=f"Ziel:\n{safe(ziel_input)}")
-        pdf.multi_cell(190, 10, txt=f"Vorgehensweise:\n{safe(vorgehensweise_input)}")
-        pdf.multi_cell(190, 10, txt=f"Kommentar:\n{safe(kommentar_input)}")
-        pdf.multi_cell(190, 10, txt=f"Mitgeltende Unterlagen:\n{safe(mitgeltende_input)}")
+        for field in ["VA_Nr", "Titel", "Kapitel", "Unterkapitel", "Revisionsstand", "Geltungsbereich"]:
+            pdf.cell(0, 10, txt=f"{field}: {safe(row[field])}", ln=True)
 
-        pdf_buffer = io.BytesIO()
-        pdf.output(pdf_buffer)
-        pdf_bytes = pdf_buffer.getvalue()
+        pdf.ln(5)
+        pdf.set_font("Arial", style="B", size=12)
+        pdf.cell(0, 10, "Ziel:", ln=True)
+        pdf.set_font("Arial", size=12)
+        pdf.multi_cell(0, 8, safe(row["Ziel"]))
 
+        pdf.ln(5)
+        pdf.set_font("Arial", style="B", size=12)
+        pdf.cell(0, 10, "Vorgehensweise:", ln=True)
+        pdf.set_font("Arial", size=12)
+        pdf.multi_cell(0, 8, safe(row["Vorgehensweise"]))
+
+        pdf.ln(5)
+        pdf.set_font("Arial", style="B", size=12)
+        pdf.cell(0, 10, "Kommentar:", ln=True)
+        pdf.set_font("Arial", size=12)
+        pdf.multi_cell(0, 8, safe(row["Kommentar"]))
+
+        pdf.ln(5)
+        pdf.set_font("Arial", style="B", size=12)
+        pdf.cell(0, 10, "Mitgeltende Unterlagen:", ln=True)
+        pdf.set_font("Arial", size=12)
+        pdf.multi_cell(0, 8, safe(row["Mitgeltende_Unterlagen"]))
+
+        buffer = io.BytesIO()
+        pdf.output(buffer)
+        pdf_bytes = buffer.getvalue()
 
         st.download_button(
-            label=f"📄 Vorschau anzeigen: {va_nr_input}",
+            label=f"📄 PDF erzeugen: {row['VA_Nr']}",
             data=pdf_bytes,
-            file_name=f"{va_nr_input}_preview.pdf",
+            file_name=f"{row['VA_Nr']}_preview.pdf",
             mime="application/pdf",
-            key=f"preview_after_save"
+            key="pdf_preview_after_save"
         )
 
-        if st.button("PDF endgültig speichern", key="save_after_va"):
-            pdf_path = f"va_pdf/{va_nr_input}.pdf"
+        if st.button("PDF speichern in va_pdf", key="pdf_save_after_va"):
+            pdf_path = f"va_pdf/{row['VA_Nr']}.pdf"
             pdf.output(pdf_path)
-            st.success(f"✅ PDF für {va_nr_input} gespeichert in va_pdf/")
+            st.success(f"✅ PDF für {row['VA_Nr']} gespeichert in va_pdf/")
             st.session_state.va_just_saved = None
 
     # VA-Auswahl zur Ansicht
@@ -270,6 +293,7 @@ with tabs[1]:
             st.success(f"❌ VA {va_zum_loeschen} wurde gelöscht.")
     else:
         st.info("Noch keine Verfahrensanweisungen vorhanden.")
+
 
 
 # --------------------------
