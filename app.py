@@ -320,7 +320,7 @@ with tabs[1]:
         va_liste = sorted(df_va["VA_Nr"].dropna().unique())
         va_zum_loeschen = st.selectbox("VA auswählen zum Löschen", options=va_liste, index=None, key="va_loeschen_select")
 
-          if va_zum_loeschen and st.button("VA löschen", key="va_loeschen_button"):
+             if va_zum_loeschen and st.button("VA löschen", key="va_loeschen_button"):
         df_va = df_va[df_va["VA_Nr"] != va_zum_loeschen]
         df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
         st.success(f"❌ VA {va_zum_loeschen} wurde gelöscht.")
