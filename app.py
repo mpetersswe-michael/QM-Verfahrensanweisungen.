@@ -155,6 +155,7 @@ with tabs[1]:
     kommentar_input = st.text_area("Kommentar", key="kommentar_input")
     mitgeltende_input = st.text_area("Mitgeltende Unterlagen", key="mitgeltende_input")
 
+    # Speichern
     if st.button("VA speichern", key="tab_va_speichern"):
         if all([
             va_nr_input.strip(),
@@ -188,29 +189,6 @@ with tabs[1]:
         else:
             st.error("Pflichtfelder fehlen.")
 
-    # ----------------------------------
-    # Löschbereich ganz unten im Tab
-    # ----------------------------------
-    st.markdown("---")
-    st.markdown("### VA löschen")
-
-    if os.path.exists(DATA_FILE_QM):
-        df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
-        va_liste = sorted(df_va["VA_Nr"].dropna().unique())
-        va_zum_loeschen = st.selectbox(
-            "VA auswählen zum Löschen",
-            options=va_liste,
-            index=None,
-            key="va_loeschen_select"
-        )
-
-        if va_zum_loeschen and st.button("VA löschen", key="va_loeschen_button"):
-            df_va = df_va[df_va["VA_Nr"] != va_zum_loeschen]
-            df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-            st.success(f"❌ VA {va_zum_loeschen} wurde gelöscht.")
-    else:
-        st.info("Noch keine Verfahrensanweisungen vorhanden.")
-
     # Auswahl
     st.markdown("---")
     st.markdown("### VA auswählen")
@@ -221,6 +199,33 @@ with tabs[1]:
         if sel:
             st.session_state.selected_va = sel.split(" – ")[0]
             st.success(f"Ausgewählt: {sel}")
+
+    # Löschbereich ganz unten, blau hinterlegt
+    st.markdown("---")
+    st.markdown(
+        """
+        <div style="background-color:#e7f3fe;
+                    padding:15px;
+                    border-radius:5px;
+                    border:1px solid #b3d7ff;
+                    margin-top:20px">
+        <h4 style="color:#31708f">🗑️ VA löschen</h4>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    if os.path.exists(DATA_FILE_QM):
+        df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
+        va_liste = sorted(df_va["VA_Nr"].dropna().unique())
+        va_zum_loeschen = st.selectbox("VA auswählen zum Löschen", options=va_liste, index=None, key="va_loeschen_select")
+
+        if va_zum_loeschen and st.button("VA löschen", key="va_loeschen_button"):
+            df_va = df_va[df_va["VA_Nr"] != va_zum_loeschen]
+            df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
+            st.success(f"❌ VA {va_zum_loeschen} wurde gelöscht.")
+    else:
+        st.info("Noch keine Verfahrensanweisungen vorhanden.")
 
 
 # --------------------------
