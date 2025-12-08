@@ -278,156 +278,40 @@ with tabs[1]:
     if st.button("Formular zurücksetzen", key="reset_tab1"):
         reset_form()
         st.info("Formular wurde geleert.")
-
+# --------------------------
+# Tab 2: Lesebestätigung (nur CSV-Download)
+# --------------------------
 with tabs[2]:
     st.markdown("## ✅ Lesebestätigung")
 
     if not st.session_state.get("logged_in", False):
         st.warning("Bitte zuerst im Tab 'Login' anmelden.")
     else:
-        # VA-Auswahl
-        va_liste = []
-        if os.path.exists("qm_verfahrensanweisungen.csv"):
-            df_va = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig", dtype=str)
-            if "VA_Nr" in df_va.columns:
-                df_va["VA_clean"] = df_va["VA_Nr"].apply(norm_va)
-                va_liste = sorted(df_va["VA_clean"].unique())
-
-        name_raw = st.text_input("Name (Nachname, Vorname)", key="tab2_name_input")
-        va_nummer = st.selectbox("VA auswählen", options=va_liste, index=None, key="tab2_va_select")
-
-        if va_nummer:
-            st.session_state.selected_va = va_nummer
-
-        if st.button("Bestätigen", key="tab2_confirm_button"):
-            name_kombi = re.sub(r"\s*,\s*", ",", name_raw.strip())
-            if name_kombi and va_nummer:
-                zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
-                df_new = pd.DataFrame([{
-                    "Name": name_kombi,
-                    "VA_Nr": va_nummer,
-                    "Zeitpunkt": zeitpunkt
-                }])[["Name", "VA_Nr", "Zeitpunkt"]]
-
-                path = "lesebestätigung.csv"
-                file_exists = os.path.exists(path)
-                file_empty = (not file_exists) or (os.path.getsize(path) == 0)
-
-                df_new.to_csv(
-                    path,
-                    sep=";",
-                    index=False,
-                    mode="a" if file_exists and not file_empty else "w",
-                    header=True if file_empty else False,
-                    encoding="utf-8-sig"
-                )
-
-                st.success(f"Bestätigung für {va_nummer} gespeichert.")
-
-                if st.checkbox("Eigenen Nachweis als CSV herunterladen", key="tab2_csv_checkbox"):
-                    csv_bytes = df_new.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
-                    st.download_button(
-                        "Diese Lesebestätigung herunterladen",
-                        data=csv_bytes,
-                        file_name=f"lesebestaetigung_{va_nummer}_{dt.date.today()}.csv",
-                        mime="text/csv",
-                        key="tab2_csv_download"
-                    )
-            else:
-                st.error("Bitte Name und VA auswählen.")
-
-        # Übersicht
-        st.markdown("---")
-        st.markdown("### 📄 Bereits bestätigte Einträge")
         path_all = "lesebestätigung.csv"
-        if os.path.exists(path_all):
-            df_all = pd.read_csv(path_all, sep=";", encoding="utf-8-sig")
-            st.dataframe(df_all.sort_values("Zeitpunkt", ascending=False))
-        else:
+        if not os.path.exists(path_all) or os.path.getsize(path_all) == 0:
             st.info("Noch keine Lesebestätigungen vorhanden.")
-            
- # --------------------------
-# Sammel-CSV aller Lesebestätigungen (Download)
-# --------------------------
-st.markdown("---")
-st.markdown("### 📄 Sammel-CSV aller Lesebestätigungen (Download)")
+        else:
+            df_all = pd.read_csv(path_all, sep=";", encoding="utf-8-sig", dtype=str)
 
-path_all = "lesebestätigung.csv"
-if not os.path.exists(path_all) or os.path.getsize(path_all) == 0:
-    st.info("Noch keine Lesebestätigungen vorhanden.")
-else:
-    df_all = pd.read_csv(path_all, sep=";", encoding="utf-8-sig", dtype=str)
+            st.markdown("### 📄 Bereits bestätigte Einträge")
+            st.dataframe(df_all.sort_values("Zeitpunkt", ascending=False))
 
-    # Falls Spalten fehlen/anders heißen, abbrechen mit klarer Meldung
-    required_cols = {"Name", "VA_Nr", "Zeitpunkt"}
-    if not required_cols.issubset(df_all.columns):
-        st.warning("Unerwartete Spalten in 'lesebestätigung.csv'. Erwartet werden: Name; VA_Nr; Zeitpunkt.")
-    else:
-        # Optional: Filter nach VA (Standard = Alle)
-        va_optionen = ["Alle"] + sorted(df_all["VA_Nr"].dropna().unique().tolist())
-        va_filter = st.selectbox("VA auswählen für Sammel-CSV", options=va_optionen, index=0, key="tab2_csv_va_filter")
-
-        df_view = df_all[["Name", "VA_Nr", "Zeitpunkt"]].copy()
-        if va_filter != "Alle":
-            df_view = df_view[df_view["VA_Nr"] == va_filter]
-
-        # Vorschau
-        st.dataframe(df_view, use_container_width=True)
-
-        # CSV als Bytes (UTF-8 mit BOM) für sauberen Excel-Import
-        csv_str = df_view.to_csv(index=False, sep=";", encoding="utf-8-sig")
-        csv_bytes = csv_str.encode("utf-8-sig")
-
-        suffix = "alle" if va_filter == "Alle" else va_filter
-        file_name = f"sammeldatei_{suffix}.csv"
-
-        st.download_button(
-            label=f"📥 Sammel-CSV herunterladen: {file_name}",
-            data=csv_bytes,
-            file_name=file_name,
-            mime="text/csv",
-            key=f"dl_sammelcsv_{suffix}"
-        )
-
-            class ConfirmPDF(FPDF):
-                def header(self):
-                    self.set_font("Arial", "B", 12)
-                    self.cell(0, 10, clean_text("Lesebestätigungen – Übersicht"), ln=True, align="C")
-                    self.ln(5)
-
-                def footer(self):
-                    self.set_y(-15)
-                    self.set_font("Arial", size=8)
-                    self.cell(0, 10, f"Seite {self.page_no()}", align="C")
-
-            pdf = ConfirmPDF()
-            pdf.add_page()
-            pdf.set_font("Arial", size=11)
-            pdf.set_fill_color(230, 230, 230)
-            pdf.set_font("Arial", "B", 11)
-            pdf.cell(60, 10, "Name", 1, 0, "L", True)
-            pdf.cell(30, 10, "VA_Nr", 1, 0, "L", True)
-            pdf.cell(70, 10, "Zeitpunkt", 1, 1, "L", True)
-            pdf.set_font("Arial", size=11)
-
-            for _, r in df_all.iterrows():
-                pdf.cell(60, 10, clean_text(r["Name"]), 1)
-                pdf.cell(30, 10, clean_text(r["VA_Nr"]), 1)
-                pdf.cell(70, 10, clean_text(r["Zeitpunkt"]), 1)
-                pdf.ln()
-
-            pdf_bytes = pdf.output(dest="S") if isinstance(pdf.output(dest="S"), bytes) else pdf.output(dest="S").encode("latin-1")
+            # Sammel-CSV Download
+            st.markdown("---")
+            st.markdown("### 📥 Sammel-CSV herunterladen")
+            csv_str = df_all[["Name", "VA_Nr", "Zeitpunkt"]].to_csv(index=False, sep=";", encoding="utf-8-sig")
+            csv_bytes = csv_str.encode("utf-8-sig")
 
             st.download_button(
-                "📄 Sammel-PDF herunterladen",
-                data=pdf_bytes,
-                file_name="lesebestaetigungen.pdf",
-                mime="application/pdf",
-                key="tab2_pdf_download"
+                label="📥 Sammel-CSV herunterladen",
+                data=csv_bytes,
+                file_name="sammeldatei.csv",
+                mime="text/csv",
+                key="tab2_csv_download"
             )
-        else:
-            st.info("Noch keine Lesebestätigungen vorhanden.")
 
+
+          
 # --------------------------
 # Tab 3: Mitarbeiter
 # --------------------------
@@ -491,10 +375,9 @@ with st.sidebar:
         if va_nummer:
             st.session_state.selected_va = va_nummer
             row = df_va[df_va["VA_clean"] == va_nummer]
-            titel = row["Titel"].values[0] if not row.empty else ""
 
-            # Gelb hinterlegte VA-Inhalte
             if not row.empty:
+                titel = row["Titel"].values[0] if "Titel" in row.columns else ""
                 kapitel = row["Kapitel"].values[0] if "Kapitel" in row.columns else ""
                 unterkapitel = row["Unterkapitel"].values[0] if "Unterkapitel" in row.columns else ""
                 revision = row["Revisionsstand"].values[0] if "Revisionsstand" in row.columns else ""
@@ -528,23 +411,19 @@ with st.sidebar:
                     unsafe_allow_html=True
                 )
 
-            # PDF-Button nur anzeigen, wenn PDF existiert
+                # PDF-Button nur anzeigen, wenn Datei existiert
                 pdf_name = f"{norm_va(va_nummer)}.pdf"
                 pdf_path = pathlib.Path("va_pdf") / pdf_name
-
-        if pdf_path.exists():
-            st.markdown("### 📘 Verfahrensanweisung als PDF")
-            with open(pdf_path, "rb") as f:
-                st.download_button(
-                label=f"📄 PDF öffnen: {pdf_name}",
-                data=f.read(),
-                file_name=pdf_name,
-                mime="application/pdf",
-                key=f"download_{pdf_name}"
-        )
-    # Wenn keine PDF vorhanden ist, einfach nichts anzeigen
-
-
+                if pdf_path.exists():
+                    st.markdown("### 📘 Verfahrensanweisung als PDF")
+                    with open(pdf_path, "rb") as f:
+                        st.download_button(
+                            label=f"📄 PDF öffnen: {pdf_name}",
+                            data=f.read(),
+                            file_name=pdf_name,
+                            mime="application/pdf",
+                            key=f"download_{pdf_name}"
+                        )
 
             # Lesebestätigung
             st.markdown("### Lesebestätigung")
@@ -610,6 +489,7 @@ with st.sidebar:
                 st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
     else:
         st.warning("Bitte zuerst im Tab 'Login' anmelden.")
+
 
 
 
