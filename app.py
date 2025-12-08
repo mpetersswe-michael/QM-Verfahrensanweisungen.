@@ -193,13 +193,13 @@ with tabs[1]:
                     self.cell(60, 10, left_text.encode("latin-1", "replace").decode("latin-1"), ln=0)
 
                 # Zentriert: Name und Funktion
-                   center_text = "Erstellt von: Peters, Michael – Qualitätsbeauftragter"
-                   self.set_x((210 - 90) / 2)
-                   self.cell(90, 10, center_text.encode("latin-1", "replace").decode("latin-1"), align="C")
+                    center_text = "Erstellt von: Peters, Michael – Qualitätsbeauftragter"
+                    self.set_x((210 - 90) / 2)
+                    self.cell(90, 10, center_text.encode("latin-1", "replace").decode("latin-1"), align="C")
 
                # Rechts: Seitenzahl
-                  self.set_x(-30)
-                  self.cell(0, 10, f"Seite {self.page_no()}", align="R")
+                   self.set_x(-30)
+                   self.cell(0, 10, f"Seite {self.page_no()}", align="R")
 
             def safe(text):
                 return str(text).replace("\n", " ").replace("–", "-").replace("•", "-")
