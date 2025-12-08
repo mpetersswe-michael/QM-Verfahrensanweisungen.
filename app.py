@@ -188,14 +188,13 @@ with tabs[1]:
                     self.set_text_color(100)
                     self.cell(60, 10, f"Erstellt von: {self.va_nr}", ln=0)
                     self.set_x((210 - 90) / 2)
-                    self.cell(90, 10, "Peters, Michael – Qualitätsbeauftragter", align="C")
+                    self.cell(90, 10, "Peters, Michael – Qualitätsbeauftragter".encode("latin-1", "replace").decode("latin-1"), align="C")
                     self.set_x(-30)
                     self.cell(0, 10, f"Seite {self.page_no()}", align="R")
 
             def safe(text):
                 return str(text).replace("\n", " ").replace("–", "-").replace("•", "-")
 
-            df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
             match = df_va[df_va["VA_Nr"] == va_nr_input.strip()]
             if not match.empty:
                 row = match.iloc[0]
@@ -293,6 +292,7 @@ with tabs[1]:
             st.success(f"❌ VA {va_zum_loeschen} wurde gelöscht.")
     else:
         st.info("Noch keine Verfahrensanweisungen vorhanden.")
+
 
 
 # --------------------------
