@@ -142,14 +142,14 @@ with tabs[1]:
 
     DATA_FILE_QM = "qm_verfahrensanweisungen.csv"
 
-    # Eingabe nur hier im Tab
+    # Eingabe
     st.markdown("### Neue VA eingeben")
     va_nr_input = st.text_input("VA-Nummer", key="va_nr_input")
     titel_input = st.text_input("Titel", key="titel_input")
     kapitel_input = st.text_input("Kapitel", key="kapitel_input")
     unterkapitel_input = st.text_input("Unterkapitel", key="unterkapitel_input")
     revisionsstand_input = st.text_input("Revisionsstand", key="revisionsstand_input")
-    geltungsbereich_input = st.text_input("Geltungsbereich", key="geltungsbereich_input")  # NEU
+    geltungsbereich_input = st.text_input("Geltungsbereich", key="geltungsbereich_input")
     ziel_input = st.text_input("Ziel", key="ziel_input")
     vorgehensweise_input = st.text_area("Vorgehensweise", key="vorgehensweise_input")
     kommentar_input = st.text_area("Kommentar", key="kommentar_input")
@@ -188,9 +188,12 @@ with tabs[1]:
         else:
             st.error("Pflichtfelder fehlen.")
 
+    # ----------------------------------
+    # Löschbereich ganz unten im Tab
+    # ----------------------------------
+    st.markdown("---")
     st.markdown("### VA löschen")
 
-    # VA-Auswahl zur Löschung
     if os.path.exists(DATA_FILE_QM):
         df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
         va_liste = sorted(df_va["VA_Nr"].dropna().unique())
@@ -207,8 +210,6 @@ with tabs[1]:
             st.success(f"❌ VA {va_zum_loeschen} wurde gelöscht.")
     else:
         st.info("Noch keine Verfahrensanweisungen vorhanden.")
-
-
 
     # Auswahl
     st.markdown("---")
