@@ -208,11 +208,8 @@ with tabs[1]:
             pdf.set_font("Arial", size=12)
 
             row = df_va[df_va["VA_Nr"] == va_id].iloc[0]
-            pdf.cell(200, 10, txt=f"{row['VA_Nr']} – {row['Titel']}", ln=True)
-            pdf.cell(200, 10, txt=f"Kapitel: {row['Kapitel']}", ln=True)
-            pdf.cell(200, 10, txt=f"Unterkapitel: {row['Unterkapitel']}", ln=True)
-            pdf.cell(200, 10, txt=f"Revisionsstand: {row['Revisionsstand']}", ln=True)
-            pdf.cell(200, 10, txt=f"Geltungsbereich: {row['Geltungsbereich']}", ln=True)
+            for field in ["VA_Nr", "Titel", "Kapitel", "Unterkapitel", "Revisionsstand", "Geltungsbereich"]:
+                pdf.cell(200, 10, txt=f"{field}: {row[field]}", ln=True)
             pdf.multi_cell(0, 10, txt=f"Ziel:\n{row['Ziel']}")
             pdf.multi_cell(0, 10, txt=f"Vorgehensweise:\n{row['Vorgehensweise']}")
             pdf.multi_cell(0, 10, txt=f"Kommentar:\n{row['Kommentar']}")
@@ -259,6 +256,7 @@ with tabs[1]:
             st.success(f"❌ VA {va_zum_loeschen} wurde gelöscht.")
     else:
         st.info("Noch keine Verfahrensanweisungen vorhanden.")
+
 
 
 
