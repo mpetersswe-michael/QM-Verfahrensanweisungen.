@@ -241,7 +241,7 @@ with tabs[1]:
                 key="pdf_preview_tab1"
             )
 
-       if st.button("PDF speichern in va_pdf", key="pdf_speichern_tab1"):
+    if st.button("PDF speichern in va_pdf", key="pdf_speichern_tab1"):
           try:
             os.makedirs("va_pdf", exist_ok=True)
             clean_va = row["VA_Nr"].replace(" ", "").replace("/", "-")
