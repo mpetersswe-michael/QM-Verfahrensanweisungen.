@@ -302,9 +302,9 @@ if "last_saved_va" in st.session_state:
             st.write("📂 Inhalt von va_pdf:", os.listdir("va_pdf"))
             st.success(f"✅ PDF für {row['VA_Nr']} gespeichert in va_pdf/")
     else:
-        st.error("❌ VA konnte nicht gefunden werden – PDF-Erzeugung abgebrochen.")
+         st.error("❌ VA konnte nicht gefunden werden – PDF-Erzeugung abgebrochen.")
 
-            st.download_button(
+         st.download_button(
                 label=f"📄 PDF erzeugen: {row['VA_Nr']}",
                 data=pdf_bytes,
                 file_name=f"{row['VA_Nr']}_preview.pdf",
@@ -319,8 +319,8 @@ if "last_saved_va" in st.session_state:
                     f.write(pdf_bytes)
                 st.write("📂 Inhalt von va_pdf:", os.listdir("va_pdf"))
                 st.success(f"✅ PDF für {row['VA_Nr']} gespeichert in va_pdf/")
-        else:
-            st.error("❌ VA konnte nicht gefunden werden – PDF-Erzeugung abgebrochen.")
+    else:
+        st.error("❌ VA konnte nicht gefunden werden – PDF-Erzeugung abgebrochen.")
 
     # VA-Auswahl zur Ansicht
     st.markdown("---")
