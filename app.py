@@ -473,26 +473,23 @@ with st.sidebar:
                     unsafe_allow_html=True
                 )
 
-            # PDF anzeigen (robust abgesichert)
-            pdf_name = f"{norm_va(va_nummer)}.pdf"
-            pdf_path = pathlib.Path("va_pdf") / pdf_name
+            # PDF-Button nur anzeigen, wenn PDF existiert
+pdf_name = f"{norm_va(va_nummer)}.pdf"
+pdf_path = pathlib.Path("va_pdf") / pdf_name
 
-            st.markdown("### 📘 Verfahrensanweisung anzeigen")
-            if st.button("Verfahrensanweisung anzeigen", key="va_anzeigen_button"):
-                try:
-                    if pdf_path.exists():
-                        with open(pdf_path, "rb") as f:
-                            st.download_button(
-                                label=f"📄 PDF öffnen: {pdf_name}",
-                                data=f.read(),
-                                file_name=pdf_name,
-                                mime="application/pdf",
-                                key=f"download_{pdf_name}"
-                            )
-                    else:
-                        st.error(f"❌ PDF nicht gefunden unter: {pdf_path.resolve()}")
-                except Exception as e:
-                    st.error(f"❌ PDF konnte nicht geladen werden: {e}")
+if pdf_path.exists():
+    st.markdown("### 📘 Verfahrensanweisung als PDF")
+    with open(pdf_path, "rb") as f:
+        st.download_button(
+            label=f"📄 PDF öffnen: {pdf_name}",
+            data=f.read(),
+            file_name=pdf_name,
+            mime="application/pdf",
+            key=f"download_{pdf_name}"
+        )
+# Wenn keine PDF vorhanden ist, einfach nichts anzeigen
+
+
 
             # Lesebestätigung
             st.markdown("### Lesebestätigung")
