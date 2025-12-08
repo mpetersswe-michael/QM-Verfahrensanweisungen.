@@ -156,35 +156,36 @@ with tabs[1]:
     mitgeltende_input = st.text_area("Mitgeltende Unterlagen")
 
    if st.button("VA speichern", key="tab_va_speichern"):
-       if all([
-            va_nr_input.strip(),
-            titel_input.strip(),
-            kapitel_input.strip(),
-            unterkapitel_input.strip(),
-            revisionsstand_input.strip(),
-            geltungsbereich_input.strip()   # Pflichtfeld ergänzt
-        ]):
-            neuer_eintrag = pd.DataFrame([{
-                "VA_Nr": va_nr_input.strip(),
-                "Titel": titel_input.strip(),
-                "Kapitel": kapitel_input.strip(),
-                "Unterkapitel": unterkapitel_input.strip(),
-                "Revisionsstand": revisionsstand_input.strip(),
-                "Geltungsbereich": geltungsbereich_input.strip(),  # NEU
-                "Ziel": ziel_input.strip(),
-                "Vorgehensweise": vorgehensweise_input.strip(),
-                "Kommentar": kommentar_input.strip(),
-                "Mitgeltende_Unterlagen": mitgeltende_input.strip()
-            }])
-            if os.path.exists(DATA_FILE_QM):
-                df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
-                df_va = pd.concat([df_va, neuer_eintrag], ignore_index=True)
-            else:
-                df_va = neuer_eintrag
-            df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-            st.success(f"✅ VA {va_nr_input} gespeichert.")
+    if all([
+        va_nr_input.strip(),
+        titel_input.strip(),
+        kapitel_input.strip(),
+        unterkapitel_input.strip(),
+        revisionsstand_input.strip(),
+        geltungsbereich_input.strip()
+    ]):
+        neuer_eintrag = pd.DataFrame([{
+            "VA_Nr": va_nr_input.strip(),
+            "Titel": titel_input.strip(),
+            "Kapitel": kapitel_input.strip(),
+            "Unterkapitel": unterkapitel_input.strip(),
+            "Revisionsstand": revisionsstand_input.strip(),
+            "Geltungsbereich": geltungsbereich_input.strip(),
+            "Ziel": ziel_input.strip(),
+            "Vorgehensweise": vorgehensweise_input.strip(),
+            "Kommentar": kommentar_input.strip(),
+            "Mitgeltende_Unterlagen": mitgeltende_input.strip()
+        }])
+        if os.path.exists(DATA_FILE_QM):
+            df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
+            df_va = pd.concat([df_va, neuer_eintrag], ignore_index=True)
         else:
-            st.error("Pflichtfelder fehlen.")
+            df_va = neuer_eintrag
+        df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
+        st.success(f"✅ VA {va_nr_input} gespeichert.")
+    else:
+        st.error("Pflichtfelder fehlen.")
+
 
     # Auswahl
     st.markdown("---")
