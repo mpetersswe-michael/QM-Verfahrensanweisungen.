@@ -345,32 +345,49 @@ with tabs[2]:
             st.dataframe(df_all.sort_values("Zeitpunkt", ascending=False))
         else:
             st.info("Noch keine Lesebestätigungen vorhanden.")
+            
+ # --------------------------
+# Sammel-CSV aller Lesebestätigungen (Download)
+# --------------------------
+st.markdown("---")
+st.markdown("### 📄 Sammel-CSV aller Lesebestätigungen (Download)")
 
-        # Sammel-CSV
-        st.markdown("---")
-        st.markdown("### 📄 Sammel-CSV aller Lesebestätigungen")
-        ziel_path = os.path.join("va_app", "sammeldatei.csv")
-        if os.path.exists(path_all):
-            if st.button("Sammeldatei speichern", key="save_collective_csv"):
-                try:
-                    os.makedirs("va_app", exist_ok=True)
-                    df_all[["Name", "VA_Nr", "Zeitpunkt"]].to_csv(
-                        ziel_path,
-                        sep=";",
-                        index=False,
-                        encoding="utf-8-sig"
-                    )
-                    st.success(f"Sammeldatei gespeichert unter: {ziel_path}")
-                except Exception as e:
-                    st.error(f"Sammeldatei konnte nicht gespeichert werden: {e}")
-        else:
-            st.info("Noch keine Lesebestätigungen vorhanden.")
+path_all = "lesebestätigung.csv"
+if not os.path.exists(path_all) or os.path.getsize(path_all) == 0:
+    st.info("Noch keine Lesebestätigungen vorhanden.")
+else:
+    df_all = pd.read_csv(path_all, sep=";", encoding="utf-8-sig", dtype=str)
 
-        # Sammel-PDF
-        st.markdown("---")
-        st.markdown("### 📄 Sammel-PDF aller Lesebestätigungen")
-        if os.path.exists(path_all):
-            df_all = pd.read_csv(path_all, sep=";", encoding="utf-8-sig")
+    # Falls Spalten fehlen/anders heißen, abbrechen mit klarer Meldung
+    required_cols = {"Name", "VA_Nr", "Zeitpunkt"}
+    if not required_cols.issubset(df_all.columns):
+        st.warning("Unerwartete Spalten in 'lesebestätigung.csv'. Erwartet werden: Name; VA_Nr; Zeitpunkt.")
+    else:
+        # Optional: Filter nach VA (Standard = Alle)
+        va_optionen = ["Alle"] + sorted(df_all["VA_Nr"].dropna().unique().tolist())
+        va_filter = st.selectbox("VA auswählen für Sammel-CSV", options=va_optionen, index=0, key="tab2_csv_va_filter")
+
+        df_view = df_all[["Name", "VA_Nr", "Zeitpunkt"]].copy()
+        if va_filter != "Alle":
+            df_view = df_view[df_view["VA_Nr"] == va_filter]
+
+        # Vorschau
+        st.dataframe(df_view, use_container_width=True)
+
+        # CSV als Bytes (UTF-8 mit BOM) für sauberen Excel-Import
+        csv_str = df_view.to_csv(index=False, sep=";", encoding="utf-8-sig")
+        csv_bytes = csv_str.encode("utf-8-sig")
+
+        suffix = "alle" if va_filter == "Alle" else va_filter
+        file_name = f"sammeldatei_{suffix}.csv"
+
+        st.download_button(
+            label=f"📥 Sammel-CSV herunterladen: {file_name}",
+            data=csv_bytes,
+            file_name=file_name,
+            mime="text/csv",
+            key=f"dl_sammelcsv_{suffix}"
+        )
 
             class ConfirmPDF(FPDF):
                 def header(self):
