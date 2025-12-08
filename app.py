@@ -241,7 +241,7 @@ with tabs[1]:
                 key="pdf_preview_tab1"
             )
 
-     if st.button("PDF speichern in va_pdf", key="pdf_speichern_tab1"):
+    if st.button("PDF speichern in va_pdf", key="pdf_speichern_tab1"):
         os.makedirs("va_pdf", exist_ok=True)  # Ordner wird angelegt, falls nicht vorhanden
         pdf_path = f"va_pdf/{row['VA_Nr']}.pdf"  # Dateiname z. B. VA001.pdf
         with open(pdf_path, "wb") as f:
