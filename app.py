@@ -23,7 +23,7 @@ try:
     users_df = pd.read_csv("users.csv", sep=sep, dtype=str)
     users_df.columns = users_df.columns.str.strip()  # Spaltennamen säubern
 except FileNotFoundError:
-    st.error("❌ Datei 'users.csv' nicht gefunden. Stelle sicher, dass sie im gleichen Ordner wie 'streamlit_app.py' liegt.")
+    st.error("❌ Datei 'users.csv' nicht gefunden. Stelle sicher, dass sie im gleichen Ordner wie 'app.py' liegt.")
     st.stop()
 except Exception as e:
     st.error(f"❌ Fehler beim Laden der Datei 'users.csv': {e}")
@@ -32,11 +32,15 @@ except Exception as e:
 # Debug-Ausgabe (optional)
 st.write("📄 Erkannte Spalten:", users_df.columns.tolist())
 
+# Passwörter beim Einlesen hashen (nur im Speicher, CSV bleibt Klartext)
+users_df["password"] = users_df["password"].apply(lambda pw: stauth.Hasher([pw]).generate()[0])
+
 # Credentials aufbauen
 credentials = {"usernames": {}}
 for _, row in users_df.iterrows():
     credentials["usernames"][row["username"]] = {
-        "password": row["password"],
+        "name": row["username"],       # optional für Anzeige
+        "password": row["password"],   # jetzt HASH
         "role": row["role"]
     }
 
@@ -46,6 +50,7 @@ authenticator = stauth.Authenticate(
     "secret_key",
     cookie_expiry_days=30
 )
+
 
 # --------------------------
 # Tabs
