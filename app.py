@@ -78,14 +78,10 @@ import streamlit as st
 import streamlit_authenticator as stauth
 
 try:
-    # Lies die Datei exakt aus deinem Pfad
-    users_df = pd.read_csv(
-        r"C:\Users\Nutzer\OneDrive\Dokumente\va_app\users.csv",
-        sep="\t",
-        dtype=str
-    )
+    # Lies die Datei exakt aus deinem Pfad (du bist im Ordner va_app)
+    users_df = pd.read_csv("users.csv", sep="\t", dtype=str)
 except FileNotFoundError:
-    st.error("❌ Datei 'users.csv' nicht gefunden unter C:\\Users\\Nutzer\\OneDrive\\Dokumente\\va_app\\")
+    st.error("❌ Datei 'users.csv' nicht gefunden. Bitte sicherstellen, dass sie im gleichen Ordner wie 'streamlit_app.py' liegt.")
     st.stop()
 except Exception as e:
     st.error(f"❌ Fehler beim Laden der Datei 'users.csv': {e}")
