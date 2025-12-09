@@ -1,6 +1,7 @@
 import pandas as pd
 import streamlit as st
 import os   # nur nötig, wenn du auch os.getcwd() oder os.listdir() nutzen willst
+import streamlit_authenticator as stauth
 
 # CSV laden – hier mit Semikolon als Trenner
 users_df = pd.read_csv("users.csv", sep=";", dtype=str)
