@@ -119,6 +119,27 @@ authenticator = stauth.Authenticate(
 )
 
 # --------------------------
+# Tabs rollenbasiert anzeigen
+# --------------------------
+if not st.session_state.get("logged_in", False):
+    # Noch nicht eingeloggt → nur Login sichtbar
+    tabs = st.tabs(["System & Login"])
+elif st.session_state.role == "admin":
+    # Admin → alle Tabs sichtbar
+    tabs = st.tabs([
+        "System & Login",
+        "Verfahrensanweisungen",
+        "Lesebestätigung",
+        "Mitarbeiter"
+    ])
+else:
+    # Normale Nutzer → nur Login + Lesebestätigung sichtbar
+    tabs = st.tabs([
+        "System & Login",
+        "Lesebestätigung"
+    ])
+
+# --------------------------
 # Tabs
 # --------------------------
 tabs = st.tabs(["System & Login", "Verfahrensanweisungen", "Lesebestätigung", "Mitarbeiter"])
