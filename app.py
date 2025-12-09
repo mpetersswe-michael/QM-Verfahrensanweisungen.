@@ -388,7 +388,8 @@ import pathlib
 
 with st.sidebar:
     if st.session_state.get("logged_in", False):
-        st.success("✅ Eingeloggt")
+        st.markdown(f"✅ **Eingeloggt als:** `{st.session_state.username}`  
+        🛡️ **Rolle:** `{st.session_state.role}`")
 
         # Logout
         if st.button("Logout", key="logout_sidebar"):
@@ -396,21 +397,25 @@ with st.sidebar:
             st.session_state.selected_va = None
             st.rerun()
 
-        # VA-Auswahl
+        # VA-Auswahl nur für Admins
         va_liste = []
-        if os.path.exists("qm_verfahrensanweisungen.csv"):
-            df_va = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig", dtype=str)
-            if "VA_Nr" in df_va.columns:
-                df_va["VA_clean"] = df_va["VA_Nr"].apply(norm_va)
-                va_liste = sorted(df_va["VA_clean"].unique())
+        if st.session_state.role == "admin":
+            if os.path.exists("qm_verfahrensanweisungen.csv"):
+                df_va = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig", dtype=str)
+                if "VA_Nr" in df_va.columns:
+                    df_va["VA_clean"] = df_va["VA_Nr"].apply(norm_va)
+                    va_liste = sorted(df_va["VA_clean"].unique())
 
-        va_nummer = st.selectbox("VA auswählen", options=va_liste, index=None, key="sidebar_va_select")
+            va_nummer = st.selectbox("VA auswählen", options=va_liste, index=None, key="sidebar_va_select")
+        else:
+            va_nummer = st.session_state.selected_va  # bleibt leer, bis gesetzt
 
         if va_nummer:
             st.session_state.selected_va = va_nummer
             row = df_va[df_va["VA_clean"] == va_nummer]
 
             if not row.empty:
+                # VA-Inhalt anzeigen
                 titel = row["Titel"].values[0] if "Titel" in row.columns else ""
                 kapitel = row["Kapitel"].values[0] if "Kapitel" in row.columns else ""
                 unterkapitel = row["Unterkapitel"].values[0] if "Unterkapitel" in row.columns else ""
@@ -445,7 +450,7 @@ with st.sidebar:
                     unsafe_allow_html=True
                 )
 
-                # PDF-Button nur anzeigen, wenn Datei existiert
+                # PDF-Download
                 pdf_name = f"{norm_va(va_nummer)}.pdf"
                 pdf_path = pathlib.Path("va_pdf") / pdf_name
                 if pdf_path.exists():
@@ -460,11 +465,11 @@ with st.sidebar:
                         )
 
             # Lesebestätigung
-            st.markdown("### Lesebestätigung")
+            st.markdown("### ✅ Lesebestätigung")
             name_sidebar = st.text_input("Name (Nachname, Vorname)", key="sidebar_name_input")
             if st.button("Bestätigen", key="sidebar_confirm_button"):
                 name_clean = re.sub(r"\s*,\s*", ",", name_sidebar.strip())
-                if name_clean:
+                if name_clean and va_nummer:
                     zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
                     eintrag = {"Name": name_clean, "VA_Nr": va_nummer, "Zeitpunkt": zeitpunkt}
                     df_new = pd.DataFrame([eintrag])[["Name", "VA_Nr", "Zeitpunkt"]]
@@ -484,7 +489,7 @@ with st.sidebar:
 
                     st.success(f"Bestätigung für {va_nummer} gespeichert.")
                 else:
-                    st.error("Bitte Name eingeben.")
+                    st.error("Bitte Name eingeben und VA auswählen.")
 
             # Fortschritt
             try:
@@ -522,7 +527,7 @@ with st.sidebar:
             except Exception as e:
                 st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
     else:
-        st.warning("Bitte zuerst im Tab 'Login' anmelden.")
+        st.warning("🔒 Nicht eingeloggt. Bitte zuerst im Tab **Login** anmelden.")
 
 
 
