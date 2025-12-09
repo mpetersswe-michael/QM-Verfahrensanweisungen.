@@ -1,85 +1,20 @@
-# -------------------------- 
+# --------------------------
 # Imports
 # --------------------------
 import os
-st.write("Arbeitsordner:", os.getcwd())
-st.write("Dateien im Ordner:", os.listdir())
-
-import re
-import io
-import datetime as dt
-from zoneinfo import ZoneInfo
 import pandas as pd
 import streamlit as st
-from fpdf import FPDF
 import streamlit_authenticator as stauth
-import pathlib
-
-st.set_page_config(
-    page_title="Verfahrensanweisungen (Auszug aus dem QMH)",
-    page_icon="📘",
-    layout="wide"
-)
 
 # --------------------------
-# Datenkonfiguration
+# Debug-Ausgabe: Arbeitsordner prüfen
 # --------------------------
-DATA_FILE_QM = "qm_verfahrensanweisungen.csv"
-DATA_FILE_KENNTNIS = "lesebestätigung.csv"
-DATA_FILE_MA = "mitarbeiter.csv"
-QM_COLUMNS = [
-    "VA_Nr", "Titel", "Kapitel", "Unterkapitel", "Revisionsstand",
-    "Ziel", "Geltungsbereich", "Vorgehensweise", "Kommentar", "Mitgeltende Unterlagen"
-]
+st.write("📂 Arbeitsordner:", os.getcwd())
+st.write("📄 Dateien im Ordner:", os.listdir())
 
-# --------------------------
-# Hilfsfunktionen
-# --------------------------
-def norm_va(x):
-    s = str(x).upper().replace(" ", "")
-    m = s.replace("VA", "")
-    if m.isdigit():
-        s = f"VA{int(m):03d}"
-    return s
-
-def clean_text(text):
-    if text is None or str(text).strip() == "":
-        return "-"
-    return (
-        str(text)
-        .encode("latin-1", errors="ignore")
-        .decode("latin-1")
-        .replace("–", "-")
-        .replace("•", "*")
-        .replace("“", '"')
-        .replace("”", '"')
-        .replace("’", "'")
-        .replace("€", "EUR")
-        .replace("ä", "ae")
-        .replace("ö", "oe")
-        .replace("ü", "ue")
-        .replace("ß", "ss")
-    )
-
-# --------------------------
-# Session-Init
-# --------------------------
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-if "selected_va" not in st.session_state:
-    st.session_state.selected_va = None
-if "role" not in st.session_state:
-    st.session_state.role = None
-if "username" not in st.session_state:
-    st.session_state.username = None
-    
 # --------------------------
 # Authenticator Setup
 # --------------------------
-import pandas as pd
-import streamlit as st
-import streamlit_authenticator as stauth
-
 try:
     users_df = pd.read_csv("users.csv", sep="\t", dtype=str)
 except FileNotFoundError:
@@ -104,49 +39,35 @@ authenticator = stauth.Authenticate(
 )
 
 # --------------------------
+# Tabs
+# --------------------------
+tabs = st.tabs(["Login", "Verfahrensanweisungen", "Lesebestätigung", "Mitarbeiter"])
+
+# --------------------------
 # Login-Block
 # --------------------------
-st.title("🔒 Login")
+with tabs[0]:
+    st.markdown("## 🔒 Login")
+    name, authentication_status, username = authenticator.login("Login", "main")
 
-name, authentication_status, username = authenticator.login("Login", "main")
-
-if authentication_status:
-    st.session_state.logged_in = True
-    st.session_state.username = username
-    st.session_state.role = credentials["usernames"][username]["role"]
-    st.success(f"✅ Eingeloggt als {username} ({st.session_state.role})")
-elif authentication_status is False:
-    st.error("❌ Login fehlgeschlagen")
-else:
-    st.info("Bitte einloggen")
-
-
+    if authentication_status:
+        st.session_state.logged_in = True
+        st.session_state.username = username
+        st.session_state.role = credentials["usernames"][username]["role"]
+        st.success(f"✅ Eingeloggt als {username} ({st.session_state.role})")
+    elif authentication_status is False:
+        st.error("❌ Login fehlgeschlagen")
+    else:
+        st.info("Bitte einloggen")
 
 # --------------------------
-# Tabs rollenbasiert anzeigen
-# --------------------------
-if not st.session_state.get("logged_in", False):
-    tabs = st.tabs(["System & Login"])
-elif st.session_state.role == "admin":
-    tabs = st.tabs([
-        "System & Login",
-        "Verfahrensanweisungen",
-        "Lesebestätigung",
-        "Mitarbeiter"
-    ])
-else:
-    tabs = st.tabs([
-        "System & Login",
-        "Lesebestätigung"
-    ])
-# -------------------------
 # Tab 1: Verfahrensanweisungen
 # --------------------------
+DATA_FILE_QM = "qm_verfahrensanweisungen.csv"
 if st.session_state.get("logged_in", False) and st.session_state.role == "admin":
     with tabs[1]:
         st.markdown("## 📘 Verfahrensanweisungen")
 
-        # Eingabeformular
         va_nr = st.text_input("VA-Nummer")
         titel = st.text_input("Titel")
         kapitel = st.text_input("Kapitel")
@@ -174,7 +95,6 @@ if st.session_state.get("logged_in", False) and st.session_state.role == "admin"
             df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
             st.success(f"VA {va_nr} gespeichert.")
 
-        # Übersicht
         if os.path.exists(DATA_FILE_QM):
             df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
             st.dataframe(df_va)
@@ -182,6 +102,7 @@ if st.session_state.get("logged_in", False) and st.session_state.role == "admin"
 # --------------------------
 # Tab 2: Lesebestätigung
 # --------------------------
+DATA_FILE_KENNTNIS = "lesebestaetigung.csv"
 with tabs[2]:
     st.markdown("## ✅ Lesebestätigung")
     if not st.session_state.get("logged_in", False):
@@ -196,6 +117,7 @@ with tabs[2]:
 # --------------------------
 # Tab 3: Mitarbeiter
 # --------------------------
+DATA_FILE_MA = "mitarbeiter.csv"
 if st.session_state.get("logged_in", False) and st.session_state.role == "admin":
     with tabs[3]:
         st.markdown("## 👥 Mitarbeiterverwaltung")
