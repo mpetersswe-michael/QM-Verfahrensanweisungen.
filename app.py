@@ -77,7 +77,6 @@ import streamlit as st
 import streamlit_authenticator as stauth
 
 try:
-    # Lies die Datei exakt aus deinem Ordner (du bist bereits in va_app)
     users_df = pd.read_csv("users.csv", sep="\t", dtype=str)
 except FileNotFoundError:
     st.error("❌ Datei 'users.csv' nicht gefunden. Stelle sicher, dass sie im gleichen Ordner wie 'streamlit_app.py' liegt.")
