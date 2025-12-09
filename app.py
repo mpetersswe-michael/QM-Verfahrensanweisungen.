@@ -1,16 +1,15 @@
-# --------------------------
-# Imports
-# --------------------------
-import os
 import pandas as pd
 import streamlit as st
-import streamlit_authenticator as stauth
+import os   # nur nötig, wenn du auch os.getcwd() oder os.listdir() nutzen willst
 
-# --------------------------
-# Debug-Ausgabe: Arbeitsordner prüfen
-# --------------------------
+# CSV laden – hier mit Semikolon als Trenner
+users_df = pd.read_csv("users.csv", sep=";", dtype=str)
+
+# Debug-Ausgaben
 st.write("📂 Arbeitsordner:", os.getcwd())
 st.write("📄 Dateien im Ordner:", os.listdir())
+st.write("🔑 Spalten:", users_df.columns.tolist())
+
 
 # --------------------------
 # Authenticator Setup
