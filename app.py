@@ -27,8 +27,6 @@ elif authentication_status is False:
 else:
     st.info("Bitte einloggen")
 
-)
-
 # --------------------------
 # Datenkonfiguration
 # --------------------------
