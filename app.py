@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import streamlit as st
 from fpdf import FPDF  
-
+import streamlit_authenticator as stauth   # <--- NEU
 
 st.set_page_config(
     page_title="Verfahrensanweisungen (Auszug aus dem QMH)",
@@ -30,7 +30,6 @@ QM_COLUMNS = [
 # --------------------------
 # PDF-Hilfsfunktionen
 # --------------------------
-
 def norm_va(x):
     s = str(x).upper().replace(" ", "")
     m = s.replace("VA", "")
@@ -77,22 +76,16 @@ def export_va_to_pdf(row):
         pdf.multi_cell(0, 8, clean_text(content))
         pdf.ln(3)
 
-    # Inhalte aus QM_COLUMNS (Index 1: ohne VA_Nr)
     for feld in QM_COLUMNS[1:]:
         add_section(feld, row.get(feld, ""))
 
-    # Bytes erzeugen
     pdf_bytes = pdf.output(dest="S").encode("latin-1")
-
-    # Datei im Ordner va_pdf speichern
     va_nr = norm_va(row.get("VA_Nr", "VA000"))
     pdf_path = f"va_pdf/{va_nr}.pdf"
     with open(pdf_path, "wb") as f:
         f.write(pdf_bytes)
 
-    # Bytes zurückgeben (für Download-Button etc.)
     return pdf_bytes, pdf_path
-
 
 # --------------------------
 # Session-Init
@@ -101,6 +94,29 @@ if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "selected_va" not in st.session_state:
     st.session_state.selected_va = None
+if "role" not in st.session_state:
+    st.session_state.role = None
+if "username" not in st.session_state:
+    st.session_state.username = None
+
+# --------------------------
+# Authenticator Setup
+# --------------------------
+# Nutzer aus CSV laden
+users_df = pd.read_csv(os.path.join("va_app", "users.csv"))
+credentials = {"usernames": {}}
+for _, row in users_df.iterrows():
+    credentials["usernames"][row["username"]] = {
+        "password": row["password"],
+        "role": row["role"]
+    }
+
+authenticator = stauth.Authenticate(
+    credentials,
+    "va_app_cookie",
+    "secret_key",
+    cookie_expiry_days=30
+)
 
 # --------------------------
 # Tabs
@@ -113,16 +129,18 @@ tabs = st.tabs(["System & Login", "Verfahrensanweisungen", "Lesebestätigung", "
 with tabs[0]:
     st.markdown("## 🔒 Login")
 
-    if not st.session_state.get("logged_in", False):
-        pw = st.text_input("Passwort", type="password", key="login_pw")
-        if st.button("Login", key="login_button"):
-            if pw == "qm2025":
-                st.session_state.logged_in = True
-                st.success("✅ Login erfolgreich.")
-            else:
-                st.error("❌ Passwort falsch.")
+    name, authentication_status, username = authenticator.login("Login", "main")
+
+    if authentication_status:
+        st.session_state.logged_in = True
+        st.session_state.username = username
+        st.session_state.role = credentials["usernames"][username]["role"]
+        st.success(f"✅ Eingeloggt als {username} ({st.session_state.role})")
+    elif authentication_status is False:
+        st.error("❌ Login fehlgeschlagen")
     else:
-        st.info("Du bist bereits eingeloggt. Logout über die Sidebar.")
+        st.info("Bitte einloggen")
+
 
 # --------------------------
 # Tab 1: Verfahrensanweisungen
