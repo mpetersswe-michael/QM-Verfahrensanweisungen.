@@ -140,11 +140,6 @@ else:
     ])
 
 # --------------------------
-# Tabs
-# --------------------------
-tabs = st.tabs(["System & Login", "Verfahrensanweisungen", "Lesebestätigung", "Mitarbeiter"])
-
-# --------------------------
 # Tab 0: Login
 # --------------------------
 with tabs[0]:
