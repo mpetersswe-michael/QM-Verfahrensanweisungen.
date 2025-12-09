@@ -73,7 +73,7 @@ if "username" not in st.session_state:
 # --------------------------
 # Authenticator Setup
 # --------------------------
-users_df = pd.read_csv(os.path.join("va_app", "users.csv"))
+users_df = pd.read_csv("users.csv", sep="\t", dtype=str)
 credentials = {"usernames": {}}
 for _, row in users_df.iterrows():
     credentials["usernames"][row["username"]] = {
