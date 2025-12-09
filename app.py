@@ -15,8 +15,12 @@ st.write("🔑 Spalten:", users_df.columns.tolist())
 # Authenticator Setup
 # --------------------------
 try:
-   users_df = pd.read_csv("users.csv", sep=",", dtype=str)
-
+    # Trenner automatisch erkennen (Komma oder Semikolon)
+    with open("users.csv", "r", encoding="utf-8") as f:
+        first_line = f.readline()
+        sep = ";" if ";" in first_line else ","
+    users_df = pd.read_csv("users.csv", sep=sep, dtype=str)
+    users_df.columns = users_df.columns.str.strip()  # Spaltennamen säubern
 except FileNotFoundError:
     st.error("❌ Datei 'users.csv' nicht gefunden. Stelle sicher, dass sie im gleichen Ordner wie 'streamlit_app.py' liegt.")
     st.stop()
@@ -24,6 +28,10 @@ except Exception as e:
     st.error(f"❌ Fehler beim Laden der Datei 'users.csv': {e}")
     st.stop()
 
+# Debug-Ausgabe (optional)
+st.write("📄 Erkannte Spalten:", users_df.columns.tolist())
+
+# Credentials aufbauen
 credentials = {"usernames": {}}
 for _, row in users_df.iterrows():
     credentials["usernames"][row["username"]] = {
@@ -48,7 +56,8 @@ tabs = st.tabs(["Login", "Verfahrensanweisungen", "Lesebestätigung", "Mitarbeit
 # --------------------------
 with tabs[0]:
     st.markdown("## 🔒 Login")
-    name, authentication_status, username = authenticator.login("Login", "main")
+    # Wichtig: location benannt übergeben
+    name, authentication_status, username = authenticator.login("Login", location="main")
 
     if authentication_status:
         st.session_state.logged_in = True
@@ -59,6 +68,7 @@ with tabs[0]:
         st.error("❌ Login fehlgeschlagen")
     else:
         st.info("Bitte einloggen")
+
 
 # --------------------------
 # Tab 1: Verfahrensanweisungen
