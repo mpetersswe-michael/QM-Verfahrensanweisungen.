@@ -388,8 +388,10 @@ import pathlib
 
 with st.sidebar:
     if st.session_state.get("logged_in", False):
-        st.markdown(f"✅ **Eingeloggt als:** `{st.session_state.username}`  
-        🛡️ **Rolle:** `{st.session_state.role}`")
+        st.markdown(
+            f"✅ **Eingeloggt als:** `{st.session_state.username}`  \n"
+            f"🛡️ **Rolle:** `{st.session_state.role}`"
+        )
 
         # Logout
         if st.button("Logout", key="logout_sidebar"):
@@ -400,8 +402,8 @@ with st.sidebar:
         # VA-Auswahl nur für Admins
         va_liste = []
         if st.session_state.role == "admin":
-            if os.path.exists("qm_verfahrensanweisungen.csv"):
-                df_va = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig", dtype=str)
+            if os.path.exists(DATA_FILE_QM):
+                df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
                 if "VA_Nr" in df_va.columns:
                     df_va["VA_clean"] = df_va["VA_Nr"].apply(norm_va)
                     va_liste = sorted(df_va["VA_clean"].unique())
@@ -416,16 +418,7 @@ with st.sidebar:
 
             if not row.empty:
                 # VA-Inhalt anzeigen
-                titel = row["Titel"].values[0] if "Titel" in row.columns else ""
-                kapitel = row["Kapitel"].values[0] if "Kapitel" in row.columns else ""
-                unterkapitel = row["Unterkapitel"].values[0] if "Unterkapitel" in row.columns else ""
-                revision = row["Revisionsstand"].values[0] if "Revisionsstand" in row.columns else ""
-                geltung = row["Geltungsbereich"].values[0] if "Geltungsbereich" in row.columns else ""
-                ziel = row["Ziel"].values[0] if "Ziel" in row.columns else ""
-                vorgang = row["Vorgehensweise"].values[0] if "Vorgehensweise" in row.columns else ""
-                kommentar = row["Kommentar"].values[0] if "Kommentar" in row.columns else ""
-                unterlagen = row["Mitgeltende Unterlagen"].values[0] if "Mitgeltende Unterlagen" in row.columns else ""
-
+                def safe_get(col): return row[col].values[0] if col in row.columns else ""
                 st.markdown(
                     f"""
                     <div style="background-color:#fff3cd;
@@ -436,15 +429,15 @@ with st.sidebar:
                                 font-size:14px">
                     <strong>VA-Inhalt:</strong><br><br>
                     <strong>VA-Nr:</strong> {va_nummer}<br>
-                    <strong>Titel:</strong> {titel}<br>
-                    <strong>Kapitel:</strong> {kapitel}<br>
-                    <strong>Unterkapitel:</strong> {unterkapitel}<br>
-                    <strong>Revisionsstand:</strong> {revision}<br>
-                    <strong>Geltungsbereich:</strong> {geltung}<br>
-                    <strong>Ziel:</strong> {ziel}<br>
-                    <strong>Vorgehensweise:</strong> {vorgang}<br>
-                    <strong>Kommentar:</strong> {kommentar}<br>
-                    <strong>Mitgeltende Unterlagen:</strong> {unterlagen}
+                    <strong>Titel:</strong> {safe_get("Titel")}<br>
+                    <strong>Kapitel:</strong> {safe_get("Kapitel")}<br>
+                    <strong>Unterkapitel:</strong> {safe_get("Unterkapitel")}<br>
+                    <strong>Revisionsstand:</strong> {safe_get("Revisionsstand")}<br>
+                    <strong>Geltungsbereich:</strong> {safe_get("Geltungsbereich")}<br>
+                    <strong>Ziel:</strong> {safe_get("Ziel")}<br>
+                    <strong>Vorgehensweise:</strong> {safe_get("Vorgehensweise")}<br>
+                    <strong>Kommentar:</strong> {safe_get("Kommentar")}<br>
+                    <strong>Mitgeltende Unterlagen:</strong> {safe_get("Mitgeltende Unterlagen")}
                     </div>
                     """,
                     unsafe_allow_html=True
@@ -474,7 +467,7 @@ with st.sidebar:
                     eintrag = {"Name": name_clean, "VA_Nr": va_nummer, "Zeitpunkt": zeitpunkt}
                     df_new = pd.DataFrame([eintrag])[["Name", "VA_Nr", "Zeitpunkt"]]
 
-                    path = "lesebestätigung.csv"
+                    path = DATA_FILE_KENNTNIS
                     file_exists = os.path.exists(path)
                     file_empty = (not file_exists) or (os.path.getsize(path) == 0)
 
@@ -493,10 +486,10 @@ with st.sidebar:
 
             # Fortschritt
             try:
-                if not os.path.exists("lesebestätigung.csv") or not os.path.exists("mitarbeiter.csv"):
+                if not os.path.exists(DATA_FILE_KENNTNIS) or not os.path.exists("mitarbeiter.csv"):
                     st.info("Noch keine Daten vorhanden.")
                 else:
-                    df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig", dtype=str)
+                    df_kenntnis = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
                     df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig", dtype=str)
 
                     if {"Name", "Vorname"}.issubset(df_mitarbeiter.columns):
