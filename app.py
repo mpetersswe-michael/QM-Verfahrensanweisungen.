@@ -1,56 +1,43 @@
-import pandas as pd
 import streamlit as st
-import os   # nur nötig, wenn du auch os.getcwd() oder os.listdir() nutzen willst
-import streamlit_authenticator as stauth
+import pandas as pd
 
-# CSV laden – hier mit Semikolon als Trenner
-users_df = pd.read_csv("users.csv", sep=";", dtype=str)
-
-# Debug-Ausgaben
-st.write("📂 Arbeitsordner:", os.getcwd())
-st.write("📄 Dateien im Ordner:", os.listdir())
-st.write("🔑 Spalten:", users_df.columns.tolist())
-
-
-# --------------------------
-# Authenticator Setup
-# --------------------------
+# CSV laden
 try:
-    # Trenner automatisch erkennen (Komma oder Semikolon)
     with open("users.csv", "r", encoding="utf-8") as f:
         first_line = f.readline()
         sep = ";" if ";" in first_line else ","
     users_df = pd.read_csv("users.csv", sep=sep, dtype=str)
-    users_df.columns = users_df.columns.str.strip()  # Spaltennamen säubern
+    users_df.columns = users_df.columns.str.strip()
 except FileNotFoundError:
-    st.error("❌ Datei 'users.csv' nicht gefunden. Stelle sicher, dass sie im gleichen Ordner wie 'app.py' liegt.")
+    st.error("❌ Datei 'users.csv' nicht gefunden.")
     st.stop()
 except Exception as e:
     st.error(f"❌ Fehler beim Laden der Datei 'users.csv': {e}")
     st.stop()
 
-# Debug-Ausgabe (optional)
-st.write("📄 Erkannte Spalten:", users_df.columns.tolist())
+# Login-Formular
+st.markdown("## 🔒 Login")
+input_user = st.text_input("Username")
+input_pass = st.text_input("Password", type="password")
+login_button = st.button("Login")
 
-# Passwörter beim Einlesen hashen (nur im Speicher, CSV bleibt Klartext)
-users_df["password"] = users_df["password"].apply(lambda pw: stauth.Hasher([pw]).generate()[0])
+if login_button:
+    match = users_df[
+        (users_df["username"] == input_user) &
+        (users_df["password"] == input_pass)
+    ]
+    if not match.empty:
+        st.success(f"✅ Eingeloggt als {input_user}")
+        st.session_state.logged_in = True
+        st.session_state.username = input_user
+        st.session_state.role = match.iloc[0]["role"]
+    else:
+        st.error("❌ Login fehlgeschlagen. Bitte prüfen Sie Ihre Eingaben.")
 
-# Credentials aufbauen
-credentials = {"usernames": {}}
-for _, row in users_df.iterrows():
-    credentials["usernames"][row["username"]] = {
-        "name": row["username"],       # optional für Anzeige
-        "password": row["password"],   # jetzt HASH
-        "role": row["role"]
-    }
-
-authenticator = stauth.Authenticate(
-    credentials,
-    "va_app_cookie",
-    "secret_key",
-    cookie_expiry_days=30
-)
-
+# Hinweis für andere Tabs
+if not st.session_state.get("logged_in"):
+    st.warning("🔒 Nicht eingeloggt. Bitte zuerst im Tab Login anmelden.")
+    st.stop()
 
 # --------------------------
 # Tabs
