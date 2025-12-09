@@ -1,20 +1,32 @@
-# --------------------------
-# Imports
-# --------------------------
-import os
-import re
-import io
-import datetime as dt
-from zoneinfo import ZoneInfo
-import pandas as pd
 import streamlit as st
-from fpdf import FPDF  
-import streamlit_authenticator as stauth   # <--- NEU
+import streamlit_authenticator as stauth
 
-st.set_page_config(
-    page_title="Verfahrensanweisungen (Auszug aus dem QMH)",
-    page_icon="📘",
-    layout="wide"
+# Dummy-Credentials
+credentials = {
+    "usernames": {
+        "admin": {"password": "admin123", "role": "admin"},
+        "user": {"password": "user123", "role": "user"}
+    }
+}
+
+authenticator = stauth.Authenticate(
+    credentials,
+    "cookie_name",
+    "secret_key",
+    cookie_expiry_days=30
+)
+
+st.title("Login-Test")
+
+name, authentication_status, username = authenticator.login("Login", "main")
+
+if authentication_status:
+    st.success(f"Eingeloggt als {username} ({credentials['usernames'][username]['role']})")
+elif authentication_status is False:
+    st.error("Login fehlgeschlagen")
+else:
+    st.info("Bitte einloggen")
+
 )
 
 # --------------------------
