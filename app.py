@@ -1,7 +1,10 @@
-# --------------------------
+# -------------------------- 
 # Imports
 # --------------------------
 import os
+st.write("Arbeitsordner:", os.getcwd())
+st.write("Dateien im Ordner:", os.listdir())
+
 import re
 import io
 import datetime as dt
