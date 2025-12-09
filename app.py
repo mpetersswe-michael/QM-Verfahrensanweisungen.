@@ -45,25 +45,6 @@ if not st.session_state.get("logged_in"):
 tabs = st.tabs(["Login", "Verfahrensanweisungen", "Lesebestätigung", "Mitarbeiter"])
 
 # --------------------------
-# Login-Block
-# --------------------------
-with tabs[0]:
-    st.markdown("## 🔒 Login")
-    # Wichtig: location benannt übergeben
-    name, authentication_status, username = authenticator.login("Login", location="main")
-
-    if authentication_status:
-        st.session_state.logged_in = True
-        st.session_state.username = username
-        st.session_state.role = credentials["usernames"][username]["role"]
-        st.success(f"✅ Eingeloggt als {username} ({st.session_state.role})")
-    elif authentication_status is False:
-        st.error("❌ Login fehlgeschlagen")
-    else:
-        st.info("Bitte einloggen")
-
-
-# --------------------------
 # Tab 1: Verfahrensanweisungen
 # --------------------------
 DATA_FILE_QM = "qm_verfahrensanweisungen.csv"
