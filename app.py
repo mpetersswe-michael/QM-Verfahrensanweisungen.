@@ -73,7 +73,24 @@ if "username" not in st.session_state:
 # --------------------------
 # Authenticator Setup
 # --------------------------
-users_df = pd.read_csv("users.csv", sep="\t", dtype=str)
+import pandas as pd
+import streamlit as st
+import streamlit_authenticator as stauth
+
+try:
+    # Lies die Datei exakt aus deinem Pfad
+    users_df = pd.read_csv(
+        r"C:\Users\Nutzer\OneDrive\Dokumente\va_app\users.csv",
+        sep="\t",
+        dtype=str
+    )
+except FileNotFoundError:
+    st.error("❌ Datei 'users.csv' nicht gefunden unter C:\\Users\\Nutzer\\OneDrive\\Dokumente\\va_app\\")
+    st.stop()
+except Exception as e:
+    st.error(f"❌ Fehler beim Laden der Datei 'users.csv': {e}")
+    st.stop()
+
 credentials = {"usernames": {}}
 for _, row in users_df.iterrows():
     credentials["usernames"][row["username"]] = {
@@ -87,6 +104,23 @@ authenticator = stauth.Authenticate(
     "secret_key",
     cookie_expiry_days=30
 )
+
+# --------------------------
+# Login-Block
+# --------------------------
+st.title("🔒 Login")
+
+name, authentication_status, username = authenticator.login("Login", "main")
+
+if authentication_status:
+    st.session_state.logged_in = True
+    st.session_state.username = username
+    st.session_state.role = credentials["usernames"][username]["role"]
+    st.success(f"✅ Eingeloggt als {username} ({st.session_state.role})")
+elif authentication_status is False:
+    st.error("❌ Login fehlgeschlagen")
+else:
+    st.info("Bitte einloggen")
 
 # --------------------------
 # Tabs rollenbasiert anzeigen
@@ -105,26 +139,7 @@ else:
         "System & Login",
         "Lesebestätigung"
     ])
-
-# --------------------------
-# Tab 0: Login
-# --------------------------
-with tabs[0]:
-    st.markdown("## 🔒 Login")
-
-    name, authentication_status, username = authenticator.login("Login", "main")
-
-    if authentication_status:
-        st.session_state.logged_in = True
-        st.session_state.username = username
-        st.session_state.role = credentials["usernames"][username]["role"]
-        st.success(f"✅ Eingeloggt als {username} ({st.session_state.role})")
-    elif authentication_status is False:
-        st.error("❌ Login fehlgeschlagen")
-    else:
-        st.info("Bitte einloggen")
-
-# --------------------------
+# -------------------------
 # Tab 1: Verfahrensanweisungen
 # --------------------------
 if st.session_state.get("logged_in", False) and st.session_state.role == "admin":
