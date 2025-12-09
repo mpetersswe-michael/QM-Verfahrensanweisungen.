@@ -16,7 +16,8 @@ st.write("📄 Dateien im Ordner:", os.listdir())
 # Authenticator Setup
 # --------------------------
 try:
-    users_df = pd.read_csv("users.csv", sep="\t", dtype=str)
+   users_df = pd.read_csv("users.csv", sep=",", dtype=str)
+
 except FileNotFoundError:
     st.error("❌ Datei 'users.csv' nicht gefunden. Stelle sicher, dass sie im gleichen Ordner wie 'streamlit_app.py' liegt.")
     st.stop()
