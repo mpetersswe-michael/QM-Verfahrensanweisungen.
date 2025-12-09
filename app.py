@@ -69,6 +69,7 @@ if "role" not in st.session_state:
     st.session_state.role = None
 if "username" not in st.session_state:
     st.session_state.username = None
+    
 # --------------------------
 # Authenticator Setup
 # --------------------------
@@ -115,6 +116,7 @@ elif authentication_status is False:
     st.error("❌ Login fehlgeschlagen")
 else:
     st.info("Bitte einloggen")
+
 
 
 # --------------------------
