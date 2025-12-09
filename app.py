@@ -69,7 +69,6 @@ if "role" not in st.session_state:
     st.session_state.role = None
 if "username" not in st.session_state:
     st.session_state.username = None
-
 # --------------------------
 # Authenticator Setup
 # --------------------------
@@ -78,10 +77,10 @@ import streamlit as st
 import streamlit_authenticator as stauth
 
 try:
-    # Lies die Datei exakt aus deinem Pfad (du bist im Ordner va_app)
+    # Lies die Datei exakt aus deinem Ordner (du bist bereits in va_app)
     users_df = pd.read_csv("users.csv", sep="\t", dtype=str)
 except FileNotFoundError:
-    st.error("❌ Datei 'users.csv' nicht gefunden. Bitte sicherstellen, dass sie im gleichen Ordner wie 'streamlit_app.py' liegt.")
+    st.error("❌ Datei 'users.csv' nicht gefunden. Stelle sicher, dass sie im gleichen Ordner wie 'streamlit_app.py' liegt.")
     st.stop()
 except Exception as e:
     st.error(f"❌ Fehler beim Laden der Datei 'users.csv': {e}")
@@ -117,6 +116,7 @@ elif authentication_status is False:
     st.error("❌ Login fehlgeschlagen")
 else:
     st.info("Bitte einloggen")
+
 
 # --------------------------
 # Tabs rollenbasiert anzeigen
