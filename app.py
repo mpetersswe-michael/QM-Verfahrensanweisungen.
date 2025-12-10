@@ -292,30 +292,36 @@ with tabs[3]:
 # Tab 4: Berechtigungen & Rollen
 # --------------------------
 
+DATA_FILE_USERS = "users.csv"
+
 with tabs[4]:
     if st.session_state.get("logged_in", False) and st.session_state.get("role") == "admin":
         st.markdown("## 🛡️ Berechtigungen & Rollen")
         st.info("Hier kannst du die Benutzerdatei (`users.csv`) hochladen und prüfen.")
 
-        uploaded_users = st.file_uploader("📤 Benutzerdatei hochladen", type="csv", key="upload_users_tab4")
+        uploaded_users = st.file_uploader("📤 Benutzerdatei hochladen", type=["csv"], key="upload_users_tab4")
 
         users_df = None
-        if uploaded_users:
+        if uploaded_users is not None:
             try:
-                users_df = pd.read_csv(uploaded_users, dtype=str)
-                st.success("✅ Datei erfolgreich hochgeladen.")
+                # Datei einlesen und sofort speichern
+                users_df = pd.read_csv(uploaded_users, sep=";", encoding="utf-8-sig", dtype=str)
+                users_df.to_csv(DATA_FILE_USERS, sep=";", index=False, encoding="utf-8-sig")
+                st.success("✅ Benutzerdatei gespeichert.")
             except Exception as e:
                 st.error(f"❌ Fehler beim Einlesen der Datei: {e}")
-        elif os.path.exists("users.csv"):
+
+        # Falls bereits gespeichert, erneut laden
+        if os.path.exists(DATA_FILE_USERS):
             try:
-                users_df = pd.read_csv("users.csv", dtype=str)
-                st.info("ℹ️ Lokale Datei 'users.csv' wurde verwendet.")
+                users_df = pd.read_csv(DATA_FILE_USERS, sep=";", encoding="utf-8-sig", dtype=str)
+                st.dataframe(users_df)
             except Exception as e:
                 st.error(f"❌ Fehler beim Einlesen der lokalen Datei: {e}")
         else:
-            st.warning("⚠️ Keine Benutzerdatei gefunden.")
+            st.info("Keine Benutzerdatei vorhanden.")
 
-        # Spaltenprüfung und Vorschau
+        # Spaltenprüfung
         if users_df is not None:
             users_df.columns = [str(c).strip() for c in users_df.columns]
             expected_cols = {"username", "password", "role"}
@@ -330,6 +336,7 @@ with tabs[4]:
                 st.dataframe(users_df)
     else:
         st.warning("🔒 Nur Admins haben Zugriff auf diesen Bereich.")
+
 
 
 # --------------------------
