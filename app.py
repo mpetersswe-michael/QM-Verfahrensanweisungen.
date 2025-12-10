@@ -420,12 +420,13 @@ with st.sidebar:
                         file_exists = os.path.exists(path)
                         file_empty = (not file_exists) or (os.path.getsize(path) == 0)
 
+                        # Korrigierte Speicherlogik
                         df_new.to_csv(
                             path,
                             sep=";",
                             index=False,
                             mode="a" if file_exists and not file_empty else "w",
-                            header=True if file_empty else False,
+                            header=not file_exists or file_empty,
                             encoding="utf-8-sig"
                         )
 
@@ -483,5 +484,22 @@ with st.sidebar:
                         offen = zielgruppe_set - gelesen_set
                         if offen:
                             st.info("Noch nicht gelesen: " + ", ".join(sorted(offen)))
+
+                        # Admin-Löschfunktion
+                        if st.session_state.get("role") == "admin":
+                            st.markdown("### 🗑️ Einträge verwalten")
+                            st.dataframe(df_kenntnis)
+                            index_to_delete = st.number_input(
+                                "Zeilenindex zum Löschen auswählen",
+                                min_value=0,
+                                max_value=len(df_kenntnis)-1,
+                                step=1,
+                                key="delete_index"
+                            )
+                            if st.button("Eintrag löschen", key="delete_button"):
+                                df_kenntnis = df_kenntnis.drop(index_to_delete).reset_index(drop=True)
+                                df_kenntnis.to_csv("lesebestätigung.csv", sep=";", index=False, encoding="utf-8-sig")
+                                st.success(f"Zeile {index_to_delete} gelöscht.")
+
                 except Exception as e:
                     st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
