@@ -184,10 +184,13 @@ with tabs[0]:
 # --------------------------
 with tabs[1]:
     st.markdown("## 📘 Verfahrensanweisungen")
+
     if not st.session_state.get("logged_in"):
         st.warning("Bitte zuerst im Tab 'Login' anmelden.")
+
     elif st.session_state.role != "admin":
         st.warning("🔒 Kein Zugriff für Benutzerrolle. Sichtbar zur Orientierung.")
+
     else:
         va_nr_input = st.text_input("VA-Nummer")
         titel_input = st.text_input("Titel")
@@ -213,11 +216,13 @@ with tabs[1]:
                 "Kommentar": kommentar_input.strip(),
                 "Mitgeltende Unterlagen": mitgeltende_input.strip()
             }])
+
             if os.path.exists(DATA_FILE_QM):
                 df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
                 df_va = pd.concat([df_va, neuer_eintrag], ignore_index=True)
             else:
                 df_va = neuer_eintrag
+
             df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
             st.success(f"✅ VA {va_nr_input} gespeichert.")
 
@@ -231,11 +236,13 @@ with tabs[1]:
                 mime="application/pdf"
             )
 
-     if os.path.exists(DATA_FILE_QM):
+        # VA-Tabelle anzeigen
+        if os.path.exists(DATA_FILE_QM):
             df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
             st.dataframe(df_va)
-     else:
+        else:
             st.info("Noch keine Verfahrensanweisungen gespeichert.")
+
 
 
 
