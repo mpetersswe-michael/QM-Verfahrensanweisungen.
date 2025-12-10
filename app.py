@@ -121,7 +121,7 @@ if "selected_va" not in st.session_state:
 # --------------------------
 # Tabs
 # --------------------------
-tabs = st.tabs(["System & Login", "Verfahrensanweisungen", "Lesebestätigung", "Mitarbeiter"])
+tabs = st.tabs(["System & Login", "Verfahrensanweisungen", "Lesebestätigung", "Mitarbeiter","Berechtigungen & Rollen"])
 
 # Prüfung der Benutzerdatei users.csv
 def check_users_csv():
@@ -311,6 +311,52 @@ with tabs[3]:
             st.dataframe(df_ma)
         else:
             st.info("Keine Mitarbeiterliste vorhanden.")
+
+# --------------------------
+# Tab 4: Berechtigungen & Rollen
+# --------------------------
+
+with tabs[4]:
+    if st.session_state.get("logged_in", False) and st.session_state.get("role") == "admin":
+        st.markdown("## 🛡️ Berechtigungen & Rollen")
+        st.info("Hier kannst du die Benutzerdatei (`users.csv`) hochladen und prüfen.")
+
+        uploaded_users = st.file_uploader("📤 Benutzerdatei hochladen", type="csv", key="upload_users_tab4")
+
+        users_df = None
+        if uploaded_users:
+            try:
+                users_df = pd.read_csv(uploaded_users, sep=";", dtype=str)
+                st.success("✅ Datei erfolgreich hochgeladen.")
+            except Exception as e:
+                st.error(f"❌ Fehler beim Einlesen der Datei: {e}")
+        elif os.path.exists("users.csv"):
+            try:
+                users_df = pd.read_csv("users.csv", sep=";", dtype=str)
+                st.info("ℹ️ Lokale Datei 'users.csv' wurde verwendet.")
+            except Exception as e:
+                st.error(f"❌ Fehler beim Einlesen der lokalen Datei: {e}")
+        else:
+            st.warning("⚠️ Keine Benutzerdatei gefunden.")
+
+        # Vorschau und Spaltenprüfung
+        if users_df is not None:
+            expected_cols = {"username", "password", "role"}
+            actual_cols = set(users_df.columns.str.strip().str.lower())
+            missing = expected_cols - actual_cols
+
+            if missing:
+                st.error(f"❌ Spalten fehlen: {', '.join(missing)}")
+                st.info(f"Gefundene Spalten: {', '.join(users_df.columns)}")
+            else:
+                st.success("✅ Benutzerdatei ist vollständig und korrekt.")
+                st.dataframe(users_df)
+    else:
+        st.warning("🔒 Nur Admins haben Zugriff auf diesen Bereich.")
+
+
+
+
 
 # --------------------------
 # Sidebar
