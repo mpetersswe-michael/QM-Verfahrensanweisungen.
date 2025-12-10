@@ -312,10 +312,6 @@ with tabs[3]:
         else:
             st.info("Keine Mitarbeiterliste vorhanden.")
 
-# --------------------------
-# Tab 4: Berechtigungen & Rollen
-# --------------------------
-
 with tabs[4]:
     if st.session_state.get("logged_in", False) and st.session_state.get("role") == "admin":
         st.markdown("## 🛡️ Berechtigungen & Rollen")
@@ -342,9 +338,9 @@ with tabs[4]:
         # Vorschau und Spaltenprüfung
         if users_df is not None:
             expected_cols = {"username", "password", "role"}
-            actual_cols = set(users_df.columns.str.strip().str.lower())
-            missing = expected_cols - actual_cols
+            actual_cols = set([col.strip().lower() for col in users_df.columns])
 
+            missing = expected_cols - actual_cols
             if missing:
                 st.error(f"❌ Spalten fehlen: {', '.join(missing)}")
                 st.info(f"Gefundene Spalten: {', '.join(users_df.columns)}")
@@ -353,10 +349,6 @@ with tabs[4]:
                 st.dataframe(users_df)
     else:
         st.warning("🔒 Nur Admins haben Zugriff auf diesen Bereich.")
-
-
-
-
 
 # --------------------------
 # Sidebar
