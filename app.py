@@ -145,40 +145,19 @@ def check_users_csv():
         st.error(f"❌ Fehler beim Einlesen der Datei 'users.csv': {e}")
         return False
 
+# --------------------------
+# Tab 0 System & Login
+# --------------------------
 
-# --------------------------
-# Tab 0: Login
-# --------------------------
 with tabs[0]:
     st.markdown("## 🔒 Login")
 
-    # Upload-Funktion für Benutzerdatei
-    uploaded_file = st.file_uploader("📤 Benutzerdatei (`users.csv`) hochladen", type="csv", key="users_upload")
-
-    # Datei einlesen: entweder hochgeladen oder lokal
-    users_df = None
-    if uploaded_file:
-        try:
-            users_df = pd.read_csv(uploaded_file, sep=";", dtype=str)
-            st.success("✅ Hochgeladene Datei erfolgreich eingelesen.")
-        except Exception as e:
-            st.error(f"❌ Fehler beim Einlesen der hochgeladenen Datei: {e}")
-    elif os.path.exists("users.csv"):
-        try:
-            users_df = pd.read_csv("users.csv", sep=";", dtype=str)
-            st.info("ℹ️ Lokale Datei 'users.csv' wurde verwendet.")
-        except Exception as e:
-            st.error(f"❌ Fehler beim Einlesen der lokalen Datei: {e}")
-    else:
-        st.warning("⚠️ Keine Benutzerdatei gefunden. Bitte 'users.csv' hochladen oder lokal bereitstellen.")
-
-    # Login-Funktion nur wenn Datei erfolgreich geladen wurde
-    if users_df is not None and not st.session_state.get("logged_in", False):
+    if not st.session_state.get("logged_in", False):
         input_user = st.text_input("Benutzername")
         input_pass = st.text_input("Passwort", type="password")
         if st.button("Login"):
             try:
-                # Whitespace entfernen zur Sicherheit
+                users_df = pd.read_csv("users.csv", sep=";", dtype=str)
                 users_df["username"] = users_df["username"].str.strip()
                 users_df["password"] = users_df["password"].str.strip()
                 input_user = input_user.strip()
@@ -193,19 +172,14 @@ with tabs[0]:
                     st.session_state.username = input_user
                     st.session_state.role = match.iloc[0]["role"]
                     st.success(f"✅ Eingeloggt als {input_user} (Rolle: {st.session_state.role})")
-                    st.experimental_rerun()
+                    st.rerun()
                 else:
                     st.error("❌ Login fehlgeschlagen.")
             except Exception as e:
                 st.error(f"Fehler beim Login-Vorgang: {e}")
-
-    elif st.session_state.get("logged_in", False):
+    else:
         st.info("Du bist bereits eingeloggt. Logout über die Sidebar.")
 
-        # Vorschau nur für Admins
-        if st.session_state.get("role") == "admin" and users_df is not None:
-            st.markdown("### 👥 Benutzerdatei-Vorschau (`users.csv`)")
-            st.dataframe(users_df)
 
 
 # --------------------------
@@ -312,6 +286,11 @@ with tabs[3]:
         else:
             st.info("Keine Mitarbeiterliste vorhanden.")
 
+
+# --------------------------
+# Tab 4:Berechtigungen & Rollen
+# --------------------------
+
 with tabs[4]:
     if st.session_state.get("logged_in", False) and st.session_state.get("role") == "admin":
         st.markdown("## 🛡️ Berechtigungen & Rollen")
@@ -335,11 +314,9 @@ with tabs[4]:
         else:
             st.warning("⚠️ Keine Benutzerdatei gefunden.")
 
-        # Vorschau und Spaltenprüfung
         if users_df is not None:
             expected_cols = {"username", "password", "role"}
             actual_cols = set([col.strip().lower() for col in users_df.columns])
-
             missing = expected_cols - actual_cols
             if missing:
                 st.error(f"❌ Spalten fehlen: {', '.join(missing)}")
@@ -350,18 +327,24 @@ with tabs[4]:
     else:
         st.warning("🔒 Nur Admins haben Zugriff auf diesen Bereich.")
 
+
 # --------------------------
 # Sidebar
 # -------------------------
 
+# --------------------------
+# Sidebar
+# --------------------------
 with st.sidebar:
     if st.session_state.get("logged_in", False):
         st.success("✅ Eingeloggt")
 
-        # Logout
+        # Logout immer verfügbar
         if st.button("Logout", key="logout_sidebar"):
             st.session_state.logged_in = False
             st.session_state.selected_va = None
+            st.session_state.username = None
+            st.session_state.role = None
             st.rerun()
 
         # VA-Auswahl
