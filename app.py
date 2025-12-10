@@ -338,6 +338,9 @@ with tabs[4]:
         st.warning("🔒 Nur Admins haben Zugriff auf diesen Bereich.")
 
 
+# --------------------------
+# Tab : Sidebar 
+# --------------------------
 
 with st.sidebar:
     if st.session_state.get("logged_in", False):
@@ -430,12 +433,13 @@ with st.sidebar:
                     else:
                         st.error("Bitte Name eingeben.")
 
-                # Fortschrittsanzeige direkt darunter
+                # Fortschrittsanzeige direkt darunter (Variante B: Namen normalisieren)
                 try:
                     if os.path.exists("lesebestätigung.csv") and os.path.exists("mitarbeiter.csv"):
                         df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig", dtype=str)
                         df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig", dtype=str)
 
+                        # Mitarbeiter-Namen im Format "Vorname Name"
                         if {"Name", "Vorname"}.issubset(df_mitarbeiter.columns):
                             df_mitarbeiter["Name_full"] = df_mitarbeiter["Vorname"].str.strip() + " " + df_mitarbeiter["Name"].str.strip()
                         else:
@@ -457,8 +461,17 @@ with st.sidebar:
                             st.warning("Spalte 'VA_Nr' fehlt in lesebestätigung.csv.")
                             raise ValueError("Spalte 'VA_Nr' fehlt")
 
-                        gelesen_set = set(gelesen)
+                        # Variante B: Namen aus lesebestätigung ins Format "Vorname Name" drehen
+                        def normalize_name(name):
+                            if "," in name:
+                                nach, vor = [p.strip() for p in name.split(",", 1)]
+                                return f"{vor} {nach}"
+                            return name.strip()
+
+                        gelesen_norm = [normalize_name(n) for n in gelesen]
+                        gelesen_set = set(gelesen_norm)
                         zielgruppe_set = set(zielgruppe)
+
                         gelesen_count = len(gelesen_set & zielgruppe_set)
                         fortschritt = gelesen_count / gesamt if gesamt > 0 else 0.0
 
