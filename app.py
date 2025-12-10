@@ -441,7 +441,6 @@ with st.sidebar:
                         file_exists = os.path.exists(path)
                         file_empty = (not file_exists) or (os.path.getsize(path) == 0)
 
-                        # Korrigierte Speicherlogik
                         df_new.to_csv(
                             path,
                             sep=";",
@@ -455,18 +454,16 @@ with st.sidebar:
                     else:
                         st.error("Bitte Name eingeben.")
 
-                # Fortschrittsanzeige direkt darunter (Variante B: Namen normalisieren)
+                # Fortschrittsanzeige (nur Anzeige)
                 try:
                     if os.path.exists("lesebestätigung.csv") and os.path.exists("mitarbeiter.csv"):
                         df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig", dtype=str)
                         df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig", dtype=str)
 
-                        # Mitarbeiter-Namen im Format "Vorname Name"
                         if {"Name", "Vorname"}.issubset(df_mitarbeiter.columns):
                             df_mitarbeiter["Name_full"] = df_mitarbeiter["Vorname"].str.strip() + " " + df_mitarbeiter["Name"].str.strip()
                         else:
-                            st.warning("Spalten 'Name' und 'Vorname' fehlen in mitarbeiter.csv.")
-                            raise ValueError("Spalten fehlen")
+                            raise ValueError("Spalten 'Name' und 'Vorname' fehlen")
 
                         if "VA_Nr" in df_mitarbeiter.columns:
                             df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
@@ -480,10 +477,8 @@ with st.sidebar:
                             df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
                             gelesen = df_kenntnis[df_kenntnis["VA_Nr_norm"] == va_nummer]["Name"].dropna().unique()
                         else:
-                            st.warning("Spalte 'VA_Nr' fehlt in lesebestätigung.csv.")
                             raise ValueError("Spalte 'VA_Nr' fehlt")
 
-                        # Variante B: Namen aus lesebestätigung ins Format "Vorname Name" drehen
                         def normalize_name(name):
                             if "," in name:
                                 nach, vor = [p.strip() for p in name.split(",", 1)]
@@ -501,26 +496,6 @@ with st.sidebar:
                         st.markdown("### 📊 Lesefortschritt")
                         st.progress(fortschritt)
                         st.caption(f"{gelesen_count} von {gesamt} Mitarbeiter haben bestätigt.")
-
-                        offen = zielgruppe_set - gelesen_set
-                        if offen:
-                            st.info("Noch nicht gelesen: " + ", ".join(sorted(offen)))
-
-                        # Admin-Löschfunktion
-                        if st.session_state.get("role") == "admin":
-                            st.markdown("### 🗑️ Einträge verwalten")
-                            st.dataframe(df_kenntnis)
-                            index_to_delete = st.number_input(
-                                "Zeilenindex zum Löschen auswählen",
-                                min_value=0,
-                                max_value=len(df_kenntnis)-1,
-                                step=1,
-                                key="delete_index"
-                            )
-                            if st.button("Eintrag löschen", key="delete_button"):
-                                df_kenntnis = df_kenntnis.drop(index_to_delete).reset_index(drop=True)
-                                df_kenntnis.to_csv("lesebestätigung.csv", sep=";", index=False, encoding="utf-8-sig")
-                                st.success(f"Zeile {index_to_delete} gelöscht.")
-
                 except Exception as e:
                     st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
+
