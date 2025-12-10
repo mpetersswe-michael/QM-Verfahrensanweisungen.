@@ -297,15 +297,12 @@ with tabs[4]:
         st.markdown("## 🛡️ Berechtigungen & Rollen")
         st.info("Hier kannst du die Benutzerdatei (`users.csv`) hochladen und prüfen.")
 
-        # Upload-Feld
         uploaded_users = st.file_uploader("📤 Benutzerdatei hochladen", type="csv", key="upload_users_tab4")
 
         users_df = None
         if uploaded_users:
             try:
-                # Einlesen direkt aus Dateiobjekt, mit Semikolon
-                content = uploaded_users.getvalue().decode("utf-8")
-                users_df = pd.read_csv(io.StringIO(content), sep=";", dtype=str)
+                users_df = pd.read_csv(uploaded_users, sep=";", dtype=str)
                 st.success("✅ Datei erfolgreich hochgeladen.")
             except Exception as e:
                 st.error(f"❌ Fehler beim Einlesen der Datei: {e}")
@@ -338,11 +335,6 @@ with tabs[4]:
     else:
         st.warning("🔒 Nur Admins haben Zugriff auf diesen Bereich.")
 
-
-
-# --------------------------
-# Sidebar
-# -------------------------
 
 # --------------------------
 # Sidebar
