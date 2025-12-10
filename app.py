@@ -292,6 +292,8 @@ with tabs[3]:
 # Tab 4:Berechtigungen & Rollen
 # --------------------------
 
+import io
+
 with tabs[4]:
     if st.session_state.get("logged_in", False) and st.session_state.get("role") == "admin":
         st.markdown("## 🛡️ Berechtigungen & Rollen")
@@ -301,76 +303,43 @@ with tabs[4]:
 
         users_df = None
 
-        def read_users_csv(fileobj):
-            # 1) Standard: Semikolon + utf-8-sig (BOM wird entfernt)
-            try:
-                df = pd.read_csv(fileobj, sep=";", dtype=str, encoding="utf-8-sig")
-            except Exception:
-                # 2) Fallback: Python-Engine (robuster bei Sonderfällen)
-                fileobj.seek(0)
-                df = pd.read_csv(fileobj, sep=";", dtype=str, encoding="utf-8-sig", engine="python")
-
-            # BOM im ersten Spaltennamen entfernen (falls vorhanden)
-            cols = [str(c).replace("\ufeff", "") for c in df.columns]
-            df.columns = cols
-            return df
-
-        if uploaded_users:
-            try:
-                users_df = read_users_csv(uploaded_users)
+        try:
+            if uploaded_users:
+                # Einmaliges, sicheres Einlesen (kein erneutes Lesen, kein Pointer-Chaos)
+                content = uploaded_users.getvalue().decode("utf-8-sig")
+                users_df = pd.read_csv(io.StringIO(content), sep=";", dtype=str)
                 st.success("✅ Datei erfolgreich hochgeladen.")
-            except Exception as e:
-                st.error(f"❌ Fehler beim Einlesen der Datei: {e}")
-        elif os.path.exists("users.csv"):
-            try:
-                with open("users.csv", "rb") as f:
-                    users_df = read_users_csv(f)
+            elif os.path.exists("users.csv"):
+                # Lokale Datei: direkt, mit BOM-Schutz
+                users_df = pd.read_csv("users.csv", sep=";", dtype=str, encoding="utf-8-sig")
                 st.info("ℹ️ Lokale Datei 'users.csv' wurde verwendet.")
-            except Exception as e:
-                st.error(f"❌ Fehler beim Einlesen der lokalen Datei: {e}")
-        else:
-            st.warning("⚠️ Keine Benutzerdatei gefunden.")
-
-        # Vorschau und Spaltenprüfung (robust, inkl. Diagnose bei Einzelspalte)
-        if users_df is not None:
-            expected_cols = {"username", "password", "role"}
-            actual_cols = set([str(col).strip().lower() for col in users_df.columns])
-
-            # Diagnose: Header als eine einzige Spalte eingelesen?
-            if len(users_df.columns) == 1:
-                st.warning("⚠️ Header wurde als eine einzelne Spalte erkannt. Prüfe Trennzeichen und BOM.")
-                st.info(f"Gefundener Header: {users_df.columns[0]}")
-
-                # Wenn der eine Header Semikolons enthält, versuche Neuaufbau der Spaltennamen
-                one = str(users_df.columns[0])
-                if ";" in one:
-                    parts = [p.strip().lower() for p in one.split(";")]
-                    if set(parts) == expected_cols:
-                        # Spalten richtig rekonstruieren
-                        users_df = pd.read_csv(
-                            uploaded_users if uploaded_users else "users.csv",
-                            sep=";",
-                            dtype=str,
-                            encoding="utf-8-sig",
-                            header=0
-                        )
-                        users_df.columns = [c.replace("\ufeff", "") for c in users_df.columns]
-                        actual_cols = set([c.strip().lower() for c in users_df.columns])
-                        st.success("✅ Spalten aus Header korrekt rekonstruiert.")
-                    else:
-                        st.error("❌ Header enthält unerwartete Bezeichnungen.")
-
-            missing = expected_cols - actual_cols
-            if missing:
-                st.error(f"❌ Spalten fehlen: {', '.join(sorted(missing))}")
-                st.info(f"Gefundene Spalten: {', '.join(users_df.columns)}")
             else:
-                st.success("✅ Benutzerdatei ist vollständig und korrekt.")
-                st.dataframe(users_df)
+                st.warning("⚠️ Keine Benutzerdatei gefunden.")
+        except Exception as e:
+            st.error(f"❌ Fehler beim Einlesen der Datei: {e}")
+
+        # Vorschau und Spaltenprüfung (einfach, korrekt)
+        if users_df is not None:
+            # Spaltennamen bereinigen (ohne .str auf Index)
+            users_df.columns = [str(c).replace("\ufeff", "").strip() for c in users_df.columns]
+
+            expected_cols = {"username", "password", "role"}
+            actual_cols = set([c.lower() for c in users_df.columns])
+
+            if len(users_df.columns) == 1:
+                # Präzise Diagnose, keine Experimente
+                st.error("❌ Datei wurde als eine einzige Spalte eingelesen. Bitte prüfen: Semikolon als Trennzeichen und UTF-8 (mit/ohne BOM).")
+                st.info(f"Erkannter Header: {users_df.columns[0]}")
+            else:
+                missing = expected_cols - actual_cols
+                if missing:
+                    st.error(f"❌ Spalten fehlen: {', '.join(sorted(missing))}")
+                    st.info(f"Gefundene Spalten: {', '.join(users_df.columns)}")
+                else:
+                    st.success("✅ Benutzerdatei ist vollständig und korrekt.")
+                    st.dataframe(users_df)
     else:
         st.warning("🔒 Nur Admins haben Zugriff auf diesen Bereich.")
-
-
 
 # --------------------------
 # Sidebar
