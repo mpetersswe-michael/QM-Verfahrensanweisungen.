@@ -23,13 +23,9 @@ st.set_page_config(
 DATA_FILE_QM = "qm_verfahrensanweisungen.csv"
 DATA_FILE_KENNTNIS = "lesebestätigung.csv"
 DATA_FILE_MA = "mitarbeiter.csv"
-QM_COLUMNS = [
-    "VA_Nr", "Titel", "Kapitel", "Unterkapitel", "Revisionsstand",
-    "Ziel", "Geltungsbereich", "Vorgehensweise", "Kommentar", "Mitgeltende Unterlagen"
-]
 
 # --------------------------
-# Hilfsfunktionen
+# PDF-Hilfsfunktionen
 # --------------------------
 def norm_va(x):
     s = str(x).upper().replace(" ", "")
@@ -38,8 +34,75 @@ def norm_va(x):
         s = f"VA{int(m):03d}"
     return s
 
-def safe(text):
-    return str(text).encode("latin-1", "replace").decode("latin-1")
+def clean_text(text):
+    if text is None or str(text).strip() == "":
+        return "-"
+    return (
+        str(text)
+        .encode("latin-1", errors="ignore")
+        .decode("latin-1")
+        .replace("–", "-")
+        .replace("•", "*")
+        .replace("“", '"')
+        .replace("”", '"')
+        .replace("’", "'")
+        .replace("€", "EUR")
+        .replace("ä", "ae")
+        .replace("ö", "oe")
+        .replace("ü", "ue")
+        .replace("ß", "ss")
+    )
+
+class CustomPDF(FPDF):
+    def header(self):
+        self.set_font("Arial", size=9)
+        self.cell(0, 10, clean_text("Pflegedienst: xy"), ln=0, align="L")
+        self.cell(0, 10, clean_text(f"Verfahrensanweisung Pflege, Kap. {getattr(self, 'unterkapitel', '')}"), ln=0, align="R")
+        self.ln(15)
+
+    def footer(self):
+        self.set_y(-15)
+        self.set_font("Arial", size=8)
+        self.cell(60, 10, clean_text(f"{getattr(self, 'va_nr', '')} – {getattr(self, 'va_titel', '')}"), ln=0)
+        self.set_x((210 - 90) / 2)
+        self.cell(90, 10, clean_text("Erstellt von: Peters, Michael – Qualitätsbeauftragter"), align="C")
+        self.set_x(-30)
+        self.cell(0, 10, f"Seite {self.page_no()}", align="R")
+
+def export_va_to_pdf(row):
+    os.makedirs("va_pdf", exist_ok=True)
+    pdf = CustomPDF()
+    pdf.alias_nb_pages()
+    pdf.va_nr = f"{row.get('VA_Nr', '')}"
+    pdf.va_titel = f"{row.get('Titel', '')}"
+    pdf.unterkapitel = f"{row.get('Unterkapitel', '')}"
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, clean_text(f"QM-Verfahrensanweisung - {row.get('VA_Nr', '')}"), ln=True, align="C")
+    pdf.ln(5)
+
+    def add_section(title, content):
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 8, clean_text(title), ln=True)
+        pdf.set_font("Arial", "", 12)
+        pdf.multi_cell(0, 8, clean_text(content))
+        pdf.ln(3)
+
+    fields = [
+        "Titel", "Kapitel", "Unterkapitel", "Revisionsstand",
+        "Geltungsbereich", "Ziel", "Vorgehensweise", "Kommentar", "Mitgeltende Unterlagen"
+    ]
+    for feld in fields:
+        add_section(feld, row.get(feld, ""))
+
+    pdf_bytes = pdf.output(dest="S").encode("latin-1")
+    va_nr = norm_va(row.get("VA_Nr", "VA000"))
+    pdf_path = f"va_pdf/{va_nr}.pdf"
+    with open(pdf_path, "wb") as f:
+        f.write(pdf_bytes)
+    return pdf_bytes, pdf_path
 
 # --------------------------
 # Session-Init
@@ -63,11 +126,10 @@ tabs = st.tabs(["System & Login", "Verfahrensanweisungen", "Lesebestätigung", "
 # --------------------------
 with tabs[0]:
     st.markdown("## 🔒 Login")
-
     if not st.session_state.get("logged_in", False):
-        input_user = st.text_input("Benutzername", key="login_user")
-        input_pass = st.text_input("Passwort", type="password", key="login_pw")
-        if st.button("Login", key="login_button"):
+        input_user = st.text_input("Benutzername")
+        input_pass = st.text_input("Passwort", type="password")
+        if st.button("Login"):
             try:
                 users_df = pd.read_csv("users.csv", sep=";", dtype=str)
                 match = users_df[
@@ -80,7 +142,7 @@ with tabs[0]:
                     st.session_state.role = match.iloc[0]["role"]
                     st.success(f"✅ Eingeloggt als {input_user} (Rolle: {st.session_state.role})")
                 else:
-                    st.error("❌ Login fehlgeschlagen. Bitte prüfen Sie Ihre Eingaben.")
+                    st.error("❌ Login fehlgeschlagen.")
             except Exception as e:
                 st.error(f"Fehler beim Einlesen der Benutzerdatei: {e}")
     else:
@@ -96,7 +158,6 @@ with tabs[1]:
     elif st.session_state.role != "admin":
         st.warning("🔒 Kein Zugriff für Benutzerrolle. Sichtbar zur Orientierung.")
     else:
-        # VA-Eingabe
         va_nr_input = st.text_input("VA-Nummer")
         titel_input = st.text_input("Titel")
         kapitel_input = st.text_input("Kapitel")
@@ -129,9 +190,19 @@ with tabs[1]:
             df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
             st.success(f"✅ VA {va_nr_input} gespeichert.")
 
+            # PDF erzeugen
+            row = neuer_eintrag.iloc[0].to_dict()
+            pdf_bytes, pdf_path = export_va_to_pdf(row)
+            st.download_button(
+                label=f"📄 PDF herunterladen: {norm_va(va_nr_input)}",
+                data=pdf_bytes,
+                file_name=f"{norm_va(va_nr_input)}.pdf",
+                mime="application/pdf"
+            )
+
         if os.path.exists(DATA_FILE_QM):
             df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
-            st.dataframe(df_va)
+                       st.dataframe(df_va)
         else:
             st.info("Noch keine Verfahrensanweisungen gespeichert.")
 
@@ -201,12 +272,51 @@ with st.sidebar:
                     unsafe_allow_html=True
                 )
 
+                # PDF-Download, falls vorhanden
+                pdf_name = f"{norm_va(va_nummer)}.pdf"
+                pdf_path = pathlib.Path("va_pdf") / pdf_name
+                if pdf_path.exists():
+                    with open(pdf_path, "rb") as f:
+                        st.download_button(
+                            label=f"📄 PDF öffnen: {pdf_name}",
+                            data=f.read(),
+                            file_name=pdf_name,
+                            mime="application/pdf"
+                        )
+
+                # Lesebestätigung
+                st.markdown("### Lesebestätigung")
+                name_sidebar = st.text_input("Name (Nachname, Vorname)")
+                if st.button("Bestätigen"):
+                    name_clean = re.sub(r"\s*,\s*", ",", name_sidebar.strip())
+                    if name_clean:
+                        zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
+                        eintrag = {"Name": name_clean, "VA_Nr": va_nummer, "Zeitpunkt": zeitpunkt}
+                        df_new = pd.DataFrame([eintrag])[["Name", "VA_Nr", "Zeitpunkt"]]
+
+                        path = DATA_FILE_KENNTNIS
+                        file_exists = os.path.exists(path)
+                        file_empty = (not file_exists) or (os.path.getsize(path) == 0)
+
+                        df_new.to_csv(
+                            path,
+                            sep=";",
+                            index=False,
+                            mode="a" if file_exists and not file_empty else "w",
+                            header=True if file_empty else False,
+                            encoding="utf-8-sig"
+                        )
+                        st.success(f"Bestätigung für {va_nummer} gespeichert.")
+                    else:
+                        st.error("Bitte Name eingeben.")
+
         if st.button("Logout"):
             st.session_state.logged_in = False
             st.session_state.selected_va = None
             st.rerun()
     else:
         st.warning("🔒 Nicht eingeloggt. Bitte zuerst im Tab **Login** anmelden.")
+
 
 
   
