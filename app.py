@@ -156,7 +156,7 @@ with tabs[0]:
         if st.button("Login"):
             try:
                 # Benutzerdatei mit Tabulator als Trenner einlesen
-                users_df = pd.read_csv("users.csvt", sep="\t", dtype=str)
+                users_df = pd.read_csv("users.csv", sep="\t", dtype=str)
 
                 match = users_df[
                     (users_df["username"] == input_user) &
