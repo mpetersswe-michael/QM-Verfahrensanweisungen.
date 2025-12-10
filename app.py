@@ -266,6 +266,27 @@ with tabs[2]:
         else:
             st.info("Noch keine Lesebestätigungen vorhanden.")
 
+        # Löschfunktion für Admins
+        if st.session_state.get("role") == "admin" and os.path.exists(DATA_FILE_KENNTNIS):
+            st.markdown("### 🗑️ Einträge verwalten")
+            try:
+                df_kenntnis = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
+                st.dataframe(df_kenntnis)
+
+                index_to_delete = st.number_input(
+                    "Zeilenindex zum Löschen auswählen",
+                    min_value=0,
+                    max_value=len(df_kenntnis)-1,
+                    step=1,
+                    key="delete_index_tab"
+                )
+                if st.button("Eintrag löschen", key="delete_button_tab"):
+                    df_kenntnis = df_kenntnis.drop(index_to_delete).reset_index(drop=True)
+                    df_kenntnis.to_csv(DATA_FILE_KENNTNIS, sep=";", index=False, encoding="utf-8-sig")
+                    st.success(f"Zeile {index_to_delete} gelöscht.")
+            except Exception as e:
+                st.warning(f"Löschen nicht möglich: {e}")
+
 # --------------------------
 # Tab 3: Mitarbeiter
 # --------------------------
