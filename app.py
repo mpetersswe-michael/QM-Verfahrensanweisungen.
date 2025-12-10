@@ -121,31 +121,28 @@ if "selected_va" not in st.session_state:
 # --------------------------
 tabs = st.tabs(["System & Login", "Verfahrensanweisungen", "Lesebestätigung", "Mitarbeiter"])
 
-# Prüfung der Benutzerdatei users.txt
-def check_users_txt():
-    path = "users.txt"
+# Prüfung der Benutzerdatei users.csv
+def check_users_csv():
+    path = "users.csv"
     if not os.path.exists(path):
-        st.error("❌ Datei 'users.txt' wurde nicht gefunden.")
+        st.error("❌ Datei 'users.csv' wurde nicht gefunden.")
         return False
 
     try:
-        df = pd.read_csv(path, sep="\t", dtype=str)
+        df = pd.read_csv(path, sep=";", dtype=str)
         expected_cols = {"username", "password", "role"}
         actual_cols = set(df.columns.str.strip().str.lower())
         missing = expected_cols - actual_cols
         if missing:
-            st.error(f"❌ Spalten fehlen in 'users.txt': {', '.join(missing)}")
+            st.error(f"❌ Spalten fehlen in 'users.csv': {', '.join(missing)}")
             st.info(f"Gefundene Spalten: {', '.join(df.columns)}")
             return False
-        st.success("✅ Benutzerdatei 'users.txt' erfolgreich geprüft.")
+        st.success("✅ Benutzerdatei 'users.csv' erfolgreich geprüft.")
         return True
     except Exception as e:
-        st.error(f"❌ Fehler beim Einlesen der Datei 'users.txt': {e}")
+        st.error(f"❌ Fehler beim Einlesen der Datei 'users.csv': {e}")
         return False
 
-# Prüfung beim Start
-if not check_users_txt():
-    st.stop()
 
 
 # --------------------------
@@ -180,7 +177,7 @@ with tabs[0]:
     if st.session_state.role == "admin":
         st.markdown("### 👥 Benutzerdatei-Vorschau (`users.txt`)")
         try:
-            df_users = pd.read_csv("users.txt", sep="\t", dtype=str)
+            users_df = pd.read_csv("users.csv", sep=";", dtype=str)
             st.dataframe(df_users)
         except Exception as e:
             st.error(f"Fehler beim Laden der Benutzerdatei: {e}")
