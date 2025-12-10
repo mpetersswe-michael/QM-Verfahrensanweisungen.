@@ -150,6 +150,7 @@ def check_users_csv():
 # --------------------------
 with tabs[0]:
     st.markdown("## 🔒 Login")
+
     if not st.session_state.get("logged_in", False):
         input_user = st.text_input("Benutzername")
         input_pass = st.text_input("Passwort", type="password")
@@ -171,16 +172,19 @@ with tabs[0]:
                     st.error("❌ Login fehlgeschlagen.")
             except Exception as e:
                 st.error(f"Fehler beim Einlesen der Benutzerdatei: {e}")
+
     else:
         st.info("Du bist bereits eingeloggt. Logout über die Sidebar.")
 
-    if st.session_state.role == "admin":
-        st.markdown("### 👥 Benutzerdatei-Vorschau (`users.csv`)")
-        try:
-            users_df = pd.read_csv("users.csv", sep=";", dtype=str)
-            st.dataframe(users_df)
-        except Exception as e:
-            st.error(f"Fehler beim Laden der Benutzerdatei: {e}")
+        # Vorschau nur für Admins und nur solange eingeloggt
+        if st.session_state.role == "admin":
+            st.markdown("### 👥 Benutzerdatei-Vorschau (`users.csv`)")
+            try:
+                users_df = pd.read_csv("users.csv", sep=";", dtype=str)
+                st.dataframe(users_df)
+            except Exception as e:
+                st.error(f"Fehler beim Laden der Benutzerdatei: {e}")
+
 
 
 
