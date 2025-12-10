@@ -319,19 +319,15 @@ with tabs[4]:
         if users_df is not None:
             users_df.columns = [str(c).strip() for c in users_df.columns]
             expected_cols = {"username", "password", "role"}
-            actual_cols = set([c.lower() for c in users_df.columns])
+            actual_cols = set(c.lower() for c in users_df.columns)
 
-            if len(users_df.columns) == 1:
-                st.error("❌ Datei wurde als eine einzige Spalte eingelesen. Bitte prüfen: Trennzeichen beim Speichern.")
-                st.info(f"Erkannter Header: {users_df.columns[0]}")
+            missing = expected_cols - actual_cols
+            if missing:
+                st.error(f"❌ Spalten fehlen: {', '.join(sorted(missing))}")
+                st.info(f"Gefundene Spalten: {', '.join(users_df.columns)}")
             else:
-                missing = expected_cols - actual_cols
-                if missing:
-                    st.error(f"❌ Spalten fehlen: {', '.join(sorted(missing))}")
-                    st.info(f"Gefundene Spalten: {', '.join(users_df.columns)}")
-                else:
-                    st.success("✅ Benutzerdatei ist vollständig und korrekt.")
-                    st.dataframe(users_df)
+                st.success("✅ Benutzerdatei ist vollständig und korrekt.")
+                st.dataframe(users_df)
     else:
         st.warning("🔒 Nur Admins haben Zugriff auf diesen Bereich.")
 
