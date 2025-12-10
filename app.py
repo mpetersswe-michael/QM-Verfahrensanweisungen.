@@ -302,13 +302,13 @@ with tabs[4]:
         users_df = None
         if uploaded_users:
             try:
-                users_df = pd.read_csv(uploaded_users, sep=";", dtype=str)
+                users_df = pd.read_csv(uploaded_users, dtype=str)
                 st.success("✅ Datei erfolgreich hochgeladen.")
             except Exception as e:
                 st.error(f"❌ Fehler beim Einlesen der Datei: {e}")
         elif os.path.exists("users.csv"):
             try:
-                users_df = pd.read_csv("users.csv", sep=";", dtype=str)
+                users_df = pd.read_csv("users.csv", dtype=str)
                 st.info("ℹ️ Lokale Datei 'users.csv' wurde verwendet.")
             except Exception as e:
                 st.error(f"❌ Fehler beim Einlesen der lokalen Datei: {e}")
@@ -322,7 +322,7 @@ with tabs[4]:
             actual_cols = set([c.lower() for c in users_df.columns])
 
             if len(users_df.columns) == 1:
-                st.error("❌ Datei wurde als eine einzige Spalte eingelesen. Bitte prüfen: Semikolon als Trennzeichen.")
+                st.error("❌ Datei wurde als eine einzige Spalte eingelesen. Bitte prüfen: Trennzeichen beim Speichern.")
                 st.info(f"Erkannter Header: {users_df.columns[0]}")
             else:
                 missing = expected_cols - actual_cols
@@ -334,7 +334,6 @@ with tabs[4]:
                     st.dataframe(users_df)
     else:
         st.warning("🔒 Nur Admins haben Zugriff auf diesen Bereich.")
-
 
 
 # --------------------------
