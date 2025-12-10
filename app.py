@@ -426,76 +426,77 @@ with st.sidebar:
                             mime="application/pdf",
                             key=f"download_{pdf_name}"
                         )
+# Lesebestätigung in der Sidebar
+st.markdown("### ✅ Lesebestätigung")
+name_sidebar = st.text_input("Name (Nachname, Vorname)", key="sidebar_name_input")
 
-                # Lesebestätigung
-                st.markdown("### ✅ Lesebestätigung")
-                name_sidebar = st.text_input("Name (Nachname, Vorname)", key="sidebar_name_input")
-                if st.button("Bestätigen", key="sidebar_confirm_button"):
-                    name_clean = re.sub(r"\s*,\s*", ",", name_sidebar.strip())
-                    if name_clean:
-                        zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
-                        eintrag = {"Name": name_clean, "VA_Nr": va_nummer, "Zeitpunkt": zeitpunkt}
-                        df_new = pd.DataFrame([eintrag])[["Name", "VA_Nr", "Zeitpunkt"]]
+if st.button("Bestätigen", key="sidebar_confirm_button"):
+    if not va_nummer:
+        st.error("Bitte zuerst eine VA auswählen.")
+    else:
+        name_clean = re.sub(r"\s*,\s*", ",", name_sidebar.strip())
+        if name_clean:
+            zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
+            eintrag = {
+                "Name": name_clean,
+                "VA_Nr": va_nummer,
+                "VA_Nr_norm": norm_va(va_nummer),
+                "Zeitpunkt": zeitpunkt
+            }
+            df_new = pd.DataFrame([eintrag])[["Name", "VA_Nr", "VA_Nr_norm", "Zeitpunkt"]]
 
-                        path = "lesebestätigung.csv"
-                        file_exists = os.path.exists(path)
-                        file_empty = (not file_exists) or (os.path.getsize(path) == 0)
+            path = "lesebestätigung.csv"
+            file_exists = os.path.exists(path)
+            file_empty = (not file_exists) or (os.path.getsize(path) == 0)
 
-                        df_new.to_csv(
-                            path,
-                            sep=";",
-                            index=False,
-                            mode="a" if file_exists and not file_empty else "w",
-                            header=not file_exists or file_empty,
-                            encoding="utf-8-sig"
-                        )
+            df_new.to_csv(
+                path,
+                sep=";",
+                index=False,
+                mode="a" if file_exists and not file_empty else "w",
+                header=not file_exists or file_empty,
+                encoding="utf-8-sig"
+            )
+            st.success(f"Bestätigung für {va_nummer} gespeichert.")
+        else:
+            st.error("Bitte Name eingeben.")
 
-                        st.success(f"Bestätigung für {va_nummer} gespeichert.")
-                    else:
-                        st.error("Bitte Name eingeben.")
+# Fortschrittsanzeige (nur Anzeige)
+try:
+    if os.path.exists("lesebestätigung.csv") and os.path.exists("mitarbeiter.csv") and va_nummer:
+        df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig", dtype=str)
+        df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig", dtype=str)
 
-                # Fortschrittsanzeige (nur Anzeige)
-                try:
-                    if os.path.exists("lesebestätigung.csv") and os.path.exists("mitarbeiter.csv"):
-                        df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig", dtype=str)
-                        df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig", dtype=str)
+        if {"Name", "Vorname"}.issubset(df_mitarbeiter.columns):
+            df_mitarbeiter["Name_full"] = df_mitarbeiter["Vorname"].str.strip() + " " + df_mitarbeiter["Name"].str.strip()
+        else:
+            raise ValueError("Spalten 'Name' und 'Vorname' fehlen")
 
-                        if {"Name", "Vorname"}.issubset(df_mitarbeiter.columns):
-                            df_mitarbeiter["Name_full"] = df_mitarbeiter["Vorname"].str.strip() + " " + df_mitarbeiter["Name"].str.strip()
-                        else:
-                            raise ValueError("Spalten 'Name' und 'Vorname' fehlen")
+        df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
+        zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == norm_va(va_nummer)]["Name_full"].dropna().unique()
+        gesamt = len(zielgruppe)
 
-                        if "VA_Nr" in df_mitarbeiter.columns:
-                            df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
-                            zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == va_nummer]["Name_full"].dropna().unique()
-                        else:
-                            zielgruppe = df_mitarbeiter["Name_full"].dropna().unique()
+        df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
+        gelesen = df_kenntnis[df_kenntnis["VA_Nr_norm"] == norm_va(va_nummer)]["Name"].dropna().unique()
 
-                        gesamt = len(zielgruppe)
+        def normalize_name(name):
+            if "," in name:
+                nach, vor = [p.strip() for p in name.split(",", 1)]
+                return f"{vor} {nach}"
+            return name.strip()
 
-                        if "VA_Nr" in df_kenntnis.columns:
-                            df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
-                            gelesen = df_kenntnis[df_kenntnis["VA_Nr_norm"] == va_nummer]["Name"].dropna().unique()
-                        else:
-                            raise ValueError("Spalte 'VA_Nr' fehlt")
+        gelesen_norm = [normalize_name(n) for n in gelesen]
+        gelesen_set = set(gelesen_norm)
+        zielgruppe_set = set(zielgruppe)
 
-                        def normalize_name(name):
-                            if "," in name:
-                                nach, vor = [p.strip() for p in name.split(",", 1)]
-                                return f"{vor} {nach}"
-                            return name.strip()
+        gelesen_count = len(gelesen_set & zielgruppe_set)
+        fortschritt = gelesen_count / gesamt if gesamt > 0 else 0.0
 
-                        gelesen_norm = [normalize_name(n) for n in gelesen]
-                        gelesen_set = set(gelesen_norm)
-                        zielgruppe_set = set(zielgruppe)
+        st.markdown("---")
+        st.markdown("### 📊 Lesefortschritt")
+        st.progress(fortschritt)
+        st.caption(f"{gelesen_count} von {gesamt} Mitarbeiter haben bestätigt.")
+except Exception as e:
+    st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
 
-                        gelesen_count = len(gelesen_set & zielgruppe_set)
-                        fortschritt = gelesen_count / gesamt if gesamt > 0 else 0.0
-
-                        st.markdown("---")
-                        st.markdown("### 📊 Lesefortschritt")
-                        st.progress(fortschritt)
-                        st.caption(f"{gelesen_count} von {gesamt} Mitarbeiter haben bestätigt.")
-                except Exception as e:
-                    st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
 
