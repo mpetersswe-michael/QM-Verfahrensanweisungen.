@@ -177,6 +177,15 @@ with tabs[0]:
     else:
         st.info("Du bist bereits eingeloggt. Logout über die Sidebar.")
 
+    if st.session_state.role == "admin":
+        st.markdown("### 👥 Benutzerdatei-Vorschau (`users.txt`)")
+        try:
+            df_users = pd.read_csv("users.txt", sep="\t", dtype=str)
+            st.dataframe(df_users)
+        except Exception as e:
+            st.error(f"Fehler beim Laden der Benutzerdatei: {e}")
+
+
 
 # --------------------------
 # Tab 1: Verfahrensanweisungen
