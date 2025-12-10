@@ -442,40 +442,52 @@ with st.sidebar:
                     else:
                         st.error("Bitte Name eingeben.")
 
-                # Fortschritt
-                try:
-                    if not os.path.exists("lesebestätigung.csv") or not os.path.exists("mitarbeiter.csv"):
-                        st.info("Noch keine Daten vorhanden.")
-                    else:
-                        df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig", dtype=str)
-                        df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig", dtype=str)
-
-                        if {"Name", "Vorname"}.issubset(df_mitarbeiter.columns):
-                            df_mitarbeiter["Name_full"] = df_mitarbeiter["Name"].str.strip() + "," + df_mitarbeiter["Vorname"].str.strip()
-                        else:
-                            st.warning("Spalten 'Name' und 'Vorname' fehlen in mitarbeiter.csv.")
-                            raise ValueError("Spalten fehlen")
-
-                        if "VA_Nr" in df_mitarbeiter.columns:
-                            df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
-                            zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == va_nummer]["Name_full"].dropna().unique()
-                        else:
-                            zielgruppe = df_mitarbeiter["Name_full"].dropna().unique()
-
-                        gesamt = len(zielgruppe)
-
-                        if "VA_Nr" in df_kenntnis.columns:
-                            df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
-                            gelesen = df_kenntnis[df_kenntnis["VA_Nr_norm"] == va_nummer]["Name"].dropna().unique()
-                        else:
-                            st.warning("Spalte 'VA_Nr' fehlt in lesebestätigung.csv.")
-                            raise ValueError("Spalte 'VA_Nr' fehlt")
-
-                        gelesen_count = len(set(gelesen) & set(zielgruppe))
-                        fortschritt = gelesen_count / gesamt if gesamt > 0 else 0.0
-
-                        st.progress(fortschritt, text=f"{gelesen_count} von {gesamt} Mitarbeiter (gelesen)")
-                except Exception as e:
-                    st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
+               # Fortschrittsbalken
+try:
+    if not os.path.exists("lesebestätigung.csv") or not os.path.exists("mitarbeiter.csv"):
+        st.info("Noch keine Daten vorhanden.")
     else:
-        st.warning("Bitte zuerst im Tab 'Login' anmelden.")
+        # Dateien laden
+        df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig", dtype=str)
+        df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig", dtype=str)
+
+        # Einheitliches Namensformat: "Vorname Name"
+        if {"Name", "Vorname"}.issubset(df_mitarbeiter.columns):
+            df_mitarbeiter["Name_full"] = df_mitarbeiter["Vorname"].str.strip() + " " + df_mitarbeiter["Name"].str.strip()
+        else:
+            st.warning("Spalten 'Name' und 'Vorname' fehlen in mitarbeiter.csv.")
+            raise ValueError("Spalten fehlen")
+
+        # Zielgruppe nach VA_Nr filtern
+        if "VA_Nr" in df_mitarbeiter.columns:
+            df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
+            zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == va_nummer]["Name_full"].dropna().unique()
+        else:
+            zielgruppe = df_mitarbeiter["Name_full"].dropna().unique()
+
+        gesamt = len(zielgruppe)
+
+        # Lesebestätigungen nach VA_Nr filtern
+        if "VA_Nr" in df_kenntnis.columns:
+            df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
+            gelesen = df_kenntnis[df_kenntnis["VA_Nr_norm"] == va_nummer]["Name"].dropna().unique()
+        else:
+            st.warning("Spalte 'VA_Nr' fehlt in lesebestätigung.csv.")
+            raise ValueError("Spalte 'VA_Nr' fehlt")
+
+        # Vergleich: beide im Format "Vorname Name"
+        gelesen_set = set(gelesen)
+        zielgruppe_set = set(zielgruppe)
+        gelesen_count = len(gelesen_set & zielgruppe_set)
+        fortschritt = gelesen_count / gesamt if gesamt > 0 else 0.0
+
+        # Fortschrittsanzeige
+        st.progress(fortschritt, text=f"{gelesen_count} von {gesamt} Mitarbeiter (gelesen)")
+
+        # Optional: Liste der noch offenen Namen
+        offen = zielgruppe_set - gelesen_set
+        if offen:
+            st.info("Noch nicht gelesen: " + ", ".join(sorted(offen)))
+
+except Exception as e:
+    st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
