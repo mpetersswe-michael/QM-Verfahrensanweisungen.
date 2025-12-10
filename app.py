@@ -441,7 +441,7 @@ if st.button("Bestätigen", key="sidebar_confirm_button"):
                 "Name": name_clean,
                 "VA_Nr": va_nummer,
                 "VA_Nr_norm": norm_va(va_nummer),
-                "Zeitpunkt": zeitpunkt
+                "Zeitpunkt": zeitpunkt 
             }
             df_new = pd.DataFrame([eintrag])[["Name", "VA_Nr", "VA_Nr_norm", "Zeitpunkt"]]
 
