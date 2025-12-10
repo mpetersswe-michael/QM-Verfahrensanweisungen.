@@ -339,14 +339,11 @@ with tabs[4]:
 
 
 
-# --------------------------
-# Sidebar
-# --------------------------
 with st.sidebar:
     if st.session_state.get("logged_in", False):
         st.success("✅ Eingeloggt")
 
-        # Logout immer verfügbar
+        # Logout
         if st.button("Logout", key="logout_sidebar"):
             st.session_state.logged_in = False
             st.session_state.selected_va = None
@@ -372,8 +369,7 @@ with st.sidebar:
                 def clean(text):
                     return html.escape(str(text)).replace("\n", "<br>")
 
-                va_text = f"""
-                <strong>VA-Nr:</strong> {va_nummer}<br>
+                va_text = f"""<strong>VA-Nr:</strong> {va_nummer}<br>
                 <strong>Titel:</strong> {clean(row['Titel'].values[0])}<br>
                 <strong>Kapitel:</strong> {clean(row['Kapitel'].values[0])}<br>
                 <strong>Unterkapitel:</strong> {clean(row['Unterkapitel'].values[0])}<br>
@@ -382,24 +378,16 @@ with st.sidebar:
                 <strong>Ziel:</strong> {clean(row['Ziel'].values[0])}<br>
                 <strong>Vorgehensweise:</strong><br>{clean(row['Vorgehensweise'].values[0])}<br>
                 <strong>Kommentar:</strong><br>{clean(row['Kommentar'].values[0])}<br>
-                <strong>Mitgeltende Unterlagen:</strong><br>{clean(row['Mitgeltende Unterlagen'].values[0])}
-                """
+                <strong>Mitgeltende Unterlagen:</strong><br>{clean(row['Mitgeltende Unterlagen'].values[0])}"""
 
-                st.markdown(
-                    f"""
-                    <div style="background-color:#fff3cd;
+                st.markdown(f"""<div style="background-color:#fff3cd;
                                 padding:12px;
                                 border-radius:6px;
                                 border:1px solid #ffeeba;
                                 margin-top:10px;
                                 font-size:14px;
                                 line-height:1.4">
-                    <strong>📘 VA-Inhalt:</strong><br><br>
-                    {va_text}
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
+                    <strong>📘 VA-Inhalt:</strong><br><br>{va_text}</div>""", unsafe_allow_html=True)
 
                 # PDF-Download
                 pdf_name = f"{norm_va(va_nummer)}.pdf"
@@ -442,56 +430,45 @@ with st.sidebar:
                     else:
                         st.error("Bitte Name eingeben.")
 
-# Fortschritt unterhalb des Bestätigungsbuttons
-try:
-    if not os.path.exists("lesebestätigung.csv") or not os.path.exists("mitarbeiter.csv"):
-        st.info("Noch keine Daten vorhanden.")
-    else:
-        # Dateien laden
-        df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig", dtype=str)
-        df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig", dtype=str)
+                # Fortschrittsanzeige direkt darunter
+                try:
+                    if os.path.exists("lesebestätigung.csv") and os.path.exists("mitarbeiter.csv"):
+                        df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig", dtype=str)
+                        df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig", dtype=str)
 
-        # Einheitliches Namensformat: "Vorname Name"
-        if {"Name", "Vorname"}.issubset(df_mitarbeiter.columns):
-            df_mitarbeiter["Name_full"] = df_mitarbeiter["Vorname"].str.strip() + " " + df_mitarbeiter["Name"].str.strip()
-        else:
-            st.warning("Spalten 'Name' und 'Vorname' fehlen in mitarbeiter.csv.")
-            raise ValueError("Spalten fehlen")
+                        if {"Name", "Vorname"}.issubset(df_mitarbeiter.columns):
+                            df_mitarbeiter["Name_full"] = df_mitarbeiter["Vorname"].str.strip() + " " + df_mitarbeiter["Name"].str.strip()
+                        else:
+                            st.warning("Spalten 'Name' und 'Vorname' fehlen in mitarbeiter.csv.")
+                            raise ValueError("Spalten fehlen")
 
-        # Zielgruppe nach VA_Nr filtern
-        if "VA_Nr" in df_mitarbeiter.columns:
-            df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
-            zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == va_nummer]["Name_full"].dropna().unique()
-        else:
-            zielgruppe = df_mitarbeiter["Name_full"].dropna().unique()
+                        if "VA_Nr" in df_mitarbeiter.columns:
+                            df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
+                            zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == va_nummer]["Name_full"].dropna().unique()
+                        else:
+                            zielgruppe = df_mitarbeiter["Name_full"].dropna().unique()
 
-        gesamt = len(zielgruppe)
+                        gesamt = len(zielgruppe)
 
-        # Lesebestätigungen nach VA_Nr filtern
-        if "VA_Nr" in df_kenntnis.columns:
-            df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
-            gelesen = df_kenntnis[df_kenntnis["VA_Nr_norm"] == va_nummer]["Name"].dropna().unique()
-        else:
-            st.warning("Spalte 'VA_Nr' fehlt in lesebestätigung.csv.")
-            raise ValueError("Spalte 'VA_Nr' fehlt")
+                        if "VA_Nr" in df_kenntnis.columns:
+                            df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
+                            gelesen = df_kenntnis[df_kenntnis["VA_Nr_norm"] == va_nummer]["Name"].dropna().unique()
+                        else:
+                            st.warning("Spalte 'VA_Nr' fehlt in lesebestätigung.csv.")
+                            raise ValueError("Spalte 'VA_Nr' fehlt")
 
-        # Vergleich: beide im Format "Vorname Name"
-        gelesen_set = set(gelesen)
-        zielgruppe_set = set(zielgruppe)
-        gelesen_count = len(gelesen_set & zielgruppe_set)
-        fortschritt = gelesen_count / gesamt if gesamt > 0 else 0.0
+                        gelesen_set = set(gelesen)
+                        zielgruppe_set = set(zielgruppe)
+                        gelesen_count = len(gelesen_set & zielgruppe_set)
+                        fortschritt = gelesen_count / gesamt if gesamt > 0 else 0.0
 
-        # Fortschrittsanzeige direkt unter dem Bestätigungsblock
-        st.markdown("---")
-        st.markdown("### 📊 Lesefortschritt")
-        st.progress(fortschritt)
-        st.caption(f"{gelesen_count} von {gesamt} Mitarbeiter haben bestätigt.")
+                        st.markdown("---")
+                        st.markdown("### 📊 Lesefortschritt")
+                        st.progress(fortschritt)
+                        st.caption(f"{gelesen_count} von {gesamt} Mitarbeiter haben bestätigt.")
 
-        # Optional: Liste der offenen Namen
-        offen = zielgruppe_set - gelesen_set
-        if offen:
-            st.info("Noch nicht gelesen: " + ", ".join(sorted(offen)))
-
-except Exception as e:
-    st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
-
+                        offen = zielgruppe_set - gelesen_set
+                        if offen:
+                            st.info("Noch nicht gelesen: " + ", ".join(sorted(offen)))
+                except Exception as e:
+                    st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
