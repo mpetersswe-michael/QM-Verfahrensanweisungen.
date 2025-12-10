@@ -336,6 +336,7 @@ with tabs[4]:
         st.warning("🔒 Nur Admins haben Zugriff auf diesen Bereich.")
 
 
+
 # --------------------------
 # Sidebar
 # --------------------------
