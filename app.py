@@ -133,7 +133,8 @@ def check_users_csv():
     try:
         df = pd.read_csv(path, sep=";", dtype=str)
         expected_cols = {"username", "password", "role"}
-        actual_cols = set(df.columns.str.strip().str.lower())
+        actual_cols = set([str(col).strip().lower() for col in users_df.columns])
+
         missing = expected_cols - actual_cols
         if missing:
             st.error(f"❌ Spalten fehlen in 'users.csv': {', '.join(missing)}")
