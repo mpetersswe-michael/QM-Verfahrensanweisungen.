@@ -201,7 +201,7 @@ with tabs[1]:
             )
 
         if os.path.exists(DATA_FILE_QM):
-            df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
+            users_df = pd.read_csv("users.csv", sep="\t", dtype=str)
             st.dataframe(df_va)
         else:
             st.info("Noch keine Verfahrensanweisungen gespeichert.")
