@@ -231,10 +231,10 @@ with tabs[1]:
                 mime="application/pdf"
             )
 
-          if os.path.exists(DATA_FILE_QM):
+   if os.path.exists(DATA_FILE_QM):
             df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
             st.dataframe(df_va)
-          else:
+   else:
             st.info("Noch keine Verfahrensanweisungen gespeichert.")
 
 
