@@ -121,35 +121,32 @@ if "selected_va" not in st.session_state:
 # --------------------------
 tabs = st.tabs(["System & Login", "Verfahrensanweisungen", "Lesebestätigung", "Mitarbeiter"])
 
-# --------------------------
-# Prüfung der Benutzerdatei users.csv
-# --------------------------
-def check_users_csv():
-    path = "users.csv"
+# Prüfung der Benutzerdatei users.txt
+def check_users_txt():
+    path = "users.txt"
     if not os.path.exists(path):
-        st.error("❌ Datei 'users.csv' wurde nicht gefunden.")
+        st.error("❌ Datei 'users.txt' wurde nicht gefunden.")
         return False
 
     try:
-        # Tabulator als Trenner verwenden
         df = pd.read_csv(path, sep="\t", dtype=str)
         expected_cols = {"username", "password", "role"}
-        # Spaltennamen vereinheitlichen (klein, ohne Leerzeichen)
         actual_cols = set(df.columns.str.strip().str.lower())
         missing = expected_cols - actual_cols
         if missing:
-            st.error(f"❌ Spalten fehlen in 'users.csv': {', '.join(missing)}")
+            st.error(f"❌ Spalten fehlen in 'users.txt': {', '.join(missing)}")
             st.info(f"Gefundene Spalten: {', '.join(df.columns)}")
             return False
-        st.success("✅ Benutzerdatei 'users.csv' erfolgreich geprüft.")
+        st.success("✅ Benutzerdatei 'users.txt' erfolgreich geprüft.")
         return True
     except Exception as e:
-        st.error(f"❌ Fehler beim Einlesen der Datei 'users.csv': {e}")
+        st.error(f"❌ Fehler beim Einlesen der Datei 'users.txt': {e}")
         return False
 
 # Prüfung beim Start
-if not check_users_csv():
+if not check_users_txt():
     st.stop()
+
 
 # --------------------------
 # Tab 0: Login
@@ -162,7 +159,8 @@ with tabs[0]:
         if st.button("Login"):
             try:
                 # Benutzerdatei mit Tabulator als Trenner einlesen
-                users_df = pd.read_csv("users.csv", sep="\t", dtype=str)
+                users_df = pd.read_csv("users.txt", sep="\t", dtype=str)
+
                 match = users_df[
                     (users_df["username"] == input_user) &
                     (users_df["password"] == input_pass)
@@ -178,6 +176,7 @@ with tabs[0]:
                 st.error(f"Fehler beim Einlesen der Benutzerdatei: {e}")
     else:
         st.info("Du bist bereits eingeloggt. Logout über die Sidebar.")
+
 
 # --------------------------
 # Tab 1: Verfahrensanweisungen
