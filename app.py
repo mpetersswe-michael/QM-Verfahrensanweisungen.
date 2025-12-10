@@ -315,12 +315,14 @@ with tabs[4]:
         else:
             st.warning("⚠️ Keine Benutzerdatei gefunden.")
 
+        # Vorschau und Spaltenprüfung
         if users_df is not None:
             expected_cols = {"username", "password", "role"}
-            actual_cols = set([col.strip().lower() for col in users_df.columns])
+            actual_cols = set([str(col).strip().lower() for col in users_df.columns])
+
             missing = expected_cols - actual_cols
             if missing:
-                st.error(f"❌ Spalten fehlen: {', '.join(missing)}")
+                st.error(f"❌ Spalten fehlen: {', '.join(sorted(missing))}")
                 st.info(f"Gefundene Spalten: {', '.join(users_df.columns)}")
             else:
                 st.success("✅ Benutzerdatei ist vollständig und korrekt.")
