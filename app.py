@@ -156,7 +156,6 @@ with tabs[0]:
         input_pass = st.text_input("Passwort", type="password")
         if st.button("Login"):
             try:
-                # Benutzerdatei mit Semikolon als Trenner einlesen
                 users_df = pd.read_csv("users.csv", sep=";", dtype=str)
 
                 match = users_df[
@@ -168,6 +167,7 @@ with tabs[0]:
                     st.session_state.username = input_user
                     st.session_state.role = match.iloc[0]["role"]
                     st.success(f"✅ Eingeloggt als {input_user} (Rolle: {st.session_state.role})")
+                    st.experimental_rerun()   # <- sorgt dafür, dass die Seite sofort neu gerendert wird
                 else:
                     st.error("❌ Login fehlgeschlagen.")
             except Exception as e:
@@ -176,14 +176,15 @@ with tabs[0]:
     else:
         st.info("Du bist bereits eingeloggt. Logout über die Sidebar.")
 
-        # Vorschau nur für Admins und nur solange eingeloggt
-        if st.session_state.role == "admin":
+        # Vorschau nur für Admins sichtbar
+        if st.session_state.get("role") == "admin":
             st.markdown("### 👥 Benutzerdatei-Vorschau (`users.csv`)")
             try:
                 users_df = pd.read_csv("users.csv", sep=";", dtype=str)
                 st.dataframe(users_df)
             except Exception as e:
                 st.error(f"Fehler beim Laden der Benutzerdatei: {e}")
+
 
 
 
