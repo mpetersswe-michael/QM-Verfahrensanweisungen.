@@ -122,6 +122,33 @@ if "selected_va" not in st.session_state:
 tabs = st.tabs(["System & Login", "Verfahrensanweisungen", "Lesebestätigung", "Mitarbeiter"])
 
 # --------------------------
+# Benutzerdatei prüfen
+# --------------------------
+def check_users_csv():
+    path = "users.csv"
+    if not os.path.exists(path):
+        st.error("❌ Datei 'users.csv' wurde nicht gefunden.")
+        return False
+
+    try:
+        df = pd.read_csv(path, sep="\t", dtype=str)
+        expected_cols = {"username", "password", "role"}
+        actual_cols = set(df.columns.str.strip().str.lower())
+        missing = expected_cols - actual_cols
+        if missing:
+            st.error(f"❌ Spalten fehlen in 'users.csv': {', '.join(missing)}")
+            st.info(f"Gefundene Spalten: {', '.join(df.columns)}")
+            return False
+        return True
+    except Exception as e:
+        st.error(f"❌ Fehler beim Einlesen der Datei 'users.csv': {e}")
+        return False
+
+# Prüfung beim Start
+if not check_users_csv():
+    st.stop()
+
+# --------------------------
 # Tab 0: Login
 # --------------------------
 with tabs[0]:
