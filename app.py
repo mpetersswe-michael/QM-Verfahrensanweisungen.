@@ -132,7 +132,7 @@ with st.sidebar:
         st.warning("🔒 Nicht eingeloggt. Bitte zuerst im Tab **Login** anmelden.")
 
 
-
+  
 
 
 
