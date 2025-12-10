@@ -442,7 +442,7 @@ with st.sidebar:
                     else:
                         st.error("Bitte Name eingeben.")
 
-               # Fortschrittsbalken
+# Fortschritt unterhalb des Bestätigungsbuttons
 try:
     if not os.path.exists("lesebestätigung.csv") or not os.path.exists("mitarbeiter.csv"):
         st.info("Noch keine Daten vorhanden.")
@@ -481,13 +481,17 @@ try:
         gelesen_count = len(gelesen_set & zielgruppe_set)
         fortschritt = gelesen_count / gesamt if gesamt > 0 else 0.0
 
-        # Fortschrittsanzeige
-        st.progress(fortschritt, text=f"{gelesen_count} von {gesamt} Mitarbeiter (gelesen)")
+        # Fortschrittsanzeige direkt unter dem Bestätigungsblock
+        st.markdown("---")
+        st.markdown("### 📊 Lesefortschritt")
+        st.progress(fortschritt)
+        st.caption(f"{gelesen_count} von {gesamt} Mitarbeiter haben bestätigt.")
 
-        # Optional: Liste der noch offenen Namen
+        # Optional: Liste der offenen Namen
         offen = zielgruppe_set - gelesen_set
         if offen:
             st.info("Noch nicht gelesen: " + ", ".join(sorted(offen)))
 
 except Exception as e:
     st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
+
