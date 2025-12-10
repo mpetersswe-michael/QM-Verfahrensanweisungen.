@@ -131,7 +131,8 @@ with tabs[0]:
         input_pass = st.text_input("Passwort", type="password")
         if st.button("Login"):
             try:
-                users_df = pd.read_csv("users.csv", sep=";", dtype=str)
+                # Benutzerdatei mit Tabulator als Trenner einlesen
+                users_df = pd.read_csv("users.csv", sep="\t", dtype=str)
                 match = users_df[
                     (users_df["username"] == input_user) &
                     (users_df["password"] == input_pass)
@@ -201,10 +202,11 @@ with tabs[1]:
             )
 
         if os.path.exists(DATA_FILE_QM):
-            users_df = pd.read_csv("users.csv", sep="\t", dtype=str)
+            df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
             st.dataframe(df_va)
         else:
             st.info("Noch keine Verfahrensanweisungen gespeichert.")
+
 
 # --------------------------
 # Tab 2: Lesebestätigung
