@@ -296,80 +296,76 @@ with tabs[3]:
 # --------------------------
 # Sidebar
 # --------------------------
+
+
 with st.sidebar:
     if st.session_state.get("logged_in", False):
-        st.markdown(
-            f"✅ **Eingeloggt als:** `{st.session_state.username}`  \n"
-            f"🛡️ **Rolle:** `{st.session_state.role}`"
-        )
+        st.success("✅ Eingeloggt")
+
+        # Logout
+        if st.button("Logout", key="logout_sidebar"):
+            st.session_state.logged_in = False
+            st.session_state.selected_va = None
+            st.rerun()
 
         # VA-Auswahl
         va_liste = []
-        if os.path.exists(DATA_FILE_QM):
-            df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
+        if os.path.exists("qm_verfahrensanweisungen.csv"):
+            df_va = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig", dtype=str)
             if "VA_Nr" in df_va.columns:
                 df_va["VA_clean"] = df_va["VA_Nr"].apply(norm_va)
                 va_liste = sorted(df_va["VA_clean"].unique())
 
-        va_nummer = st.selectbox("VA auswählen", options=va_liste, index=None)
+        va_nummer = st.selectbox("VA auswählen", options=va_liste, index=None, key="sidebar_va_select")
+
         if va_nummer:
             st.session_state.selected_va = va_nummer
             row = df_va[df_va["VA_clean"] == va_nummer]
+
             if not row.empty:
-                titel = row["Titel"].values[0]
+                # Alle Inhalte der VA zusammenstellen
+                va_text = f"""
+                <strong>VA-Nr:</strong> {va_nummer}<br>
+                <strong>Titel:</strong> {row['Titel'].values[0]}<br>
+                <strong>Kapitel:</strong> {row['Kapitel'].values[0]}<br>
+                <strong>Unterkapitel:</strong> {row['Unterkapitel'].values[0]}<br>
+                <strong>Revisionsstand:</strong> {row['Revisionsstand'].values[0]}<br>
+                <strong>Geltungsbereich:</strong> {row['Geltungsbereich'].values[0]}<br>
+                <strong>Ziel:</strong> {row['Ziel'].values[0]}<br>
+                <strong>Vorgehensweise:</strong> {row['Vorgehensweise'].values[0]}<br>
+                <strong>Kommentar:</strong> {row['Kommentar'].values[0]}<br>
+                <strong>Mitgeltende Unterlagen:</strong> {row['Mitgeltende Unterlagen'].values[0]}
+                """
+
+                # Gelber Hintergrund für den gesamten Block
                 st.markdown(
-                    f"<div style='background-color:#fff3b0;padding:8px;border-radius:5px;'>📄 <b>{va_nummer} – {titel}</b></div>",
+                    f"""
+                    <div style="background-color:#fff3cd;
+                                padding:12px;
+                                border-radius:6px;
+                                border:1px solid #ffeeba;
+                                margin-top:10px;
+                                font-size:14px;
+                                line-height:1.4">
+                    <strong>📘 VA-Inhalt:</strong><br><br>
+                    {va_text}
+                    </div>
+                    """,
                     unsafe_allow_html=True
                 )
 
-                # PDF-Download, falls vorhanden
+                # PDF-Button nur anzeigen, wenn Datei existiert
                 pdf_name = f"{norm_va(va_nummer)}.pdf"
                 pdf_path = pathlib.Path("va_pdf") / pdf_name
                 if pdf_path.exists():
+                    st.markdown("### 📘 Verfahrensanweisung als PDF")
                     with open(pdf_path, "rb") as f:
                         st.download_button(
                             label=f"📄 PDF öffnen: {pdf_name}",
                             data=f.read(),
                             file_name=pdf_name,
-                            mime="application/pdf"
+                            mime="application/pdf",
+                            key=f"download_{pdf_name}"
                         )
-
-                # Lesebestätigung
-                st.markdown("### Lesebestätigung")
-                name_sidebar = st.text_input("Name (Nachname, Vorname)")
-                if st.button("Bestätigen"):
-                    name_clean = re.sub(r"\s*,\s*", ",", name_sidebar.strip())
-                    if name_clean:
-                        zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
-                        eintrag = {"Name": name_clean, "VA_Nr": va_nummer, "Zeitpunkt": zeitpunkt}
-                        df_new = pd.DataFrame([eintrag])[["Name", "VA_Nr", "Zeitpunkt"]]
-
-                        path = DATA_FILE_KENNTNIS
-                        file_exists = os.path.exists(path)
-                        file_empty = (not file_exists) or (os.path.getsize(path) == 0)
-
-                        df_new.to_csv(
-                            path,
-                            sep=";",
-                            index=False,
-                            mode="a" if file_exists and not file_empty else "w",
-                            header=True if file_empty else False,
-                            encoding="utf-8-sig"
-                        )
-                        st.success(f"Bestätigung für {va_nummer} gespeichert.")
-                    else:
-                        st.error("Bitte Name eingeben.")
-
-        if st.button("Logout"):
-            st.session_state.logged_in = False
-            st.session_state.selected_va = None
-            st.rerun()
     else:
-        st.warning("🔒 Nicht eingeloggt. Bitte zuerst im Tab **Login** anmelden.")
-
-
-
-  
-
-
-
+        st.warning("Bitte zuerst im Tab 'Login' anmelden.")
