@@ -147,41 +147,49 @@ def check_users_csv():
         return False
 
 # --------------------------
-# Tab 0 System & Login
+# Tab 0: System & Login
 # --------------------------
-
 with tabs[0]:
-    st.markdown("## 🔒 Login")
+    st.markdown("## 🔒 System & Login")
 
-    if not st.session_state.get("logged_in", False):
-        input_user = st.text_input("Benutzername")
-        input_pass = st.text_input("Passwort", type="password")
+    if not st.session_state.get("logged_in"):
+        st.text_input("Benutzername", key="login_user")
+        st.text_input("Passwort", type="password", key="login_pass")
         if st.button("Login"):
-            try:
-                users_df = pd.read_csv("users.csv", sep=";", dtype=str)
-                users_df["username"] = users_df["username"].str.strip()
-                users_df["password"] = users_df["password"].str.strip()
-                input_user = input_user.strip()
-                input_pass = input_pass.strip()
-
-                match = users_df[
-                    (users_df["username"] == input_user) &
-                    (users_df["password"] == input_pass)
-                ]
-                if not match.empty:
-                    st.session_state.logged_in = True
-                    st.session_state.username = input_user
-                    st.session_state.role = match.iloc[0]["role"]
-                    st.success(f"✅ Eingeloggt als {input_user} (Rolle: {st.session_state.role})")
-                    st.rerun()
-                else:
-                    st.error("❌ Login fehlgeschlagen.")
-            except Exception as e:
-                st.error(f"Fehler beim Login-Vorgang: {e}")
+            # Dummy-Login-Logik (ersetzen durch echte Prüfung)
+            user = st.session_state.login_user.strip()
+            pw = st.session_state.login_pass.strip()
+            if user == "admin" and pw == "geheim":
+                st.session_state.logged_in = True
+                st.session_state.username = user
+                st.session_state.role = "admin"
+                st.success("✅ Admin eingeloggt")
+            elif user == "mitarbeiter" and pw == "1234":
+                st.session_state.logged_in = True
+                st.session_state.username = user
+                st.session_state.role = "user"
+                st.success("✅ Mitarbeiter eingeloggt")
+            else:
+                st.error("Login fehlgeschlagen")
     else:
-        st.info("Du bist bereits eingeloggt. Logout über die Sidebar.")
+        st.success(f"Eingeloggt als: {st.session_state.username} ({st.session_state.role})")
 
+        if st.session_state.role == "admin":
+            st.markdown("### 🛠️ Admin-Bereich")
+            st.markdown("- Zugriff auf alle Verfahrensanweisungen")
+            st.markdown("- Lesebestätigungen einsehen und löschen")
+            st.markdown("- Rollen und Berechtigungen verwalten")
+            st.markdown("- Mitarbeiterdaten pflegen")
 
+        elif st.session_state.role == "user":
+            st.info("🔐 Eingeschränkter Zugriff: Nur Lesebestätigung und VA-Ansicht möglich.")
+
+        if st.button("Logout"):
+            st.session_state.logged_in = False
+            st.session_state.username = None
+            st.session_state.role = None
+            st.session_state.selected_va = None
+            st.rerun()
 
 # --------------------------
 # Tab 1: Verfahrensanweisungen
