@@ -291,44 +291,41 @@ with tabs[3]:
 # --------------------------
 # Tab 4: Berechtigungen & Rollen
 # --------------------------
+
 with tabs[4]:
     if st.session_state.get("logged_in", False) and st.session_state.get("role") == "admin":
         st.markdown("## 🛡️ Berechtigungen & Rollen")
         st.info("Hier kannst du die Benutzerdatei (`users.csv`) hochladen und prüfen.")
 
-        # Session-State vorbereiten
-        if "users_file" not in st.session_state:
-            st.session_state.users_file = None
-
         # Upload-Feld
         uploaded_users = st.file_uploader("📤 Benutzerdatei hochladen", type="csv", key="upload_users_tab4")
 
-        # Datei im Session-State speichern
-        if uploaded_users:
-            st.session_state.users_file = uploaded_users
-            st.success("✅ Datei erfolgreich hochgeladen.")
-
         users_df = None
-        try:
-            # Einlesen aus Session-State
-            if st.session_state.users_file:
-                users_df = pd.read_csv(st.session_state.users_file, sep=";", dtype=str, encoding="utf-8-sig")
-            elif os.path.exists("users.csv"):
-                users_df = pd.read_csv("users.csv", sep=";", dtype=str, encoding="utf-8-sig")
+        if uploaded_users:
+            try:
+                # Einlesen direkt aus Dateiobjekt, mit Semikolon
+                content = uploaded_users.getvalue().decode("utf-8")
+                users_df = pd.read_csv(io.StringIO(content), sep=";", dtype=str)
+                st.success("✅ Datei erfolgreich hochgeladen.")
+            except Exception as e:
+                st.error(f"❌ Fehler beim Einlesen der Datei: {e}")
+        elif os.path.exists("users.csv"):
+            try:
+                users_df = pd.read_csv("users.csv", sep=";", dtype=str)
                 st.info("ℹ️ Lokale Datei 'users.csv' wurde verwendet.")
-            else:
-                st.warning("⚠️ Keine Benutzerdatei gefunden.")
-        except Exception as e:
-            st.error(f"❌ Fehler beim Einlesen der Datei: {e}")
+            except Exception as e:
+                st.error(f"❌ Fehler beim Einlesen der lokalen Datei: {e}")
+        else:
+            st.warning("⚠️ Keine Benutzerdatei gefunden.")
 
         # Spaltenprüfung und Vorschau
         if users_df is not None:
-            users_df.columns = [str(c).replace("\ufeff", "").strip() for c in users_df.columns]
+            users_df.columns = [str(c).strip() for c in users_df.columns]
             expected_cols = {"username", "password", "role"}
             actual_cols = set([c.lower() for c in users_df.columns])
 
             if len(users_df.columns) == 1:
-                st.error("❌ Datei wurde als eine einzige Spalte eingelesen. Bitte prüfen: Semikolon als Trennzeichen und UTF-8 (mit/ohne BOM).")
+                st.error("❌ Datei wurde als eine einzige Spalte eingelesen. Bitte prüfen: Semikolon als Trennzeichen.")
                 st.info(f"Erkannter Header: {users_df.columns[0]}")
             else:
                 missing = expected_cols - actual_cols
@@ -340,6 +337,7 @@ with tabs[4]:
                     st.dataframe(users_df)
     else:
         st.warning("🔒 Nur Admins haben Zugriff auf diesen Bereich.")
+
 
 
 # --------------------------
