@@ -202,7 +202,7 @@ with tabs[1]:
 
         if os.path.exists(DATA_FILE_QM):
             df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
-                       st.dataframe(df_va)
+            st.dataframe(df_va)
         else:
             st.info("Noch keine Verfahrensanweisungen gespeichert.")
 
