@@ -146,19 +146,43 @@ def check_users_csv():
         return False
 
 
-
 # --------------------------
 # Tab 0: Login
 # --------------------------
 with tabs[0]:
     st.markdown("## 🔒 Login")
 
-    if not st.session_state.get("logged_in", False):
+    # Upload-Funktion für Benutzerdatei
+    uploaded_file = st.file_uploader("📤 Benutzerdatei (`users.csv`) hochladen", type="csv", key="users_upload")
+
+    # Datei einlesen: entweder hochgeladen oder lokal
+    users_df = None
+    if uploaded_file:
+        try:
+            users_df = pd.read_csv(uploaded_file, sep=";", dtype=str)
+            st.success("✅ Hochgeladene Datei erfolgreich eingelesen.")
+        except Exception as e:
+            st.error(f"❌ Fehler beim Einlesen der hochgeladenen Datei: {e}")
+    elif os.path.exists("users.csv"):
+        try:
+            users_df = pd.read_csv("users.csv", sep=";", dtype=str)
+            st.info("ℹ️ Lokale Datei 'users.csv' wurde verwendet.")
+        except Exception as e:
+            st.error(f"❌ Fehler beim Einlesen der lokalen Datei: {e}")
+    else:
+        st.warning("⚠️ Keine Benutzerdatei gefunden. Bitte 'users.csv' hochladen oder lokal bereitstellen.")
+
+    # Login-Funktion nur wenn Datei erfolgreich geladen wurde
+    if users_df is not None and not st.session_state.get("logged_in", False):
         input_user = st.text_input("Benutzername")
         input_pass = st.text_input("Passwort", type="password")
         if st.button("Login"):
             try:
-                users_df = pd.read_csv("users.csv", sep=";", dtype=str)
+                # Whitespace entfernen zur Sicherheit
+                users_df["username"] = users_df["username"].str.strip()
+                users_df["password"] = users_df["password"].str.strip()
+                input_user = input_user.strip()
+                input_pass = input_pass.strip()
 
                 match = users_df[
                     (users_df["username"] == input_user) &
@@ -169,26 +193,19 @@ with tabs[0]:
                     st.session_state.username = input_user
                     st.session_state.role = match.iloc[0]["role"]
                     st.success(f"✅ Eingeloggt als {input_user} (Rolle: {st.session_state.role})")
-                    st.experimental_rerun()   # <- sorgt dafür, dass die Seite sofort neu gerendert wird
+                    st.experimental_rerun()
                 else:
                     st.error("❌ Login fehlgeschlagen.")
             except Exception as e:
-                st.error(f"Fehler beim Einlesen der Benutzerdatei: {e}")
+                st.error(f"Fehler beim Login-Vorgang: {e}")
 
-    else:
+    elif st.session_state.get("logged_in", False):
         st.info("Du bist bereits eingeloggt. Logout über die Sidebar.")
 
-        # Vorschau nur für Admins sichtbar
-        if st.session_state.get("role") == "admin":
+        # Vorschau nur für Admins
+        if st.session_state.get("role") == "admin" and users_df is not None:
             st.markdown("### 👥 Benutzerdatei-Vorschau (`users.csv`)")
-            try:
-                users_df = pd.read_csv("users.csv", sep=";", dtype=str)
-                st.dataframe(users_df)
-            except Exception as e:
-                st.error(f"Fehler beim Laden der Benutzerdatei: {e}")
-
-
-
+            st.dataframe(users_df)
 
 
 # --------------------------
