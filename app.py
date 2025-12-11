@@ -45,7 +45,7 @@ with st.sidebar:
         df_va = None
         if DATA_FILE_VA.exists():
             try:
-                df_va = pd.read_csv(DATA_FILE_VA, sep=";", encoding="utf-8-sig", dtype=str)
+                df_va = pd.read_csv(DATA_FILE_VA, sep=",", encoding="utf-8", dtype=str)
                 df_va.columns = df_va.columns.str.strip()
 
                 va_col = None
@@ -66,20 +66,25 @@ with st.sidebar:
         selected_va = st.selectbox("VA auswählen", options=va_liste, index=None, key="sidebar_va_select")
         st.session_state.selected_va = selected_va if selected_va else st.session_state.get("selected_va")
 
-        # Vorschau + Lesebestätigung + Fortschritt
+        # Vorschau + Gelbes Dokument + Lesebestätigung + Fortschritt
         if st.session_state.get("selected_va") and df_va is not None:
             row = df_va[df_va["VA_clean"] == st.session_state.selected_va]
             if not row.empty:
                 def g(col):
                     return row[col].values[0] if col in row.columns else ""
-                st.markdown("### 📘 VA-Vorschau")
-                st.write({
-                    "VA_Nr": st.session_state.selected_va,
-                    "Titel": g("Titel"),
-                    "Kapitel": g("Kapitel"),
-                    "Unterkapitel": g("Unterkapitel"),
-                    "Revisionsstand": g("Revisionsstand"),
-                })
+
+                # Gelbe Info-Box mit VA-Daten
+                st.info(f"""
+**VA {st.session_state.selected_va} – {g('Titel')}**
+
+Kapitel: {g('Kapitel')} | Unterkapitel: {g('Unterkapitel')}  
+Revisionsstand: {g('Revisionsstand')}  
+Geltungsbereich: {g('Geltungsbereich')}  
+Ziel: {g('Ziel')}  
+Vorgehensweise: {g('Vorgehensweise')}  
+Kommentar: {g('Kommentar')}  
+Mitgeltende Unterlagen: {g('Mitgeltende Unterlagen')}
+""")
 
                 # Eingabe für Lesebestätigung
                 st.markdown("### ✅ Lesebestätigung")
@@ -94,11 +99,11 @@ with st.sidebar:
                         }])
                         entry.to_csv(
                             DATA_FILE_KENNTNIS,
-                            sep=";",
+                            sep=",",                # <-- Komma statt Semikolon
                             index=False,
                             mode="a",
                             header=not DATA_FILE_KENNTNIS.exists(),
-                            encoding="utf-8-sig"
+                            encoding="utf-8"
                         )
                         st.success("Bestätigung gespeichert.")
                     else:
@@ -107,8 +112,8 @@ with st.sidebar:
                 # Fortschrittsanzeige
                 if DATA_FILE_KENNTNIS.exists() and DATA_FILE_MA.exists():
                     try:
-                        df_kenntnis = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
-                        df_mitarbeiter = pd.read_csv(DATA_FILE_MA, sep=";", encoding="utf-8-sig", dtype=str)
+                        df_kenntnis = pd.read_csv(DATA_FILE_KENNTNIS, sep=",", encoding="utf-8", dtype=str)
+                        df_mitarbeiter = pd.read_csv(DATA_FILE_MA, sep=",", encoding="utf-8", dtype=str)
 
                         df_mitarbeiter["Name_full"] = df_mitarbeiter["Vorname"].str.strip() + " " + df_mitarbeiter["Name"].str.strip()
                         df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
@@ -117,19 +122,9 @@ with st.sidebar:
                         gesamt = len(zielgruppe)
 
                         df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
-                        gelesen_raw = df_kenntnis[df_kenntnis["VA_Nr_norm"] == norm_va(st.session_state.selected_va)]["Name"].dropna().unique()
+                        gelesen = df_kenntnis[df_kenntnis["VA_Nr_norm"] == norm_va(st.session_state.selected_va)]["Name"].dropna().unique()
 
-                        def normalize_name(name):
-                            if "," in name:
-                                nach, vor = [p.strip() for p in name.split(",", 1)]
-                                return f"{vor} {nach}"
-                            return name.strip()
-
-                        gelesen_norm = [normalize_name(n) for n in gelesen_raw]
-                        gelesen_set = set(gelesen_norm)
-                        zielgruppe_set = set(zielgruppe)
-
-                        gelesen_count = len(gelesen_set & zielgruppe_set)
+                        gelesen_count = len(set(gelesen) & set(zielgruppe))
                         fortschritt = gelesen_count / gesamt if gesamt > 0 else 0.0
 
                         st.markdown("### 📊 Lesefortschritt")
