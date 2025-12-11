@@ -197,6 +197,7 @@ with tabs[0]:
                     st.session_state.username = match["username"].values[0]
                     st.session_state.role = match["role"].values[0]
                     st.success(f"✅ Eingeloggt als {st.session_state.username} ({st.session_state.role})")
+                    st.experimental_rerun()
                 else:
                     st.error("Login fehlgeschlagen: Benutzername oder Passwort falsch.")
             except Exception as e:
