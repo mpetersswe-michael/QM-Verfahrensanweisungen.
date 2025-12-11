@@ -379,23 +379,61 @@ with tabs[3]:
 
 
 # --------------------------
-# Tab 4: Berechtigungen & Rollen
+# Tab 4: Benutzerverwaltung
 # --------------------------
 with tabs[4]:
-    st.markdown("## 🔑 Berechtigungen & Rollen")
+    st.markdown("## 👥 Benutzerverwaltung")
 
     if not st.session_state.get("logged_in", False):
         st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
     else:
-        if DATA_FILE_USERS.exists():
-            df_users = pd.read_csv(DATA_FILE_USERS, sep=";", encoding="utf-8-sig", dtype=str)
-            st.dataframe(df_users)
+        # Rollenprüfung
+        if st.session_state.get("role") == "admin":
+            st.success("Admin-Bereich: volle Berechtigungen")
 
-        if st.session_state.role == "admin":
+            # Bestehende Benutzer anzeigen
+            if DATA_FILE_USERS.exists():
+                df_users = pd.read_csv(DATA_FILE_USERS, sep=",", encoding="utf-8", dtype=str)
+                st.dataframe(df_users)
+            else:
+                st.info("Noch keine Benutzerliste vorhanden.")
+
+            # Neue Benutzer hochladen
             st.markdown("### ➕ Benutzerliste aktualisieren")
-            uploaded_file = st.file_uploader("users.csv hochladen", type=["csv"])
+            uploaded_file = st.file_uploader("users.csv hochladen", type=["csv"], key="upload_users")
             if uploaded_file is not None:
-                df_new = pd.read_csv(uploaded_file, sep=";", encoding="utf-8-sig", dtype=str)
-                df_new.to_csv(DATA_FILE_USERS, sep=";", index=False, encoding="utf-8-sig")
+                df_new = pd.read_csv(uploaded_file, sep=",", encoding="utf-8", dtype=str)
+                df_new.to_csv(DATA_FILE_USERS, sep=",", index=False, encoding="utf-8")
                 st.success("Benutzerliste aktualisiert.")
+                st.rerun()
 
+            # Einzelne Benutzer hinzufügen
+            st.markdown("### ➕ Einzelnen Benutzer hinzufügen")
+            new_user = st.text_input("Benutzername", key="new_user")
+            new_pass = st.text_input("Passwort", type="password", key="new_pass")
+            new_role = st.selectbox("Rolle", options=["user", "admin"], key="new_role")
+
+            if st.button("Benutzer hinzufügen", key="add_user_btn"):
+                if new_user.strip() and new_pass.strip():
+                    new_entry = pd.DataFrame([{
+                        "username": new_user.strip(),
+                        "password": new_pass.strip(),
+                        "role": new_role.strip().lower()
+                    }])
+                    file_exists = DATA_FILE_USERS.exists()
+                    new_entry.to_csv(
+                        DATA_FILE_USERS,
+                        sep=",",
+                        index=False,
+                        mode="a" if file_exists else "w",
+                        header=not file_exists,
+                        encoding="utf-8"
+                    )
+                    st.success(f"Benutzer {new_user} hinzugefügt.")
+                    st.rerun()
+                else:
+                    st.error("Bitte Benutzername und Passwort eingeben.")
+
+        else:
+            # Bereich für normale User
+            st.info("Nur Administratoren können die Benutzerverwaltung nutzen.")
