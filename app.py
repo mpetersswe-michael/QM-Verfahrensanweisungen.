@@ -115,6 +115,21 @@ tabs = st.tabs([
     "Berechtigungen & Rollen"
 ])
 
+ with tabs[0]:
+    st.markdown("## 🔒 System & Login")
+
+    if not st.session_state.get("logged_in", False):
+        u = st.text_input("Benutzername")
+        p = st.text_input("Passwort", type="password")
+
+        if st.button("Login"):
+            # ... Login-Code ...
+    else:
+        st.success(f"Eingeloggt als: {st.session_state.username} ({st.session_state.role})")
+        if st.button("Logout"):
+            st.session_state.clear()
+            st.rerun()
+
     # --------------------------
     # Button: CSV-Format anpassen
     # --------------------------
@@ -123,16 +138,12 @@ tabs = st.tabs([
         try:
             for path in [DATA_FILE_VA, DATA_FILE_MA, DATA_FILE_KENNTNIS, DATA_FILE_USERS]:
                 if path.exists():
-                    # robust einlesen (egal ob Tab oder Komma)
                     df = pd.read_csv(path, sep=None, engine="python", encoding="utf-8-sig", dtype=str)
                     df.columns = df.columns.str.replace("\ufeff", "", regex=False).str.strip().str.lower()
-                    # zurückschreiben als Tab-getrennt mit Header
                     df.to_csv(path, sep="\t", index=False, encoding="utf-8-sig")
             st.success("Alle CSVs erfolgreich angepasst. Bitte App neu laden.")
         except Exception as e:
             st.error(f"Fehler bei der Konvertierung: {e}")
-
-
 
 # --------------------------
 # Tab 1: Verfahrensanweisungen (Admin-only)
