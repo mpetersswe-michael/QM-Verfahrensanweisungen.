@@ -104,9 +104,7 @@ with st.sidebar:
     else:
         st.info("Bitte zuerst im Tab 'System & Login' anmelden.")
 
-# --------------------------
-# Tabs nur einmal definieren
-# --------------------------
+# Tabs definieren
 tabs = st.tabs([
     "System & Login",
     "Verfahrensanweisungen",
@@ -115,7 +113,8 @@ tabs = st.tabs([
     "Berechtigungen & Rollen"
 ])
 
- with tabs[0]:
+# Tab 0
+with tabs[0]:
     st.markdown("## 🔒 System & Login")
 
     if not st.session_state.get("logged_in", False):
@@ -123,13 +122,12 @@ tabs = st.tabs([
         p = st.text_input("Passwort", type="password")
 
         if st.button("Login"):
-            # ... Login-Code ...
+            # Login-Code hier
     else:
         st.success(f"Eingeloggt als: {st.session_state.username} ({st.session_state.role})")
         if st.button("Logout"):
             st.session_state.clear()
             st.rerun()
-
     # --------------------------
     # Button: CSV-Format anpassen
     # --------------------------
