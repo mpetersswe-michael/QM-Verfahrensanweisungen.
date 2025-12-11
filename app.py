@@ -121,13 +121,15 @@ with tabs[0]:
         u = st.text_input("Benutzername")
         p = st.text_input("Passwort", type="password")
 
-    if st.button("Login"):
+        if st.button("Login"):
             # Login-Code hier
+            pass   # <- hier kommt dein eigentlicher Login-Code rein
     else:
         st.success(f"Eingeloggt als: {st.session_state.username} ({st.session_state.role})")
         if st.button("Logout"):
             st.session_state.clear()
             st.rerun()
+
     # --------------------------
     # Button: CSV-Format anpassen
     # --------------------------
@@ -142,6 +144,7 @@ with tabs[0]:
             st.success("Alle CSVs erfolgreich angepasst. Bitte App neu laden.")
         except Exception as e:
             st.error(f"Fehler bei der Konvertierung: {e}")
+
 
 # --------------------------
 # Tab 1: Verfahrensanweisungen (Admin-only)
