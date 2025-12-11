@@ -1,5 +1,5 @@
 # ==========================================
-# QM-Verfahrensanweisungen – Komplettversion mit Rollen-Trennung
+# QM-Verfahrensanweisungen – Komplettversion
 # ==========================================
 import streamlit as st
 import pandas as pd
@@ -32,7 +32,7 @@ if "selected_va" not in st.session_state:
 # Hilfsfunktionen
 # --------------------------
 def read_csv_robust(path: pathlib.Path) -> pd.DataFrame:
-    df = pd.read_csv(path, sep=None, engine="python", encoding="utf-8-sig", dtype=str)
+    df = pd.read_csv(path, sep=",", encoding="utf-8-sig", dtype=str)
     df.columns = df.columns.str.replace("\ufeff", "", regex=False).str.strip().str.lower()
     return df
 
@@ -94,7 +94,7 @@ with st.sidebar:
                     file_exists = DATA_FILE_KENNTNIS.exists()
                     entry.to_csv(
                         DATA_FILE_KENNTNIS,
-                        sep=CSV_SEP,
+                        sep=",",
                         index=False,
                         mode="a" if file_exists else "w",
                         header=not file_exists,
@@ -129,20 +129,23 @@ with tabs[0]:
 
         if st.button("Login"):
             try:
-                df_users = pd.read_csv(DATA_FILE_USERS, sep=",", encoding="utf-8-sig", dtype=str)
-                df_users.columns = df_users.columns.str.strip().str.lower()
-                match = df_users[
-                    (df_users["username"].str.strip().str.lower() == u.strip().lower()) &
-                    (df_users["password"].str.strip() == p.strip())
-                ]
-                if not match.empty:
-                    st.session_state.logged_in = True
-                    st.session_state.username = match["username"].values[0].strip()
-                    st.session_state.role = match["role"].values[0].strip().lower()
-                    st.success(f"Eingeloggt als {st.session_state.username} ({st.session_state.role})")
-                    st.rerun()
+                df_users = read_csv_robust(DATA_FILE_USERS)
+                required = {"username", "password", "role"}
+                if not required.issubset(set(df_users.columns)):
+                    st.error("users.csv muss Spalten username,password,role enthalten.")
                 else:
-                    st.error("Login fehlgeschlagen.")
+                    match = df_users[
+                        (df_users["username"].fillna("").str.strip().str.lower() == u.strip().lower()) &
+                        (df_users["password"].fillna("").str.strip() == p.strip())
+                    ]
+                    if not match.empty:
+                        st.session_state.logged_in = True
+                        st.session_state.username = match["username"].values[0].strip()
+                        st.session_state.role = match["role"].values[0].strip().lower()
+                        st.success(f"Eingeloggt als {st.session_state.username} ({st.session_state.role})")
+                        st.rerun()
+                    else:
+                        st.error("Login fehlgeschlagen.")
             except Exception as e:
                 st.error(f"Fehler beim Laden der Benutzerliste: {e}")
     else:
@@ -151,22 +154,18 @@ with tabs[0]:
             st.session_state.clear()
             st.rerun()
 
- # --------------------------
-# Button: CSV-Format anpassen
-# --------------------------
-st.markdown("### 🛠 CSV-Format anpassen")
-if st.button("Alle CSVs auf Komma & UTF-8-SIG konvertieren"):
-    try:
-        for path in [DATA_FILE_VA, DATA_FILE_MA, DATA_FILE_KENNTNIS, DATA_FILE_USERS]:
-            if path.exists():
-                # robust einlesen
-                df = pd.read_csv(path, sep=None, engine="python", encoding="utf-8-sig", dtype=str)
-                df.columns = df.columns.str.replace("\ufeff", "", regex=False).str.strip().str.lower()
-                # robust zurückschreiben MIT Header
-                df.to_csv(path, sep=",", index=False, encoding="utf-8-sig")
-        st.success("Alle CSVs erfolgreich angepasst. Bitte App neu laden.")
-    except Exception as e:
-        st.error(f"Fehler bei der Konvertierung: {e}")
+    # Button: CSV-Format anpassen
+    st.markdown("### 🛠 CSV-Format anpassen")
+    if st.button("Alle CSVs auf Komma & UTF-8-SIG konvertieren"):
+        try:
+            for path in [DATA_FILE_VA, DATA_FILE_MA, DATA_FILE_KENNTNIS, DATA_FILE_USERS]:
+                if path.exists():
+                    df = pd.read_csv(path, sep=None, engine="python", encoding="utf-8-sig", dtype=str)
+                    df.columns = df.columns.str.replace("\ufeff", "", regex=False).str.strip().str.lower()
+                    df.to_csv(path, sep=",", index=False, encoding="utf-8-sig")
+            st.success("Alle CSVs erfolgreich angepasst. Bitte App neu laden.")
+        except Exception as e:
+            st.error(f"Fehler bei der Konvertierung: {e}")
 
 # --------------------------
 # Tab 1: Verfahrensanweisungen (Admin-only)
@@ -179,7 +178,7 @@ with tabs[1]:
         st.info("Nur Administratoren haben Zugriff auf diesen Bereich.")
     else:
         st.write("Hier können Admins neue VA anlegen und bestehende anzeigen.")
-        # ... (VA-Eingabe und Anzeige wie zuvor)
+        # Eingabe + Anzeige-Code für Admin
 
 # --------------------------
 # Tab 2: Lesebestätigung (Admin-only Übersicht)
@@ -189,7 +188,7 @@ with tabs[2]:
     if not st.session_state.get("logged_in", False):
         st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
     elif st.session_state.get("role") != "admin":
-        st.info("Nur Administratoren haben Zugriff auf diesen Bereich.")
+        st.info("Nur Administratoren sehen die Übersicht.")
     else:
         if DATA_FILE_KENNTNIS.exists():
             df_k = read_csv_robust(DATA_FILE_KENNTNIS)
@@ -221,26 +220,7 @@ with tabs[4]:
     if not st.session_state.get("logged_in", False):
         st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
     elif st.session_state.get("role") != "admin":
-        st.info("Nur Administratoren haben Zugriff auf diesen Bereich.")
-    else:
-        if DATA_FILE_USERS.exists():
-            df_users_view = read_csv_robust(DATA_FILE_USERS)
-            st.dataframe(df_users_view)
-        else:
-            st.info("Noch keine Benutzerliste vorhanden.")
-        # ... (Upload + Einzelne Benutzer hinzufügen wie zuvor)
-
-# --------------------------
-# Tab 4: Benutzerverwaltung (Admin-only)
-# --------------------------
-with tabs[4]:
-    st.markdown("## ⚙️ Berechtigungen & Rollen")
-
-    if not st.session_state.get("logged_in", False):
-        st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
-    elif st.session_state.get("role") != "admin":
-        st.info("Nur Administratoren können die Benutzerverwaltung nutzen.")
-    else:
+        st.info("Nur Administratoren
         st.success("Admin-Bereich: volle Berechtigungen")
 
         # Bestehende Benutzer anzeigen
@@ -257,7 +237,7 @@ with tabs[4]:
         )
         if uploaded_users is not None:
             df_new = pd.read_csv(
-                uploaded_users, sep=None, engine="python", encoding="utf-8-sig", dtype=str
+                uploaded_users, sep=",", encoding="utf-8-sig", dtype=str
             )
             df_new.columns = df_new.columns.str.replace("\ufeff", "", regex=False).str.strip().str.lower()
             # nur relevante Spalten behalten
@@ -283,7 +263,7 @@ with tabs[4]:
                 file_exists = DATA_FILE_USERS.exists()
                 new_entry.to_csv(
                     DATA_FILE_USERS,
-                    sep=CSV_SEP,
+                    sep=",",
                     index=False,
                     mode="a" if file_exists else "w",
                     header=not file_exists,
