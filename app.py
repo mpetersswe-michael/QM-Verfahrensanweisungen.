@@ -29,6 +29,32 @@ def norm_va(va):
     return str(va).strip().upper()
 
 # --------------------------
+# Hilfsfunktionen
+# --------------------------
+CSV_SEP = ","   # Einheitlich Komma
+
+def read_csv_auto(path):
+    return pd.read_csv(path, sep=None, engine="python", encoding="utf-8", dtype=str)
+
+def write_csv(df, path):
+    df.to_csv(path, sep=CSV_SEP, index=False, encoding="utf-8")
+
+def append_csv_row(row_dict, path):
+    df_new = pd.DataFrame([row_dict])
+    file_exists = pathlib.Path(path).exists()
+    df_new.to_csv(path, sep=CSV_SEP, index=False, mode="a",
+                  header=not file_exists, encoding="utf-8")
+
+def normalize_cols(df):
+    df.columns = df.columns.str.strip()
+    # hier kannst du Spaltennamen tolerant auf Standard bringen
+    return df
+
+def norm_va(va):
+    if pd.isna(va): return None
+    return str(va).strip().upper()
+
+# --------------------------
 # Sidebar
 # --------------------------
 with st.sidebar:
