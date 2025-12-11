@@ -145,31 +145,50 @@ if st.button("Bestätigen", key="sidebar_confirm_button"):
     else:
         st.error("Bitte Name eingeben.")
 
-        # Fortschrittsanzeige
- if DATA_FILE_KENNTNIS.exists() and DATA_FILE_MA.exists():
-        try:
-             df_kenntnis = pd.read_csv(DATA_FILE_KENNTNIS, sep=",", encoding="utf-8", dtype=str)
-             df_mitarbeiter = pd.read_csv(DATA_FILE_MA, sep=",", encoding="utf-8", dtype=str)
+# Fortschrittsanzeige
+if DATA_FILE_KENNTNIS.exists() and DATA_FILE_MA.exists():
+    try:
+        df_kenntnis = pd.read_csv(DATA_FILE_KENNTNIS, sep=",", encoding="utf-8", dtype=str)
+        df_mitarbeiter = pd.read_csv(DATA_FILE_MA, sep=",", encoding="utf-8", dtype=str)
 
-             df_mitarbeiter["Name_full"] = df_mitarbeiter["Vorname"].str.strip() + " " + df_mitarbeiter["Name"].str.strip()
-             df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
+        # Mitarbeiter-Namen vereinheitlichen
+        df_mitarbeiter["Name_full"] = df_mitarbeiter["Vorname"].str.strip() + " " + df_mitarbeiter["Name"].str.strip()
+        df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
 
-             zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == norm_va(st.session_state.selected_va)]["Name_full"].dropna().unique()
-             gesamt = len(zielgruppe)
+        # Zielgruppe für die ausgewählte VA
+        zielgruppe = df_mitarbeiter[
+            df_mitarbeiter["VA_norm"] == norm_va(st.session_state.selected_va)
+        ]["Name_full"].dropna().unique()
+        gesamt = len(zielgruppe)
 
-             df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
-             gelesen = df_kenntnis[df_kenntnis["VA_Nr_norm"] == norm_va(st.session_state.selected_va)]["Name"].dropna().unique()
+        # Lesebestätigungen für diese VA
+        df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
+        gelesen_raw = df_kenntnis[
+            df_kenntnis["VA_Nr_norm"] == norm_va(st.session_state.selected_va)
+        ]["Name"].dropna().unique()
 
-             gelesen_count = len(set(gelesen) & set(zielgruppe))
-             fortschritt = gelesen_count / gesamt if gesamt > 0 else 0.0
+        # Namensnormalisierung: "Nachname, Vorname" -> "Vorname Nachname"
+        def normalize_name(name):
+            if not isinstance(name, str):
+                return ""
+            if "," in name:
+                nach, vor = [p.strip() for p in name.split(",", 1)]
+                return f"{vor} {nach}"
+            return name.strip()
 
-             st.markdown("### 📊 Lesefortschritt")
-             st.progress(fortschritt)
-             st.caption(f"{gelesen_count} von {gesamt} Mitarbeiter haben bestätigt.")
-         except Exception as e:
-            st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
-     else:
-           st.info("Bitte zuerst im Tab 'System & Login' anmelden.")
+        gelesen_norm = [normalize_name(n) for n in gelesen_raw]
+
+        # Schnittmenge berechnen
+        gelesen_count = len(set(gelesen_norm) & set(zielgruppe))
+        fortschritt = gelesen_count / gesamt if gesamt > 0 else 0.0
+
+        st.markdown("### 📊 Lesefortschritt")
+        st.progress(fortschritt)
+        st.caption(f"{gelesen_count} von {gesamt} Mitarbeiter haben bestätigt.")
+    except Exception as e:
+        st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
+else:
+    st.info("Für die Fortschrittsanzeige werden Mitarbeiter- und Lesebestätigungsdateien benötigt.")
 
 # --------------------------
 # Tab 0: System & Login
@@ -215,12 +234,6 @@ with tabs[0]:
             st.success("Alle CSVs erfolgreich auf Komma konvertiert. Bitte App neu laden.")
         except Exception as e:
             st.error(f"Fehler bei der Konvertierung: {e}")
-
-
-# --------------------------
-# Tab 1: Verfahrensanweisungen
-# -----------------------
-
 
 # --------------------------
 # Tab 1: Verfahrensanweisungen
