@@ -52,14 +52,13 @@ def normalize_name(name: str) -> str:
     return name
 
 # --------------------------
-# Sidebar (VA-Auswahl + Lesebestätigung für User)
+# Sidebar (VA-Auswahl + Lesebestätigung für User + Dokumentanzeige)
 # --------------------------
 with st.sidebar:
     st.markdown("## 📚 Übersicht")
     if st.session_state.get("logged_in", False):
         st.success(f"Eingeloggt: {st.session_state.get('username')} ({st.session_state.get('role')})")
 
-        # Logout
         if st.button("Logout", key="logout_sidebar"):
             st.session_state.clear()
             st.rerun()
@@ -76,6 +75,13 @@ with st.sidebar:
         selected_va = st.selectbox("VA auswählen", options=va_list, index=None)
         if selected_va:
             st.session_state.selected_va = selected_va
+
+        # Dokumentanzeige
+        if st.session_state.get("selected_va") and df_va_sidebar is not None:
+            doc = df_va_sidebar[df_va_sidebar["va_clean"] == st.session_state.selected_va]
+            if not doc.empty:
+                st.markdown("### 📄 Aktuelles Dokument")
+                st.table(doc)
 
         # Lesebestätigung nur für User
         if st.session_state.get("role") == "user":
@@ -104,7 +110,9 @@ with st.sidebar:
     else:
         st.info("Bitte zuerst im Tab 'System & Login' anmelden.")
 
-# Tabs definieren
+# --------------------------
+# Tabs
+# --------------------------
 tabs = st.tabs([
     "System & Login",
     "Verfahrensanweisungen",
@@ -113,6 +121,9 @@ tabs = st.tabs([
     "Berechtigungen & Rollen"
 ])
 
+# --------------------------
+# Tab 0: System & Login
+# --------------------------
 with tabs[0]:
     st.markdown("## 🔒 System & Login")
 
@@ -122,14 +133,11 @@ with tabs[0]:
 
         if st.button("Login"):
             try:
-                df_users = pd.read_csv(DATA_FILE_USERS, sep="\t", encoding="utf-8-sig", dtype=str)
-                df_users.columns = df_users.columns.str.replace("\ufeff", "", regex=False).str.strip().str.lower()
-
+                df_users = read_csv_robust(DATA_FILE_USERS)
                 match = df_users[
                     (df_users["username"].str.strip().str.lower() == u.strip().lower()) &
                     (df_users["password"].str.strip() == p.strip())
                 ]
-
                 if not match.empty:
                     st.session_state.logged_in = True
                     st.session_state.username = match["username"].values[0].strip()
@@ -146,9 +154,7 @@ with tabs[0]:
             st.session_state.clear()
             st.rerun()
 
-    # --------------------------
     # Button: CSV-Format anpassen
-    # --------------------------
     st.markdown("### 🛠 CSV-Format anpassen")
     if st.button("Alle CSVs auf Tab-getrennt & UTF-8-SIG konvertieren"):
         try:
@@ -161,7 +167,6 @@ with tabs[0]:
         except Exception as e:
             st.error(f"Fehler bei der Konvertierung: {e}")
 
-
 # --------------------------
 # Tab 1: Verfahrensanweisungen (Admin-only)
 # --------------------------
@@ -172,8 +177,6 @@ with tabs[1]:
     elif st.session_state.get("role") != "admin":
         st.info("Nur Administratoren haben Zugriff auf diesen Bereich.")
     else:
-        st.write("Hier können Admins neue VA anlegen und bestehende anzeigen.")
-        # Beispiel: neue VA speichern
         va_nr = st.text_input("VA-Nr")
         titel = st.text_input("Titel")
         kapitel = st.text_input("Kapitel")
@@ -224,6 +227,15 @@ with tabs[3]:
     elif st.session_state.get("role") != "admin":
         st.info("Nur Administratoren haben Zugriff auf diesen Bereich.")
     else:
+        # Upload-Funktion für Mitarbeiterliste
+        uploaded_ma = st.file_uploader("Mitarbeiterliste hochladen (Tab-getrennt)", type=["csv"], key="upload_ma")
+        if uploaded_ma is not None:
+            df_new = pd.read_csv(uploaded_ma, sep="\t", encoding="utf-8-sig", dtype=str)
+            write_csv(df_new, DATA_FILE_MA)
+            st.success("Mitarbeiterliste aktualisiert.")
+            st.rerun()
+
+        # Anzeige der aktuellen Mitarbeiterliste
         if DATA_FILE_MA.exists():
             df_ma = read_csv_robust(DATA_FILE_MA)
             st.dataframe(df_ma)
@@ -250,17 +262,14 @@ with tabs[4]:
         else:
             st.info("Noch keine Benutzerliste vorhanden.")
 
-        # CSV-Upload
+        # CSV-Upload für Benutzerliste
         st.markdown("### ➕ Benutzerliste aktualisieren")
         uploaded_users = st.file_uploader(
             "users.csv hochladen (Tab-getrennt)", type=["csv"], key="upload_users"
         )
         if uploaded_users is not None:
-            df_new = pd.read_csv(
-                uploaded_users, sep="\t", encoding="utf-8-sig", dtype=str
-            )
+            df_new = pd.read_csv(uploaded_users, sep="\t", encoding="utf-8-sig", dtype=str)
             df_new.columns = df_new.columns.str.replace("\ufeff", "", regex=False).str.strip().str.lower()
-            # nur relevante Spalten behalten
             keep = [c for c in ["username", "password", "role"] if c in df_new.columns]
             df_new = df_new[keep] if keep else df_new
             write_csv(df_new, DATA_FILE_USERS)
