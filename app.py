@@ -172,9 +172,6 @@ with st.sidebar:
     else:
         st.info("Bitte zuerst im Tab 'System & Login' anmelden.")
 
-# --------------------------
-# Tab 0: System & Login
-# --------------------------
 with tabs[0]:
     st.markdown("## 🔒 System & Login")
 
@@ -197,7 +194,7 @@ with tabs[0]:
                     st.session_state.username = match["username"].values[0]
                     st.session_state.role = match["role"].values[0]
                     st.success(f"✅ Eingeloggt als {st.session_state.username} ({st.session_state.role})")
-                    st.experimental_rerun()
+                    st.rerun()   # <--- hier statt experimental_rerun
                 else:
                     st.error("Login fehlgeschlagen: Benutzername oder Passwort falsch.")
             except Exception as e:
@@ -220,6 +217,7 @@ with tabs[0]:
             st.session_state.role = None
             st.session_state.selected_va = None
             st.rerun()
+
 
 
 # --------------------------
