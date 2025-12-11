@@ -1,374 +1,40 @@
 # --------------------------
-# Imports
+# Imports & Setup
 # --------------------------
+import streamlit as st
+import pandas as pd
+import pathlib
 import os
 import re
-import io
-import datetime as dt 
-from zoneinfo import ZoneInfo
-import pandas as pd
-import streamlit as st
-from fpdf import FPDF
-import pathlib
 import html
+import datetime as dt
+from zoneinfo import ZoneInfo
 
-
-st.set_page_config(
-    page_title="Verfahrensanweisungen (Auszug aus dem QMH)",
-    page_icon="📘",
-    layout="wide"
-)
-
-# --------------------------
-# Datenkonfiguration
-# --------------------------
-DATA_FILE_QM = "qm_verfahrensanweisungen.csv"
-DATA_FILE_KENNTNIS = "lesebestätigung.csv"
+# zentrale Dateien
+DATA_FILE_VA = "qm_verfahrensanweisungen.csv"
 DATA_FILE_MA = "mitarbeiter.csv"
+DATA_FILE_KENNTNIS = "lesebestätigung.csv"
+
+# Hilfsfunktion zur Normalisierung von VA-Nummern
+def norm_va(va):
+    if pd.isna(va):
+        return None
+    return str(va).strip().upper()
 
 # --------------------------
-# PDF-Hilfsfunktionen
+# Tabs anlegen
 # --------------------------
-def norm_va(x):
-    s = str(x).upper().replace(" ", "")
-    m = s.replace("VA", "")
-    if m.isdigit():
-        s = f"VA{int(m):03d}"
-    return s
-
-def clean_text(text):
-    if text is None or str(text).strip() == "":
-        return "-"
-    return (
-        str(text)
-        .encode("latin-1", errors="ignore")
-        .decode("latin-1")
-        .replace("–", "-")
-        .replace("•", "*")
-        .replace("“", '"')
-        .replace("”", '"')
-        .replace("’", "'")
-        .replace("€", "EUR")
-        .replace("ä", "ae")
-        .replace("ö", "oe")
-        .replace("ü", "ue")
-        .replace("ß", "ss")
-    )
-
-class CustomPDF(FPDF):
-    def header(self):
-        self.set_font("Arial", size=9)
-        self.cell(0, 10, clean_text("Pflegedienst: xy"), ln=0, align="L")
-        self.cell(0, 10, clean_text(f"Verfahrensanweisung Pflege, Kap. {getattr(self, 'unterkapitel', '')}"), ln=0, align="R")
-        self.ln(15)
-
-    def footer(self):
-        self.set_y(-15)
-        self.set_font("Arial", size=8)
-        self.cell(60, 10, clean_text(f"{getattr(self, 'va_nr', '')} – {getattr(self, 'va_titel', '')}"), ln=0)
-        self.set_x((210 - 90) / 2)
-        self.cell(90, 10, clean_text("Erstellt von: Peters, Michael – Qualitätsbeauftragter"), align="C")
-        self.set_x(-30)
-        self.cell(0, 10, f"Seite {self.page_no()}", align="R")
-
-def export_va_to_pdf(row):
-    os.makedirs("va_pdf", exist_ok=True)
-    pdf = CustomPDF()
-    pdf.alias_nb_pages()
-    pdf.va_nr = f"{row.get('VA_Nr', '')}"
-    pdf.va_titel = f"{row.get('Titel', '')}"
-    pdf.unterkapitel = f"{row.get('Unterkapitel', '')}"
-    pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
-
-    pdf.set_font("Arial", "B", 16)
-    pdf.cell(0, 10, clean_text(f"QM-Verfahrensanweisung - {row.get('VA_Nr', '')}"), ln=True, align="C")
-    pdf.ln(5)
-
-    def add_section(title, content):
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, clean_text(title), ln=True)
-        pdf.set_font("Arial", "", 12)
-        pdf.multi_cell(0, 8, clean_text(content))
-        pdf.ln(3)
-
-    fields = [
-        "Titel", "Kapitel", "Unterkapitel", "Revisionsstand",
-        "Geltungsbereich", "Ziel", "Vorgehensweise", "Kommentar", "Mitgeltende Unterlagen"
-    ]
-    for feld in fields:
-        add_section(feld, row.get(feld, ""))
-
-    pdf_bytes = pdf.output(dest="S").encode("latin-1")
-    va_nr = norm_va(row.get("VA_Nr", "VA000"))
-    pdf_path = f"va_pdf/{va_nr}.pdf"
-    with open(pdf_path, "wb") as f:
-        f.write(pdf_bytes)
-    return pdf_bytes, pdf_path
+tabs = st.tabs([
+    "System & Login",
+    "Verfahrensanweisungen",
+    "Lesebestätigung",
+    "Mitarbeiter",
+    "Berechtigungen & Rollen"
+])
 
 # --------------------------
-# Session-Init
+# Sidebar
 # --------------------------
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-if "username" not in st.session_state:
-    st.session_state.username = None
-if "role" not in st.session_state:
-    st.session_state.role = None
-if "selected_va" not in st.session_state:
-    st.session_state.selected_va = None
-
-# --------------------------
-# Tabs
-# --------------------------
-tabs = st.tabs(["System & Login", "Verfahrensanweisungen", "Lesebestätigung", "Mitarbeiter","Berechtigungen & Rollen"])
-
-# Prüfung der Benutzerdatei users.csv
-def check_users_csv():
-    path = "users.csv"
-    if not os.path.exists(path):
-        st.error("❌ Datei 'users.csv' wurde nicht gefunden.")
-        return False
-
-    try:
-        df = pd.read_csv(path, sep=";", dtype=str)
-        expected_cols = {"username", "password", "role"}
-        actual_cols = set([str(col).strip().lower() for col in users_df.columns])
-
-        missing = expected_cols - actual_cols
-        if missing:
-            st.error(f"❌ Spalten fehlen in 'users.csv': {', '.join(missing)}")
-            st.info(f"Gefundene Spalten: {', '.join(df.columns)}")
-            return False
-        st.success("✅ Benutzerdatei 'users.csv' erfolgreich geprüft.")
-        return True
-    except Exception as e:
-        st.error(f"❌ Fehler beim Einlesen der Datei 'users.csv': {e}")
-        return False
-
-# --------------------------
-# Tab 0: System & Login
-# --------------------------
-with tabs[0]:
-    st.markdown("## 🔒 System & Login")
-
-    if not st.session_state.get("logged_in", False):
-        user = st.text_input("Benutzername", key="login_user")
-        pw = st.text_input("Passwort", type="password", key="login_pass")
-
-        if st.button("Login", key="login_button"):
-            # Beispiel-Logik: hier echte Prüfung einbauen
-            if user == "admin" and pw == "geheim":
-                st.session_state.logged_in = True
-                st.session_state.username = user
-                st.session_state.role = "admin"
-                st.success("✅ Admin eingeloggt")
-            elif user == "mitarbeiter" and pw == "1234":
-                st.session_state.logged_in = True
-                st.session_state.username = user
-                st.session_state.role = "user"
-                st.success("✅ Mitarbeiter eingeloggt")
-            else:
-                st.error("Login fehlgeschlagen")
-    else:
-        st.success(f"Eingeloggt als: {st.session_state.username} ({st.session_state.role})")
-
-        if st.session_state.role == "admin":
-            st.markdown("### 🛠️ Admin-Bereich")
-            st.markdown("- Zugriff auf alle Verfahrensanweisungen")
-            st.markdown("- Lesebestätigungen einsehen und löschen")
-            st.markdown("- Rollen und Berechtigungen verwalten")
-            st.markdown("- Mitarbeiterdaten pflegen")
-        else:
-            st.info("🔐 Eingeschränkter Zugriff: Nur Lesebestätigung und VA-Ansicht möglich.")
-
-        if st.button("Logout", key="logout_button"):
-            st.session_state.logged_in = False
-            st.session_state.username = None
-            st.session_state.role = None
-            st.session_state.selected_va = None
-            st.rerun()
-
-# --------------------------
-# Tab 1: Verfahrensanweisungen
-# --------------------------
-with tabs[1]:
-    st.markdown("## 📘 Verfahrensanweisungen")
-
-    if not st.session_state.get("logged_in"):
-        st.warning("Bitte zuerst im Tab 'Login' anmelden.")
-
-    elif st.session_state.role != "admin":
-        st.warning("🔒 Kein Zugriff für Benutzerrolle. Sichtbar zur Orientierung.")
-
-    else:
-        va_nr_input = st.text_input("VA-Nummer")
-        titel_input = st.text_input("Titel")
-        kapitel_input = st.text_input("Kapitel")
-        unterkapitel_input = st.text_input("Unterkapitel")
-        revisionsstand_input = st.text_input("Revisionsstand")
-        geltungsbereich_input = st.text_input("Geltungsbereich")
-        ziel_input = st.text_input("Ziel")
-        vorgehensweise_input = st.text_area("Vorgehensweise")
-        kommentar_input = st.text_area("Kommentar")
-        mitgeltende_input = st.text_area("Mitgeltende Unterlagen")
-
-        if st.button("VA speichern"):
-            neuer_eintrag = pd.DataFrame([{
-                "VA_Nr": va_nr_input.strip(),
-                "Titel": titel_input.strip(),
-                "Kapitel": kapitel_input.strip(),
-                "Unterkapitel": unterkapitel_input.strip(),
-                "Revisionsstand": revisionsstand_input.strip(),
-                "Geltungsbereich": geltungsbereich_input.strip(),
-                "Ziel": ziel_input.strip(),
-                "Vorgehensweise": vorgehensweise_input.strip(),
-                "Kommentar": kommentar_input.strip(),
-                "Mitgeltende Unterlagen": mitgeltende_input.strip()
-            }])
-
-            if os.path.exists(DATA_FILE_QM):
-                df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
-                df_va = pd.concat([df_va, neuer_eintrag], ignore_index=True)
-            else:
-                df_va = neuer_eintrag
-
-            df_va.to_csv(DATA_FILE_QM, sep=";", index=False, encoding="utf-8-sig")
-            st.success(f"✅ VA {va_nr_input} gespeichert.")
-
-            # PDF erzeugen
-            row = neuer_eintrag.iloc[0].to_dict()
-            pdf_bytes, pdf_path = export_va_to_pdf(row)
-            st.download_button(
-                label=f"📄 PDF herunterladen: {norm_va(va_nr_input)}",
-                data=pdf_bytes,
-                file_name=f"{norm_va(va_nr_input)}.pdf",
-                mime="application/pdf"
-            )
-
-        # VA-Tabelle anzeigen
-        if os.path.exists(DATA_FILE_QM):
-            df_va = pd.read_csv(DATA_FILE_QM, sep=";", encoding="utf-8-sig", dtype=str)
-            st.dataframe(df_va)
-        else:
-            st.info("Noch keine Verfahrensanweisungen gespeichert.")
-
-
-
-
-# --------------------------
-# Tab 2: Lesebestätigung
-# --------------------------
-with tabs[2]:
-    st.markdown("## ✅ Lesebestätigung")
-    if not st.session_state.get("logged_in"):
-        st.warning("Bitte zuerst im Tab 'Login' anmelden.")
-    elif st.session_state.role != "admin":
-        st.warning("🔒 Kein Zugriff für Benutzerrolle. Sichtbar zur Orientierung.")
-    else:
-        if os.path.exists(DATA_FILE_KENNTNIS):
-            df_all = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
-            st.dataframe(df_all)
-        else:
-            st.info("Noch keine Lesebestätigungen vorhanden.")
-
-        # Löschfunktion für Admins
-        if st.session_state.get("role") == "admin" and os.path.exists(DATA_FILE_KENNTNIS):
-            st.markdown("### 🗑️ Einträge verwalten")
-            try:
-                df_kenntnis = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
-                st.dataframe(df_kenntnis)
-
-                index_to_delete = st.number_input(
-                    "Zeilenindex zum Löschen auswählen",
-                    min_value=0,
-                    max_value=len(df_kenntnis)-1,
-                    step=1,
-                    key="delete_index_tab"
-                )
-                if st.button("Eintrag löschen", key="delete_button_tab"):
-                    df_kenntnis = df_kenntnis.drop(index_to_delete).reset_index(drop=True)
-                    df_kenntnis.to_csv(DATA_FILE_KENNTNIS, sep=";", index=False, encoding="utf-8-sig")
-                    st.success(f"Zeile {index_to_delete} gelöscht.")
-            except Exception as e:
-                st.warning(f"Löschen nicht möglich: {e}")
-
-# --------------------------
-# Tab 3: Mitarbeiter
-# --------------------------
-with tabs[3]:
-    st.markdown("## 👥 Mitarbeiterverwaltung")
-    if not st.session_state.get("logged_in"):
-        st.warning("Bitte zuerst im Tab 'Login' anmelden.")
-    elif st.session_state.role != "admin":
-        st.warning("🔒 Kein Zugriff für Benutzerrolle. Sichtbar zur Orientierung.")
-    else:
-        uploaded_file = st.file_uploader("Mitarbeiterliste hochladen (CSV)", type=["csv"])
-        if uploaded_file is not None:
-            df_ma = pd.read_csv(uploaded_file, sep=";", encoding="utf-8-sig", dtype=str)
-            df_ma.to_csv(DATA_FILE_MA, sep=";", index=False, encoding="utf-8-sig")
-            st.success("Mitarbeiterliste gespeichert.")
-        if os.path.exists(DATA_FILE_MA):
-            df_ma = pd.read_csv(DATA_FILE_MA, sep=";", encoding="utf-8-sig", dtype=str)
-            st.dataframe(df_ma)
-        else:
-            st.info("Keine Mitarbeiterliste vorhanden.")
-
-
-# --------------------------
-# Tab 4: Berechtigungen & Rollen
-# --------------------------
-
-DATA_FILE_USERS = "users.csv"
-
-with tabs[4]:
-    if st.session_state.get("logged_in", False) and st.session_state.get("role") == "admin":
-        st.markdown("## 🛡️ Berechtigungen & Rollen")
-        st.info("Hier kannst du die Benutzerdatei (`users.csv`) hochladen und prüfen.")
-
-        uploaded_users = st.file_uploader("📤 Benutzerdatei hochladen", type=["csv"], key="upload_users_tab4")
-
-        users_df = None
-        if uploaded_users is not None:
-            try:
-                # Datei einlesen und sofort speichern
-                users_df = pd.read_csv(uploaded_users, sep=";", encoding="utf-8-sig", dtype=str)
-                users_df.to_csv(DATA_FILE_USERS, sep=";", index=False, encoding="utf-8-sig")
-                st.success("✅ Benutzerdatei gespeichert.")
-            except Exception as e:
-                st.error(f"❌ Fehler beim Einlesen der Datei: {e}")
-
-        # Falls bereits gespeichert, erneut laden
-        if os.path.exists(DATA_FILE_USERS):
-            try:
-                users_df = pd.read_csv(DATA_FILE_USERS, sep=";", encoding="utf-8-sig", dtype=str)
-                st.dataframe(users_df)
-            except Exception as e:
-                st.error(f"❌ Fehler beim Einlesen der lokalen Datei: {e}")
-        else:
-            st.info("Keine Benutzerdatei vorhanden.")
-
-        # Spaltenprüfung
-        if users_df is not None:
-            users_df.columns = [str(c).strip() for c in users_df.columns]
-            expected_cols = {"username", "password", "role"}
-            actual_cols = set(c.lower() for c in users_df.columns)
-
-            missing = expected_cols - actual_cols
-            if missing:
-                st.error(f"❌ Spalten fehlen: {', '.join(sorted(missing))}")
-                st.info(f"Gefundene Spalten: {', '.join(users_df.columns)}")
-            else:
-                st.success("✅ Benutzerdatei ist vollständig und korrekt.")
-                st.dataframe(users_df)
-    else:
-        st.warning("🔒 Nur Admins haben Zugriff auf diesen Bereich.")
-
-
-# --------------------------
-# Tab : Sidebar 
-# --------------------------
-
 with st.sidebar:
     if st.session_state.get("logged_in", False):
         st.success("✅ Eingeloggt")
@@ -383,8 +49,8 @@ with st.sidebar:
 
         # VA-Auswahl
         va_liste = []
-        if os.path.exists("qm_verfahrensanweisungen.csv"):
-            df_va = pd.read_csv("qm_verfahrensanweisungen.csv", sep=";", encoding="utf-8-sig", dtype=str)
+        if os.path.exists(DATA_FILE_VA):
+            df_va = pd.read_csv(DATA_FILE_VA, sep=";", encoding="utf-8-sig", dtype=str)
             if "VA_Nr" in df_va.columns:
                 df_va["VA_clean"] = df_va["VA_Nr"].apply(norm_va)
                 va_liste = sorted(df_va["VA_clean"].unique())
@@ -432,77 +98,198 @@ with st.sidebar:
                             mime="application/pdf",
                             key=f"download_{pdf_name}"
                         )
-# Lesebestätigung in der Sidebar
-st.markdown("### ✅ Lesebestätigung")
-name_sidebar = st.text_input("Name (Nachname, Vorname)", key="sidebar_name_input")
 
-if st.button("Bestätigen", key="sidebar_confirm_button"):
-    if not va_nummer:
-        st.error("Bitte zuerst eine VA auswählen.")
+                # Lesebestätigung
+                st.markdown("### ✅ Lesebestätigung")
+                name_sidebar = st.text_input("Name (Nachname, Vorname)", key="sidebar_name_input")
+                if st.button("Bestätigen", key="sidebar_confirm_button"):
+                    if not va_nummer:
+                        st.error("Bitte zuerst eine VA auswählen.")
+                    else:
+                        name_clean = re.sub(r"\s*[,;]\s*", ", ", name_sidebar.strip())
+                        name_clean = re.sub(r"\s+", " ", name_clean)
+
+                        if name_clean:
+                            zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
+                            eintrag = {
+                                "Name": name_clean,
+                                "VA_Nr": va_nummer,
+                                "VA_Nr_norm": norm_va(va_nummer),
+                                "Zeitpunkt": zeitpunkt
+                            }
+                            df_new = pd.DataFrame([eintrag])[["Name", "VA_Nr", "VA_Nr_norm", "Zeitpunkt"]]
+
+                            path = DATA_FILE_KENNTNIS
+                            file_exists = os.path.exists(path)
+                            file_empty = (not file_exists) or (os.path.getsize(path) == 0)
+
+                            df_new.to_csv(
+                                path,
+                                sep=";",
+                                index=False,
+                                mode="a" if file_exists and not file_empty else "w",
+                                header=not file_exists or file_empty,
+                                encoding="utf-8-sig"
+                            )
+                            st.success(f"Bestätigung für {va_nummer} gespeichert.")
+                        else:
+                            st.error("Bitte Name eingeben.")
+
+                # Fortschrittsanzeige
+                try:
+                    if os.path.exists(DATA_FILE_KENNTNIS) and os.path.exists(DATA_FILE_MA) and va_nummer:
+                        df_kenntnis = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
+                        df_mitarbeiter = pd.read_csv(DATA_FILE_MA, sep=";", encoding="utf-8-sig", dtype=str)
+
+                        df_mitarbeiter["Name_full"] = df_mitarbeiter["Vorname"].str.strip() + " " + df_mitarbeiter["Name"].str.strip()
+                        df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
+
+                        zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == norm_va(va_nummer)]["Name_full"].dropna().unique()
+                        gesamt = len(zielgruppe)
+
+                        df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
+                        gelesen_raw = df_kenntnis[df_kenntnis["VA_Nr_norm"] == norm_va(va_nummer)]["Name"].dropna().unique()
+
+                        def normalize_name(name):
+                            if "," in name:
+                                nach, vor = [p.strip() for p in name.split(",", 1)]
+                                return f"{vor} {nach}"
+                            return name.strip()
+
+                        gelesen_norm = [normalize_name(n) for n in gelesen_raw]
+                        gelesen_set = set(gelesen_norm)
+                        zielgruppe_set = set(zielgruppe)
+
+                        gelesen_count = len(gelesen_set & zielgruppe_set)
+                        fortschritt = gelesen_count / gesamt if gesamt > 0 else 0.0
+
+                        st.markdown("---")
+                        st.markdown("### 📊 Lesefortschritt")
+                        st.progress(fortschritt)
+                        st.caption(f"{gelesen_count} von {gesamt} Mitarbeiter haben bestätigt.")
+                except Exception as e:
+                    st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
     else:
-        name_clean = re.sub(r"\s*,\s*", ",", name_sidebar.strip())
-        if name_clean:
-            zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
-            eintrag = {
-                "Name": name_clean,
-                "VA_Nr": va_nummer,
-                "VA_Nr_norm": norm_va(va_nummer),
-                "Zeitpunkt": zeitpunkt 
-            }
-            df_new = pd.DataFrame([eintrag])[["Name", "VA_Nr", "VA_Nr_norm", "Zeitpunkt"]]
+        st.info("Bitte zuerst im Tab 'System & Login' anmelden.")
 
-            path = "lesebestätigung.csv"
-            file_exists = os.path.exists(path)
-            file_empty = (not file_exists) or (os.path.getsize(path) == 0)
+# --------------------------
+# Tab 0: System & Login
+# --------------------------
+with tabs[0]:
+    st.markdown("## 🔒 System & Login")
 
-            df_new.to_csv(
-                path,
-                sep=";",
-                index=False,
-                mode="a" if file_exists and not file_empty else "w",
-                header=not file_exists or file_empty,
-                encoding="utf-8-sig"
-            )
-            st.success(f"Bestätigung für {va_nummer} gespeichert.")
+    if not st.session_state.get("logged_in", False):
+        user = st.text_input("Benutzername", key="login_user")
+        pw = st.text_input("Passwort", type="password", key="login_pass")
+
+        if st.button("Login", key="login_button"):
+            if user == "admin" and pw == "geheim":
+                st.session_state.logged_in = True
+                st.session_state.username = user
+                st.session_state.role = "admin"
+                st.success("✅ Admin eingeloggt")
+            elif user == "mitarbeiter" and pw == "1234":
+                st.session_state.logged_in = True
+                st.session_state.username = user
+                st.session_state.role = "user"
+                st.success("✅ Mitarbeiter eingeloggt")
+            else:
+                st.error("Login fehlgeschlagen")
+    else:
+        st.success(f"Eingeloggt als: {st.session_state.username} ({st.session_state.role})")
+        if st.session_state.role == "admin":
+            st.markdown("### 🛠️ Admin-Bereich")
+            st.markdown
+
+# --------------------------
+# Tab 1: Verfahrensanweisungen
+# --------------------------
+with tabs[1]:
+    st.markdown("## 📘 Verfahrensanweisungen")
+
+    if not st.session_state.get("logged_in", False):
+        st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
+    else:
+        if os.path.exists(DATA_FILE_VA):
+            df_va = pd.read_csv(DATA_FILE_VA, sep=";", encoding="utf-8-sig", dtype=str)
+            st.dataframe(df_va)
+
+            if st.session_state.role == "admin":
+                st.markdown("### ➕ Neue VA hochladen")
+                uploaded_file = st.file_uploader("CSV-Datei hochladen", type=["csv"], key="upload_va")
+                if uploaded_file is not None:
+                    df_new = pd.read_csv(uploaded_file, sep=";", encoding="utf-8-sig", dtype=str)
+                    df_new.to_csv(DATA_FILE_VA, sep=";", index=False, encoding="utf-8-sig")
+                    st.success("Neue Verfahrensanweisungen gespeichert.")
         else:
-            st.error("Bitte Name eingeben.")
+            st.info("Noch keine Verfahrensanweisungen vorhanden.")
+# --------------------------
+# Tab 2: Lesebestätigung
+# --------------------------
+with tabs[2]:
+    st.markdown("## ✅ Lesebestätigung")
 
-# Fortschrittsanzeige (nur Anzeige)
-try:
-    if os.path.exists("lesebestätigung.csv") and os.path.exists("mitarbeiter.csv") and va_nummer:
-        df_kenntnis = pd.read_csv("lesebestätigung.csv", sep=";", encoding="utf-8-sig", dtype=str)
-        df_mitarbeiter = pd.read_csv("mitarbeiter.csv", sep=";", encoding="utf-8-sig", dtype=str)
+    if not st.session_state.get("logged_in", False):
+        st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
+    else:
+        if os.path.exists(DATA_FILE_KENNTNIS):
+            df_all = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
+            st.dataframe(df_all)
 
-        if {"Name", "Vorname"}.issubset(df_mitarbeiter.columns):
-            df_mitarbeiter["Name_full"] = df_mitarbeiter["Vorname"].str.strip() + " " + df_mitarbeiter["Name"].str.strip()
+            # Admin-Löschfunktion
+            if st.session_state.role == "admin":
+                st.markdown("### 🗑️ Einträge verwalten")
+                index_to_delete = st.number_input(
+                    "Zeilenindex zum Löschen auswählen",
+                    min_value=0,
+                    max_value=len(df_all)-1,
+                    step=1,
+                    key="delete_index_tab"
+                )
+                if st.button("Eintrag löschen", key="delete_button_tab"):
+                    df_all = df_all.drop(index_to_delete).reset_index(drop=True)
+                    df_all.to_csv(DATA_FILE_KENNTNIS, sep=";", index=False, encoding="utf-8-sig")
+                    st.success(f"Zeile {index_to_delete} gelöscht.")
         else:
-            raise ValueError("Spalten 'Name' und 'Vorname' fehlen")
+            st.info("Noch keine Lesebestätigungen vorhanden.")
+# --------------------------
+# Tab 3: Mitarbeiter
+# --------------------------
+with tabs[3]:
+    st.markdown("## 👥 Mitarbeiter")
 
-        df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
-        zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == norm_va(va_nummer)]["Name_full"].dropna().unique()
-        gesamt = len(zielgruppe)
+    if not st.session_state.get("logged_in", False):
+        st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
+    else:
+        if os.path.exists(DATA_FILE_MA):
+            df_ma = pd.read_csv(DATA_FILE_MA, sep=";", encoding="utf-8-sig", dtype=str)
+            st.dataframe(df_ma)
 
-        df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
-        gelesen = df_kenntnis[df_kenntnis["VA_Nr_norm"] == norm_va(va_nummer)]["Name"].dropna().unique()
+            if st.session_state.role == "admin":
+                st.markdown("### ➕ Mitarbeiterliste aktualisieren")
+                uploaded_file = st.file_uploader("CSV-Datei hochladen", type=["csv"], key="upload_ma")
+                if uploaded_file is not None:
+                    df_new = pd.read_csv(uploaded_file, sep=";", encoding="utf-8-sig", dtype=str)
+                    df_new.to_csv(DATA_FILE_MA, sep=";", index=False, encoding="utf-8-sig")
+                    st.success("Mitarbeiterliste aktualisiert.")
+        else:
+            st.info("Noch keine Mitarbeiterliste vorhanden.")
+# --------------------------
+# Tab 4: Berechtigungen & Rollen
+# --------------------------
+with tabs[4]:
+    st.markdown("## 🔑 Berechtigungen & Rollen")
 
-        def normalize_name(name):
-            if "," in name:
-                nach, vor = [p.strip() for p in name.split(",", 1)]
-                return f"{vor} {nach}"
-            return name.strip()
+    if not st.session_state.get("logged_in", False):
+        st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
+    else:
+        if st.session_state.role == "admin":
+            st.markdown("### Rollenübersicht")
+            st.write("Admin: Vollzugriff auf alle Tabs und Funktionen")
+            st.write("User: Zugriff auf VA-Auswahl und Lesebestätigung")
 
-        gelesen_norm = [normalize_name(n) for n in gelesen]
-        gelesen_set = set(gelesen_norm)
-        zielgruppe_set = set(zielgruppe)
-
-        gelesen_count = len(gelesen_set & zielgruppe_set)
-        fortschritt = gelesen_count / gesamt if gesamt > 0 else 0.0
-
-        st.markdown("---")
-        st.markdown("### 📊 Lesefortschritt")
-        st.progress(fortschritt)
-        st.caption(f"{gelesen_count} von {gesamt} Mitarbeiter haben bestätigt.")
-except Exception as e:
-    st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
-
+            st.markdown("### Benutzerverwaltung")
+            st.info("Hier könnte eine Benutzerverwaltung ergänzt werden (z. B. aus einer CSV).")
+        else:
+            st.info("🔐 Nur Admins haben Zugriff auf Rollenverwaltung.")
 
