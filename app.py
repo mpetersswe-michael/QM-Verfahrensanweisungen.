@@ -1,5 +1,5 @@
 # ==========================================
-# QM-Verfahrensanweisungen – Komplettversion
+# QM-Verfahrensanweisungen – Komplettversion (Tab-getrennte CSVs)
 # ==========================================
 import streamlit as st
 import pandas as pd
@@ -13,8 +13,6 @@ DATA_FILE_VA = BASE_DIR / "qm_verfahrensanweisungen.csv"
 DATA_FILE_MA = BASE_DIR / "mitarbeiter.csv"
 DATA_FILE_KENNTNIS = BASE_DIR / "lesebestätigung.csv"
 DATA_FILE_USERS = BASE_DIR / "users.csv"
-
-CSV_SEP = ","   # Einheitlich Komma
 
 # --------------------------
 # Session-State Initialisierung
@@ -32,12 +30,12 @@ if "selected_va" not in st.session_state:
 # Hilfsfunktionen
 # --------------------------
 def read_csv_robust(path: pathlib.Path) -> pd.DataFrame:
-    df = pd.read_csv(path, sep=",", encoding="utf-8-sig", dtype=str)
+    df = pd.read_csv(path, sep="\t", encoding="utf-8-sig", dtype=str)
     df.columns = df.columns.str.replace("\ufeff", "", regex=False).str.strip().str.lower()
     return df
 
-def write_csv(df: pd.DataFrame, path: pathlib.Path, sep: str = CSV_SEP):
-    df.to_csv(path, sep=sep, index=False, encoding="utf-8-sig")
+def write_csv(df: pd.DataFrame, path: pathlib.Path):
+    df.to_csv(path, sep="\t", index=False, encoding="utf-8-sig")
 
 def norm_va(va):
     if pd.isna(va):
@@ -94,7 +92,7 @@ with st.sidebar:
                     file_exists = DATA_FILE_KENNTNIS.exists()
                     entry.to_csv(
                         DATA_FILE_KENNTNIS,
-                        sep=",",
+                        sep="\t",
                         index=False,
                         mode="a" if file_exists else "w",
                         header=not file_exists,
@@ -132,7 +130,7 @@ with tabs[0]:
                 df_users = read_csv_robust(DATA_FILE_USERS)
                 required = {"username", "password", "role"}
                 if not required.issubset(set(df_users.columns)):
-                    st.error("users.csv muss Spalten username,password,role enthalten.")
+                    st.error("users.csv muss Spalten username, password, role enthalten.")
                 else:
                     match = df_users[
                         (df_users["username"].fillna("").str.strip().str.lower() == u.strip().lower()) &
@@ -154,19 +152,6 @@ with tabs[0]:
             st.session_state.clear()
             st.rerun()
 
-    # Button: CSV-Format anpassen
-    st.markdown("### 🛠 CSV-Format anpassen")
-    if st.button("Alle CSVs auf Komma & UTF-8-SIG konvertieren"):
-        try:
-            for path in [DATA_FILE_VA, DATA_FILE_MA, DATA_FILE_KENNTNIS, DATA_FILE_USERS]:
-                if path.exists():
-                    df = pd.read_csv(path, sep=None, engine="python", encoding="utf-8-sig", dtype=str)
-                    df.columns = df.columns.str.replace("\ufeff", "", regex=False).str.strip().str.lower()
-                    df.to_csv(path, sep=",", index=False, encoding="utf-8-sig")
-            st.success("Alle CSVs erfolgreich angepasst. Bitte App neu laden.")
-        except Exception as e:
-            st.error(f"Fehler bei der Konvertierung: {e}")
-
 # --------------------------
 # Tab 1: Verfahrensanweisungen (Admin-only)
 # --------------------------
@@ -178,7 +163,30 @@ with tabs[1]:
         st.info("Nur Administratoren haben Zugriff auf diesen Bereich.")
     else:
         st.write("Hier können Admins neue VA anlegen und bestehende anzeigen.")
-        # Eingabe + Anzeige-Code für Admin
+        # Beispiel: neue VA speichern
+        va_nr = st.text_input("VA-Nr")
+        titel = st.text_input("Titel")
+        kapitel = st.text_input("Kapitel")
+        if st.button("Speichern"):
+            new_entry = pd.DataFrame([{
+                "va_nr": va_nr,
+                "titel": titel,
+                "kapitel": kapitel
+            }])
+            file_exists = DATA_FILE_VA.exists()
+            new_entry.to_csv(
+                DATA_FILE_VA,
+                sep="\t",
+                index=False,
+                mode="a" if file_exists else "w",
+                header=not file_exists,
+                encoding="utf-8-sig"
+            )
+            st.success(f"VA {va_nr} gespeichert.")
+
+        if DATA_FILE_VA.exists():
+            df_va = read_csv_robust(DATA_FILE_VA)
+            st.dataframe(df_va)
 
 # --------------------------
 # Tab 2: Lesebestätigung (Admin-only Übersicht)
@@ -235,11 +243,11 @@ with tabs[4]:
         # CSV-Upload
         st.markdown("### ➕ Benutzerliste aktualisieren")
         uploaded_users = st.file_uploader(
-            "users.csv hochladen (Komma-separiert)", type=["csv"], key="upload_users"
+            "users.csv hochladen (Tab-getrennt)", type=["csv"], key="upload_users"
         )
         if uploaded_users is not None:
             df_new = pd.read_csv(
-                uploaded_users, sep=",", encoding="utf-8-sig", dtype=str
+                uploaded_users, sep="\t", encoding="utf-8-sig", dtype=str
             )
             df_new.columns = df_new.columns.str.replace("\ufeff", "", regex=False).str.strip().str.lower()
             # nur relevante Spalten behalten
@@ -265,7 +273,7 @@ with tabs[4]:
                 file_exists = DATA_FILE_USERS.exists()
                 new_entry.to_csv(
                     DATA_FILE_USERS,
-                    sep=",",
+                    sep="\t",
                     index=False,
                     mode="a" if file_exists else "w",
                     header=not file_exists,
