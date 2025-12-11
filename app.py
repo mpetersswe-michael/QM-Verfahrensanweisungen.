@@ -107,19 +107,64 @@ with tabs[0]:
                 st.error(f"Fehler beim Laden der Benutzerliste: {e}")
     else:
         st.success(f"Eingeloggt als: {st.session_state.username} ({st.session_state.role})")
-# --------------------------
-# Tab 1: Verfahrensanweisungen
-# --------------------------
 with tabs[1]:
     st.markdown("## 📘 Verfahrensanweisungen")
+
     if not st.session_state.get("logged_in", False):
         st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
     else:
+        # Eingabefelder für neue VA
+        st.markdown("### Neue VA anlegen")
+        va_nr = st.text_input("VA-Nr")
+        titel = st.text_input("Titel")
+        kapitel = st.text_input("Kapitel")
+        unterkapitel = st.text_input("Unterkapitel")
+        revisionsstand = st.text_input("Revisionsstand")
+        geltungsbereich = st.text_area("Geltungsbereich")
+        ziel = st.text_area("Ziel")
+        vorgehensweise = st.text_area("Vorgehensweise")
+        kommentar = st.text_area("Kommentar")
+        unterlagen = st.text_area("Mitgeltende Unterlagen")
+
+        if st.button("Speichern & PDF erzeugen"):
+            new_entry = pd.DataFrame([{
+                "VA_Nr": va_nr,
+                "Titel": titel,
+                "Kapitel": kapitel,
+                "Unterkapitel": unterkapitel,
+                "Revisionsstand": revisionsstand,
+                "Geltungsbereich": geltungsbereich,
+                "Ziel": ziel,
+                "Vorgehensweise": vorgehensweise,
+                "Kommentar": kommentar,
+                "Mitgeltende Unterlagen": unterlagen
+            }])
+
+            # CSV anhängen
+            file_exists = os.path.exists(DATA_FILE_VA)
+            new_entry.to_csv(
+                DATA_FILE_VA,
+                sep=";",
+                index=False,
+                mode="a" if file_exists else "w",
+                header=not file_exists,
+                encoding="utf-8-sig"
+            )
+
+            # PDF erzeugen
+            pdf_path = pathlib.Path("va_pdf") / f"{va_nr}.pdf"
+            pdf_path.parent.mkdir(exist_ok=True)
+            with open(pdf_path, "w", encoding="utf-8") as f:
+                f.write(new_entry.to_string())
+
+            st.success(f"VA {va_nr} gespeichert und PDF erzeugt.")
+
+        # Bestehende VAs anzeigen
         if DATA_FILE_VA.exists():
             df_va = pd.read_csv(DATA_FILE_VA, sep=";", encoding="utf-8-sig", dtype=str)
             st.dataframe(df_va)
         else:
-            st.info("qm_verfahrensanweisungen.csv nicht gefunden im Ordner der app.py.")
+            st.info("Noch keine Verfahrensanweisungen vorhanden.")
 
 # --------------------------
 # Tab 2: Lesebestätigung
