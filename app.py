@@ -168,13 +168,13 @@ tabs = st.tabs(["System & Login", "Verfahrensanweisungen", "Lesebestätigung", "
 
 with tabs[0]:
     st.markdown("## 🔒 System & Login")
+
     if not st.session_state.get("logged_in", False):
         u = st.text_input("Benutzername", key="login_user")
         p = st.text_input("Passwort", type="password", key="login_pass")
         if st.button("Login", key="login_btn"):
             try:
-                df_users = pd.read_csv(DATA_FILE_USERS, sep=";", encoding="utf-8-sig", dtype=str)
-                df_users = df_users.dropna(subset=["username", "password", "role"])
+                df_users = pd.read_csv(DATA_FILE_USERS, sep=",", encoding="utf-8", dtype=str)
                 match = df_users[
                     (df_users["username"].str.strip().str.lower() == u.strip().lower()) &
                     (df_users["password"].str.strip() == p.strip())
@@ -191,6 +191,21 @@ with tabs[0]:
                 st.error(f"Fehler beim Laden der Benutzerliste: {e}")
     else:
         st.success(f"Eingeloggt als: {st.session_state.username} ({st.session_state.role})")
+
+    # --------------------------
+    # Einmal-Knopf: CSVs konvertieren
+    # --------------------------
+    st.markdown("### 🛠 CSV-Konvertierung")
+    if st.button("Alle CSVs auf Komma konvertieren"):
+        try:
+            for path in [DATA_FILE_VA, DATA_FILE_MA, DATA_FILE_KENNTNIS, DATA_FILE_USERS]:
+                if path.exists():
+                    df = pd.read_csv(path, sep=None, engine="python", encoding="utf-8", dtype=str)
+                    df.to_csv(path, sep=",", index=False, encoding="utf-8")
+            st.success("Alle CSVs erfolgreich auf Komma konvertiert. Bitte App neu laden.")
+        except Exception as e:
+            st.error(f"Fehler bei der Konvertierung: {e}")
+
 
 # --------------------------
 # Tab 1: Verfahrensanweisungen
