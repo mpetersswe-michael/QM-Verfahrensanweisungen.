@@ -4,7 +4,7 @@
 import os
 import re
 import io
-import datetime as dt
+import datetime as dt 
 from zoneinfo import ZoneInfo
 import pandas as pd
 import streamlit as st
@@ -152,13 +152,12 @@ def check_users_csv():
 with tabs[0]:
     st.markdown("## 🔒 System & Login")
 
-    if not st.session_state.get("logged_in"):
-        st.text_input("Benutzername", key="login_user")
-        st.text_input("Passwort", type="password", key="login_pass")
-        if st.button("Login"):
-            # Dummy-Login-Logik (ersetzen durch echte Prüfung)
-            user = st.session_state.login_user.strip()
-            pw = st.session_state.login_pass.strip()
+    if not st.session_state.get("logged_in", False):
+        user = st.text_input("Benutzername", key="login_user")
+        pw = st.text_input("Passwort", type="password", key="login_pass")
+
+        if st.button("Login", key="login_button"):
+            # Beispiel-Logik: hier echte Prüfung einbauen
             if user == "admin" and pw == "geheim":
                 st.session_state.logged_in = True
                 st.session_state.username = user
@@ -180,11 +179,10 @@ with tabs[0]:
             st.markdown("- Lesebestätigungen einsehen und löschen")
             st.markdown("- Rollen und Berechtigungen verwalten")
             st.markdown("- Mitarbeiterdaten pflegen")
-
-        elif st.session_state.role == "user":
+        else:
             st.info("🔐 Eingeschränkter Zugriff: Nur Lesebestätigung und VA-Ansicht möglich.")
 
-        if st.button("Logout"):
+        if st.button("Logout", key="logout_button"):
             st.session_state.logged_in = False
             st.session_state.username = None
             st.session_state.role = None
