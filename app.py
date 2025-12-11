@@ -189,9 +189,8 @@ Mitgeltende Unterlagen: {g('Mitgeltende Unterlagen')}
         st.info("Bitte zuerst im Tab 'System & Login' anmelden.")
 
 
-
 # --------------------------
-# Tabs
+# Tabs nur einmal definieren
 # --------------------------
 tabs = st.tabs([
     "System & Login",
@@ -202,16 +201,16 @@ tabs = st.tabs([
 ])
 
 # --------------------------
-# Tab 0: System & Login
+# Tab 0: Login
 # --------------------------
 with tabs[0]:
     st.markdown("## 🔒 System & Login")
 
     if not st.session_state.get("logged_in", False):
-        u = st.text_input("Benutzername", key="login_user")
-        p = st.text_input("Passwort", type="password", key="login_pass")
+        u = st.text_input("Benutzername")
+        p = st.text_input("Passwort", type="password")
 
-        if st.button("Login", key="login_btn"):
+        if st.button("Login"):
             try:
                 df_users = pd.read_csv(DATA_FILE_USERS, sep=",", encoding="utf-8", dtype=str)
                 df_users.columns = df_users.columns.str.strip()
@@ -235,7 +234,7 @@ with tabs[0]:
     else:
         st.success(f"Eingeloggt als: {st.session_state.username} ({st.session_state.role})")
 
-        if st.button("Logout", key="logout_btn"):
+        if st.button("Logout"):
             st.session_state.clear()
             st.rerun()
 
@@ -250,13 +249,13 @@ with tabs[0]:
             st.success("Alle CSVs erfolgreich auf Komma konvertiert. Bitte App neu laden.")
         except Exception as e:
             st.error(f"Fehler bei der Konvertierung: {e}")
+
 # --------------------------
 # Tab 1: Verfahrensanweisungen
 # --------------------------
 with tabs[1]:
     st.markdown("## 📑 Verfahrensanweisungen")
-    st.write("Hier werden die VA-Daten angezeigt.")
-    
+
     if not st.session_state.get("logged_in", False):
         st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
     else:
@@ -290,7 +289,7 @@ with tabs[1]:
             file_exists = DATA_FILE_VA.exists()
             new_entry.to_csv(
                 DATA_FILE_VA,
-                sep=",",                # <-- Komma statt Semikolon
+                sep=",",
                 index=False,
                 mode="a" if file_exists else "w",
                 header=not file_exists,
