@@ -115,42 +115,23 @@ tabs = st.tabs([
     "Berechtigungen & Rollen"
 ])
 
-# --------------------------
-# Tab 0: System & Login
-# --------------------------
-with tabs[0]:
-    st.markdown("## 🔒 System & Login")
+    # --------------------------
+    # Button: CSV-Format anpassen
+    # --------------------------
+    st.markdown("### 🛠 CSV-Format anpassen")
+    if st.button("Alle CSVs auf Tab-getrennt & UTF-8-SIG konvertieren"):
+        try:
+            for path in [DATA_FILE_VA, DATA_FILE_MA, DATA_FILE_KENNTNIS, DATA_FILE_USERS]:
+                if path.exists():
+                    # robust einlesen (egal ob Tab oder Komma)
+                    df = pd.read_csv(path, sep=None, engine="python", encoding="utf-8-sig", dtype=str)
+                    df.columns = df.columns.str.replace("\ufeff", "", regex=False).str.strip().str.lower()
+                    # zurückschreiben als Tab-getrennt mit Header
+                    df.to_csv(path, sep="\t", index=False, encoding="utf-8-sig")
+            st.success("Alle CSVs erfolgreich angepasst. Bitte App neu laden.")
+        except Exception as e:
+            st.error(f"Fehler bei der Konvertierung: {e}")
 
-    if not st.session_state.get("logged_in", False):
-        u = st.text_input("Benutzername")
-        p = st.text_input("Passwort", type="password")
-
-        if st.button("Login"):
-            try:
-                df_users = read_csv_robust(DATA_FILE_USERS)
-                required = {"username", "password", "role"}
-                if not required.issubset(set(df_users.columns)):
-                    st.error("users.csv muss Spalten username, password, role enthalten.")
-                else:
-                    match = df_users[
-                        (df_users["username"].fillna("").str.strip().str.lower() == u.strip().lower()) &
-                        (df_users["password"].fillna("").str.strip() == p.strip())
-                    ]
-                    if not match.empty:
-                        st.session_state.logged_in = True
-                        st.session_state.username = match["username"].values[0].strip()
-                        st.session_state.role = match["role"].values[0].strip().lower()
-                        st.success(f"Eingeloggt als {st.session_state.username} ({st.session_state.role})")
-                        st.rerun()
-                    else:
-                        st.error("Login fehlgeschlagen.")
-            except Exception as e:
-                st.error(f"Fehler beim Laden der Benutzerliste: {e}")
-    else:
-        st.success(f"Eingeloggt als: {st.session_state.username} ({st.session_state.role})")
-        if st.button("Logout"):
-            st.session_state.clear()
-            st.rerun()
 
 # --------------------------
 # Tab 1: Verfahrensanweisungen (Admin-only)
