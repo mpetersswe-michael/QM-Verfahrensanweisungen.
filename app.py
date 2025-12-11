@@ -200,9 +200,6 @@ tabs = st.tabs([
     "Berechtigungen & Rollen"
 ])
 
-# --------------------------
-# Tab 0: Login
-# --------------------------
 with tabs[0]:
     st.markdown("## 🔒 System & Login")
 
@@ -212,8 +209,8 @@ with tabs[0]:
 
         if st.button("Login"):
             try:
-                df_users = pd.read_csv(DATA_FILE_USERS, sep=",", encoding="utf-8", dtype=str)
-                df_users.columns = df_users.columns.str.strip()
+                df_users = pd.read_csv(DATA_FILE_USERS, sep=",", encoding="utf-8-sig", dtype=str)
+                df_users.columns = df_users.columns.str.strip().str.lower()
 
                 match = df_users[
                     (df_users["username"].str.strip().str.lower() == u.strip().lower()) &
