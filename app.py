@@ -64,9 +64,9 @@ def load_data(file, columns):
     if c not in df.columns:
       df[c] = ""
   return df[columns]
-    def to_csv_semicolon(df):
+     def to_csv_semicolon(df):
   return df.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
-    def export_pdf(df_row):
+     def export_pdf(df_row):
       pdf = FPDF()
       pdf.add_page()
       pdf.set_font("Arial", size=12)
