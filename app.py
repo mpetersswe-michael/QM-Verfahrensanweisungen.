@@ -217,10 +217,12 @@ with tabs[3]:
 # --------------------------
 with tabs[4]:
     st.markdown("## ⚙️ Berechtigungen & Rollen")
+
     if not st.session_state.get("logged_in", False):
         st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
     elif st.session_state.get("role") != "admin":
-        st.info("Nur Administratoren
+        st.info("Nur Administratoren können die Benutzerverwaltung nutzen.")
+    else:
         st.success("Admin-Bereich: volle Berechtigungen")
 
         # Bestehende Benutzer anzeigen
