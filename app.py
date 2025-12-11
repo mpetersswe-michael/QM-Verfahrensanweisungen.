@@ -246,6 +246,20 @@ with tabs[1]:
                     st.success("Neue Verfahrensanweisungen gespeichert.")
         else:
             st.info("Noch keine Verfahrensanweisungen vorhanden.")
+
+if os.path.exists(DATA_FILE_VA):
+    df_va = pd.read_csv(DATA_FILE_VA, sep=";", encoding="utf-8-sig", dtype=str)
+    st.write("Spalten:", df_va.columns.tolist())
+    st.write("Anzahl Zeilen:", len(df_va))
+    st.dataframe(df_va.head())
+else:
+    st.info("Datei nicht gefunden.")
+
+# --------------------------
+# Tab 2: Lesebestätigung
+# --------------------------
+
+
 with tabs[2]:
     st.markdown("## ✅ Lesebestätigung")
 
