@@ -61,8 +61,8 @@ def load_data(file, columns):
   except:
     df = pd.DataFrame(columns=columns)
   for c in columns:
-    if c not in df.columns:
-    df[c] = ""
+  if c not in df.columns:
+      df[c] = ""
   return df[columns]
     def to_csv_semicolon(df):
   return df.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
