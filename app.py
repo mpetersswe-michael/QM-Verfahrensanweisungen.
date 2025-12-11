@@ -129,23 +129,20 @@ with tabs[0]:
 
         if st.button("Login"):
             try:
-                df_users = read_csv_robust(DATA_FILE_USERS)
-                required = {"username", "password", "role"}
-                if not required.issubset(set(df_users.columns)):
-                    st.error("users.csv muss Spalten username,password,role enthalten.")
+                df_users = pd.read_csv(DATA_FILE_USERS, sep=",", encoding="utf-8-sig", dtype=str)
+                df_users.columns = df_users.columns.str.strip().str.lower()
+                match = df_users[
+                    (df_users["username"].str.strip().str.lower() == u.strip().lower()) &
+                    (df_users["password"].str.strip() == p.strip())
+                ]
+                if not match.empty:
+                    st.session_state.logged_in = True
+                    st.session_state.username = match["username"].values[0].strip()
+                    st.session_state.role = match["role"].values[0].strip().lower()
+                    st.success(f"Eingeloggt als {st.session_state.username} ({st.session_state.role})")
+                    st.rerun()
                 else:
-                    match = df_users[
-                        (df_users["username"].fillna("").str.strip().str.lower() == u.strip().lower()) &
-                        (df_users["password"].fillna("").str.strip() == p.strip())
-                    ]
-                    if not match.empty:
-                        st.session_state.logged_in = True
-                        st.session_state.username = match["username"].values[0].strip()
-                        st.session_state.role = match["role"].values[0].strip().lower()
-                        st.success(f"Eingeloggt als {st.session_state.username} ({st.session_state.role})")
-                        st.rerun()
-                    else:
-                        st.error("Login fehlgeschlagen.")
+                    st.error("Login fehlgeschlagen.")
             except Exception as e:
                 st.error(f"Fehler beim Laden der Benutzerliste: {e}")
     else:
@@ -153,6 +150,21 @@ with tabs[0]:
         if st.button("Logout"):
             st.session_state.clear()
             st.rerun()
+
+    # --------------------------
+    # Button: CSV-Format anpassen
+    # --------------------------
+    st.markdown("### 🛠 CSV-Format anpassen")
+    if st.button("Alle CSVs auf Komma & UTF-8-SIG konvertieren"):
+        try:
+            for path in [DATA_FILE_VA, DATA_FILE_MA, DATA_FILE_KENNTNIS, DATA_FILE_USERS]:
+                if path.exists():
+                    df = pd.read_csv(path, sep=None, engine="python", encoding="utf-8-sig", dtype=str)
+                    df.columns = df.columns.str.replace("\ufeff", "", regex=False).str.strip().str.lower()
+                    df.to_csv(path, sep=",", index=False, encoding="utf-8-sig")
+            st.success("Alle CSVs erfolgreich angepasst. Bitte App neu laden.")
+        except Exception as e:
+            st.error(f"Fehler bei der Konvertierung: {e}")
 
 # --------------------------
 # Tab 1: Verfahrensanweisungen (Admin-only)
