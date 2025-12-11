@@ -1,18 +1,24 @@
 # ==========================================
-# QM-Verfahrensanweisungen – Komplettversion (Tab-getrennte CSVs)
+# QM-Verfahrensanweisungen – Komplettversion (Google Sheets)
 # ==========================================
 import streamlit as st
 import pandas as pd
-import pathlib
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 # --------------------------
-# Basis & Pfade
+# Verbindung zu Google Sheets
 # --------------------------
-BASE_DIR = pathlib.Path(__file__).parent.resolve()
-DATA_FILE_VA = BASE_DIR / "qm_verfahrensanweisungen.csv"
-DATA_FILE_MA = BASE_DIR / "mitarbeiter.csv"
-DATA_FILE_KENNTNIS = BASE_DIR / "lesebestätigung.csv"
-DATA_FILE_USERS = BASE_DIR / "users.csv"
+scope = ["https://spreadsheets.google.com/feeds",
+         "https://www.googleapis.com/auth/drive"]
+creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+client = gspread.authorize(creds)
+
+# Tabellen öffnen (Name muss mit deinem Google Sheet übereinstimmen)
+sheet_va = client.open("qm_verfahrensanweisungen").sheet1
+sheet_ma = client.open("mitarbeiter").sheet1
+sheet_users = client.open("users").sheet1
+sheet_kenntnis = client.open("lesebestätigung").sheet1
 
 # --------------------------
 # Session-State Initialisierung
@@ -29,13 +35,8 @@ if "selected_va" not in st.session_state:
 # --------------------------
 # Hilfsfunktionen
 # --------------------------
-def read_csv_robust(path: pathlib.Path) -> pd.DataFrame:
-    df = pd.read_csv(path, sep="\t", encoding="utf-8-sig", dtype=str)
-    df.columns = df.columns.str.replace("\ufeff", "", regex=False).str.strip().str.lower()
-    return df
-
-def write_csv(df: pd.DataFrame, path: pathlib.Path):
-    df.to_csv(path, sep="\t", index=False, encoding="utf-8-sig")
+def df_from_sheet(sheet):
+    return pd.DataFrame(sheet.get_all_records())
 
 def norm_va(va):
     if pd.isna(va):
@@ -64,21 +65,16 @@ with st.sidebar:
             st.rerun()
 
         # VA-Liste laden
-        va_list = []
-        df_va_sidebar = None
-        if DATA_FILE_VA.exists():
-            df_va_sidebar = read_csv_robust(DATA_FILE_VA)
-            if "va_nr" in df_va_sidebar.columns:
-                df_va_sidebar["va_clean"] = df_va_sidebar["va_nr"].apply(norm_va)
-                va_list = sorted([v for v in df_va_sidebar["va_clean"].dropna().unique() if v])
+        df_va_sidebar = df_from_sheet(sheet_va)
+        va_list = sorted([norm_va(v) for v in df_va_sidebar["va_nr"].dropna().unique()])
 
         selected_va = st.selectbox("VA auswählen", options=va_list, index=None)
         if selected_va:
             st.session_state.selected_va = selected_va
 
         # Dokumentanzeige
-        if st.session_state.get("selected_va") and df_va_sidebar is not None:
-            doc = df_va_sidebar[df_va_sidebar["va_clean"] == st.session_state.selected_va]
+        if st.session_state.get("selected_va"):
+            doc = df_va_sidebar[df_va_sidebar["va_nr"].apply(norm_va) == st.session_state.selected_va]
             if not doc.empty:
                 st.markdown("### 📄 Aktuelles Dokument")
                 st.table(doc)
@@ -89,21 +85,12 @@ with st.sidebar:
             if st.session_state.get("selected_va"):
                 name_input = st.text_input("Name (Nachname, Vorname)", key="sidebar_name_input")
                 if st.button("Bestätigen", key="sidebar_confirm_button"):
-                    entry = pd.DataFrame([{
-                        "name": normalize_name(name_input.strip()),
-                        "va_nr": st.session_state.selected_va,
-                        "va_nr_norm": norm_va(st.session_state.selected_va),
-                        "zeitpunkt": pd.Timestamp.now(tz="Europe/Berlin").strftime("%Y-%m-%d %H:%M:%S")
-                    }])
-                    file_exists = DATA_FILE_KENNTNIS.exists()
-                    entry.to_csv(
-                        DATA_FILE_KENNTNIS,
-                        sep="\t",
-                        index=False,
-                        mode="a" if file_exists else "w",
-                        header=not file_exists,
-                        encoding="utf-8-sig"
-                    )
+                    sheet_kenntnis.append_row([
+                        normalize_name(name_input.strip()),
+                        st.session_state.selected_va,
+                        norm_va(st.session_state.selected_va),
+                        pd.Timestamp.now(tz="Europe/Berlin").strftime("%Y-%m-%d %H:%M:%S")
+                    ])
                     st.success("Bestätigung gespeichert.")
             else:
                 st.info("Bitte zuerst eine VA auswählen.")
@@ -132,40 +119,24 @@ with tabs[0]:
         p = st.text_input("Passwort", type="password")
 
         if st.button("Login"):
-            try:
-                df_users = read_csv_robust(DATA_FILE_USERS)
-                match = df_users[
-                    (df_users["username"].str.strip().str.lower() == u.strip().lower()) &
-                    (df_users["password"].str.strip() == p.strip())
-                ]
-                if not match.empty:
-                    st.session_state.logged_in = True
-                    st.session_state.username = match["username"].values[0].strip()
-                    st.session_state.role = match["role"].values[0].strip().lower()
-                    st.success(f"Eingeloggt als {st.session_state.username} ({st.session_state.role})")
-                    st.rerun()
-                else:
-                    st.error("Login fehlgeschlagen.")
-            except Exception as e:
-                st.error(f"Fehler beim Laden der Benutzerliste: {e}")
+            df_users = df_from_sheet(sheet_users)
+            match = df_users[
+                (df_users["username"].str.strip().str.lower() == u.strip().lower()) &
+                (df_users["password"].str.strip() == p.strip())
+            ]
+            if not match.empty:
+                st.session_state.logged_in = True
+                st.session_state.username = match["username"].values[0].strip()
+                st.session_state.role = match["role"].values[0].strip().lower()
+                st.success(f"Eingeloggt als {st.session_state.username} ({st.session_state.role})")
+                st.rerun()
+            else:
+                st.error("Login fehlgeschlagen.")
     else:
         st.success(f"Eingeloggt als: {st.session_state.username} ({st.session_state.role})")
         if st.button("Logout"):
             st.session_state.clear()
             st.rerun()
-
-    # Button: CSV-Format anpassen
-    st.markdown("### 🛠 CSV-Format anpassen")
-    if st.button("Alle CSVs auf Tab-getrennt & UTF-8-SIG konvertieren"):
-        try:
-            for path in [DATA_FILE_VA, DATA_FILE_MA, DATA_FILE_KENNTNIS, DATA_FILE_USERS]:
-                if path.exists():
-                    df = pd.read_csv(path, sep=None, engine="python", encoding="utf-8-sig", dtype=str)
-                    df.columns = df.columns.str.replace("\ufeff", "", regex=False).str.strip().str.lower()
-                    df.to_csv(path, sep="\t", index=False, encoding="utf-8-sig")
-            st.success("Alle CSVs erfolgreich angepasst. Bitte App neu laden.")
-        except Exception as e:
-            st.error(f"Fehler bei der Konvertierung: {e}")
 
 # --------------------------
 # Tab 1: Verfahrensanweisungen (Admin-only)
@@ -181,25 +152,11 @@ with tabs[1]:
         titel = st.text_input("Titel")
         kapitel = st.text_input("Kapitel")
         if st.button("Speichern"):
-            new_entry = pd.DataFrame([{
-                "va_nr": va_nr,
-                "titel": titel,
-                "kapitel": kapitel
-            }])
-            file_exists = DATA_FILE_VA.exists()
-            new_entry.to_csv(
-                DATA_FILE_VA,
-                sep="\t",
-                index=False,
-                mode="a" if file_exists else "w",
-                header=not file_exists,
-                encoding="utf-8-sig"
-            )
+            sheet_va.append_row([va_nr, titel, kapitel])
             st.success(f"VA {va_nr} gespeichert.")
 
-        if DATA_FILE_VA.exists():
-            df_va = read_csv_robust(DATA_FILE_VA)
-            st.dataframe(df_va)
+        df_va = df_from_sheet(sheet_va)
+        st.dataframe(df_va)
 
 # --------------------------
 # Tab 2: Lesebestätigung (Admin-only Übersicht)
@@ -211,11 +168,8 @@ with tabs[2]:
     elif st.session_state.get("role") != "admin":
         st.info("Nur Administratoren sehen die Übersicht.")
     else:
-        if DATA_FILE_KENNTNIS.exists():
-            df_k = read_csv_robust(DATA_FILE_KENNTNIS)
-            st.dataframe(df_k)
-        else:
-            st.info("Noch keine Lesebestätigungen vorhanden.")
+        df_k = df_from_sheet(sheet_kenntnis)
+        st.dataframe(df_k)
 
 # --------------------------
 # Tab 3: Mitarbeiter (Admin-only)
@@ -227,20 +181,16 @@ with tabs[3]:
     elif st.session_state.get("role") != "admin":
         st.info("Nur Administratoren haben Zugriff auf diesen Bereich.")
     else:
-        # Upload-Funktion für Mitarbeiterliste
         uploaded_ma = st.file_uploader("Mitarbeiterliste hochladen (Tab-getrennt)", type=["csv"], key="upload_ma")
         if uploaded_ma is not None:
             df_new = pd.read_csv(uploaded_ma, sep="\t", encoding="utf-8-sig", dtype=str)
-            write_csv(df_new, DATA_FILE_MA)
+            for row in df_new.values.tolist():
+                sheet_ma.append_row(row)
             st.success("Mitarbeiterliste aktualisiert.")
             st.rerun()
 
-        # Anzeige der aktuellen Mitarbeiterliste
-        if DATA_FILE_MA.exists():
-            df_ma = read_csv_robust(DATA_FILE_MA)
-            st.dataframe(df_ma)
-        else:
-            st.info("Noch keine Mitarbeiter-Datei vorhanden.")
+        df_ma = df_from_sheet(sheet_ma)
+        st.dataframe(df_ma)
 
 # --------------------------
 # Tab 4: Benutzerverwaltung (Admin-only)
@@ -255,28 +205,9 @@ with tabs[4]:
     else:
         st.success("Admin-Bereich: volle Berechtigungen")
 
-        # Bestehende Benutzer anzeigen
-        if DATA_FILE_USERS.exists():
-            df_users_view = read_csv_robust(DATA_FILE_USERS)
-            st.dataframe(df_users_view)
-        else:
-            st.info("Noch keine Benutzerliste vorhanden.")
+        df_users_view = df_from_sheet(sheet_users)
+        st.dataframe(df_users_view)
 
-        # CSV-Upload für Benutzerliste
-        st.markdown("### ➕ Benutzerliste aktualisieren")
-        uploaded_users = st.file_uploader(
-            "users.csv hochladen (Tab-getrennt)", type=["csv"], key="upload_users"
-        )
-        if uploaded_users is not None:
-            df_new = pd.read_csv(uploaded_users, sep="\t", encoding="utf-8-sig", dtype=str)
-            df_new.columns = df_new.columns.str.replace("\ufeff", "", regex=False).str.strip().str.lower()
-            keep = [c for c in ["username", "password", "role"] if c in df_new.columns]
-            df_new = df_new[keep] if keep else df_new
-            write_csv(df_new, DATA_FILE_USERS)
-            st.success("Benutzerliste aktualisiert.")
-            st.rerun()
-
-        # Einzelnen Benutzer hinzufügen
         st.markdown("### ➕ Einzelnen Benutzer hinzufügen")
         new_user = st.text_input("Benutzername", key="new_user")
         new_pass = st.text_input("Passwort", type="password", key="new_pass")
@@ -284,22 +215,10 @@ with tabs[4]:
 
         if st.button("Benutzer hinzufügen", key="add_user_btn"):
             if new_user.strip() and new_pass.strip():
-                new_entry = pd.DataFrame([{
-                    "username": new_user.strip(),
-                    "password": new_pass.strip(),
-                    "role": new_role.strip().lower()
-                }])
-                file_exists = DATA_FILE_USERS.exists()
-                new_entry.to_csv(
-                    DATA_FILE_USERS,
-                    sep="\t",
-                    index=False,
-                    mode="a" if file_exists else "w",
-                    header=not file_exists,
-                    encoding="utf-8-sig"
-                )
+                sheet_users.append_row([new_user.strip(), new_pass.strip(), new_role.strip().lower()])
                 st.success(f"Benutzer {new_user} hinzugefügt.")
                 st.rerun()
             else:
                 st.error("Bitte Benutzername und Passwort eingeben.")
+
 
