@@ -4,6 +4,7 @@
 import streamlit as st
 import pandas as pd
 import gspread
+import json
 from oauth2client.service_account import ServiceAccountCredentials
 
 # --------------------------
@@ -12,8 +13,6 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 creds_dict = json.loads(st.secrets["gspread_credentials"])
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict)
-
-
 client = gspread.authorize(creds)
 
 # Tabellen öffnen (Name muss mit deinem Google Sheet übereinstimmen)
@@ -21,6 +20,7 @@ sheet_va = client.open("qm_verfahrensanweisungen").sheet1
 sheet_ma = client.open("mitarbeiter").sheet1
 sheet_users = client.open("users").sheet1
 sheet_kenntnis = client.open("lesebestätigung").sheet1
+
 
 # --------------------------
 # Session-State Initialisierung
