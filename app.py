@@ -189,11 +189,16 @@ Mitgeltende Unterlagen: {g('Mitgeltende Unterlagen')}
         st.info("Bitte zuerst im Tab 'System & Login' anmelden.")
 
 
-
 # --------------------------
 # Tab 0: System & Login
 # --------------------------
-tabs = st.tabs(["System & Login", "Verfahrensanweisungen", "Lesebestätigung", "Mitarbeiter", "Berechtigungen & Rollen"])
+tabs = st.tabs([
+    "System & Login",
+    "Verfahrensanweisungen",
+    "Lesebestätigung",
+    "Mitarbeiter",
+    "Berechtigungen & Rollen"
+])
 
 with tabs[0]:
     st.markdown("## 🔒 System & Login")
@@ -201,17 +206,22 @@ with tabs[0]:
     if not st.session_state.get("logged_in", False):
         u = st.text_input("Benutzername", key="login_user")
         p = st.text_input("Passwort", type="password", key="login_pass")
+
         if st.button("Login", key="login_btn"):
             try:
                 df_users = pd.read_csv(DATA_FILE_USERS, sep=",", encoding="utf-8", dtype=str)
+                df_users.columns = df_users.columns.str.strip()
+
                 match = df_users[
                     (df_users["username"].str.strip().str.lower() == u.strip().lower()) &
                     (df_users["password"].str.strip() == p.strip())
                 ]
+
                 if not match.empty:
                     st.session_state.logged_in = True
-                    st.session_state.username = match["username"].values[0]
-                    st.session_state.role = match["role"].values[0]
+                    st.session_state.username = match["username"].values[0].strip()
+                    st.session_state.role = match["role"].values[0].strip().lower()   # <--- wichtig
+
                     st.success(f"Eingeloggt als {st.session_state.username} ({st.session_state.role})")
                     st.rerun()
                 else:
@@ -220,6 +230,11 @@ with tabs[0]:
                 st.error(f"Fehler beim Laden der Benutzerliste: {e}")
     else:
         st.success(f"Eingeloggt als: {st.session_state.username} ({st.session_state.role})")
+
+        # Logout-Button
+        if st.button("Logout", key="logout_btn"):
+            st.session_state.clear()
+            st.rerun()
 
     # --------------------------
     # Einmal-Knopf: CSVs konvertieren
