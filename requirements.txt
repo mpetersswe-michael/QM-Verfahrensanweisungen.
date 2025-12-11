@@ -1,7 +1,9 @@
 streamlit
+gspread
+oauth2client
 pandas
-matplotlib
-fpdf2
+
+
 
 
 
