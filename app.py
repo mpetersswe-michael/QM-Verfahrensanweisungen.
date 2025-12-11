@@ -189,8 +189,9 @@ Mitgeltende Unterlagen: {g('Mitgeltende Unterlagen')}
         st.info("Bitte zuerst im Tab 'System & Login' anmelden.")
 
 
+
 # --------------------------
-# Tab 0: System & Login
+# Tabs
 # --------------------------
 tabs = st.tabs([
     "System & Login",
@@ -200,6 +201,9 @@ tabs = st.tabs([
     "Berechtigungen & Rollen"
 ])
 
+# --------------------------
+# Tab 0: System & Login
+# --------------------------
 with tabs[0]:
     st.markdown("## 🔒 System & Login")
 
@@ -220,7 +224,7 @@ with tabs[0]:
                 if not match.empty:
                     st.session_state.logged_in = True
                     st.session_state.username = match["username"].values[0].strip()
-                    st.session_state.role = match["role"].values[0].strip().lower()   # <--- wichtig
+                    st.session_state.role = match["role"].values[0].strip().lower()
 
                     st.success(f"Eingeloggt als {st.session_state.username} ({st.session_state.role})")
                     st.rerun()
@@ -231,14 +235,11 @@ with tabs[0]:
     else:
         st.success(f"Eingeloggt als: {st.session_state.username} ({st.session_state.role})")
 
-        # Logout-Button
         if st.button("Logout", key="logout_btn"):
             st.session_state.clear()
             st.rerun()
 
-    # --------------------------
     # Einmal-Knopf: CSVs konvertieren
-    # --------------------------
     st.markdown("### 🛠 CSV-Konvertierung")
     if st.button("Alle CSVs auf Komma konvertieren"):
         try:
@@ -249,13 +250,13 @@ with tabs[0]:
             st.success("Alle CSVs erfolgreich auf Komma konvertiert. Bitte App neu laden.")
         except Exception as e:
             st.error(f"Fehler bei der Konvertierung: {e}")
-
 # --------------------------
 # Tab 1: Verfahrensanweisungen
 # --------------------------
 with tabs[1]:
-    st.markdown("## 📘 Verfahrensanweisungen")
-
+    st.markdown("## 📑 Verfahrensanweisungen")
+    st.write("Hier werden die VA-Daten angezeigt.")
+    
     if not st.session_state.get("logged_in", False):
         st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
     else:
@@ -329,6 +330,7 @@ Mitgeltende Unterlagen: {unterlagen}
 # --------------------------
 with tabs[2]:
     st.markdown("## ✅ Lesebestätigung")
+    st.write("Hier kommt die Eingabe + Tabelle der Bestätigungen.")
 
     if not st.session_state.get("logged_in", False):
         st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
@@ -376,7 +378,8 @@ with tabs[2]:
 # --------------------------
 with tabs[3]:
     st.markdown("## 👥 Mitarbeiter")
-
+    st.write("Hier wird die Mitarbeiterliste angezeigt.")
+    
     if not st.session_state.get("logged_in", False):
         st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
     else:
@@ -397,7 +400,8 @@ with tabs[3]:
 # Tab 4: Benutzerverwaltung
 # --------------------------
 with tabs[4]:
-    st.markdown("## 👥 Benutzerverwaltung")
+    st.markdown("## ⚙️ Berechtigungen & Rollen")
+    st.write("Hier kommt die Benutzerverwaltung (Admin-only).")
 
     if not st.session_state.get("logged_in", False):
         st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
