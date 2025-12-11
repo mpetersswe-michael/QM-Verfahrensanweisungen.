@@ -19,16 +19,26 @@ st.write("VA-Datei vorhanden:", DATA_FILE_VA.exists())
 st.write("MA-Datei vorhanden:", DATA_FILE_MA.exists())
 st.write("Kenntnis-Datei vorhanden:", DATA_FILE_KENNTNIS.exists())
 st.write("Users-Datei vorhanden:", DATA_FILE_USERS.exists())
+
 # --------------------------
-# Sidebar: VA-Auswahl + Vorschau
+# Hilfsfunktion
 # --------------------------
 def norm_va(va):
-    if pd.isna(va): return None
+    if pd.isna(va):
+        return None
     return str(va).strip().upper()
 
+# --------------------------
+# Sidebar
+# --------------------------
 with st.sidebar:
     if st.session_state.get("logged_in", False):
         st.success(f"Eingeloggt: {st.session_state.get('username')} ({st.session_state.get('role')})")
+
+        # Logout
+        if st.button("Logout", key="logout_sidebar"):
+            st.session_state.clear()
+            st.rerun()
 
         # VA-Liste laden
         va_liste = []
@@ -36,35 +46,31 @@ with st.sidebar:
         if DATA_FILE_VA.exists():
             try:
                 df_va = pd.read_csv(DATA_FILE_VA, sep=";", encoding="utf-8-sig", dtype=str)
-                # Spalten robust behandeln
-                cols = df_va.columns.str.strip()
-                df_va.columns = cols
+                df_va.columns = df_va.columns.str.strip()
 
-                # VA_Nr finden (robust: VA_Nr oder va_nr)
+                # Spalte VA_Nr robust finden
                 va_col = None
                 for c in ["VA_Nr", "va_nr", "Va_Nr", "VA-nr"]:
                     if c in df_va.columns:
                         va_col = c
                         break
 
-                if va_col is None:
-                    st.error("Spalte 'VA_Nr' fehlt in qm_verfahrensanweisungen.csv.")
-                else:
+                if va_col:
                     df_va["VA_clean"] = df_va[va_col].apply(norm_va)
                     va_liste = sorted([v for v in df_va["VA_clean"].dropna().unique() if v])
-
+                else:
+                    st.error("Spalte 'VA_Nr' fehlt in qm_verfahrensanweisungen.csv.")
             except Exception as e:
                 st.error(f"Fehler beim Lesen der VA-Datei: {e}")
 
-        # Auswahlfeld sichtbar machen, auch wenn Liste leer ist
+        # Auswahlfeld
         selected_va = st.selectbox("VA auswählen", options=va_liste, index=None, key="sidebar_va_select")
         st.session_state.selected_va = selected_va if selected_va else st.session_state.get("selected_va")
 
-        # Vorschau, wenn VA gewählt und df_va vorhanden
+        # Vorschau
         if st.session_state.get("selected_va") and df_va is not None:
             row = df_va[df_va["VA_clean"] == st.session_state.selected_va]
             if not row.empty:
-                # Versuch, gängige Felder anzuzeigen (ohne Absturz, wenn ein Feld fehlt)
                 def g(col):
                     return row[col].values[0] if col in row.columns else ""
                 st.markdown("### 📘 VA-Vorschau")
@@ -75,8 +81,43 @@ with st.sidebar:
                     "Unterkapitel": g("Unterkapitel"),
                     "Revisionsstand": g("Revisionsstand"),
                 })
+
+                # Fortschrittsanzeige
+                if DATA_FILE_KENNTNIS.exists() and DATA_FILE_MA.exists():
+                    try:
+                        df_kenntnis = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
+                        df_mitarbeiter = pd.read_csv(DATA_FILE_MA, sep=";", encoding="utf-8-sig", dtype=str)
+
+                        df_mitarbeiter["Name_full"] = df_mitarbeiter["Vorname"].str.strip() + " " + df_mitarbeiter["Name"].str.strip()
+                        df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
+
+                        zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == norm_va(st.session_state.selected_va)]["Name_full"].dropna().unique()
+                        gesamt = len(zielgruppe)
+
+                        df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
+                        gelesen_raw = df_kenntnis[df_kenntnis["VA_Nr_norm"] == norm_va(st.session_state.selected_va)]["Name"].dropna().unique()
+
+                        def normalize_name(name):
+                            if "," in name:
+                                nach, vor = [p.strip() for p in name.split(",", 1)]
+                                return f"{vor} {nach}"
+                            return name.strip()
+
+                        gelesen_norm = [normalize_name(n) for n in gelesen_raw]
+                        gelesen_set = set(gelesen_norm)
+                        zielgruppe_set = set(zielgruppe)
+
+                        gelesen_count = len(gelesen_set & zielgruppe_set)
+                        fortschritt = gelesen_count / gesamt if gesamt > 0 else 0.0
+
+                        st.markdown("### 📊 Lesefortschritt")
+                        st.progress(fortschritt)
+                        st.caption(f"{gelesen_count} von {gesamt} Mitarbeiter haben bestätigt.")
+                    except Exception as e:
+                        st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
     else:
         st.info("Bitte zuerst im Tab 'System & Login' anmelden.")
+
 # --------------------------
 # Tab 0: System & Login
 # --------------------------
@@ -107,13 +148,18 @@ with tabs[0]:
                 st.error(f"Fehler beim Laden der Benutzerliste: {e}")
     else:
         st.success(f"Eingeloggt als: {st.session_state.username} ({st.session_state.role})")
+
+# --------------------------
+# Tab 1: Verfahrensanweisungen
+# -----------------------
+
+
 with tabs[1]:
     st.markdown("## 📘 Verfahrensanweisungen")
 
     if not st.session_state.get("logged_in", False):
         st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
     else:
-        # Eingabefelder für neue VA
         st.markdown("### Neue VA anlegen")
         va_nr = st.text_input("VA-Nr")
         titel = st.text_input("Titel")
@@ -139,95 +185,101 @@ with tabs[1]:
                 "Kommentar": kommentar,
                 "Mitgeltende Unterlagen": unterlagen
             }])
-
-            # CSV anhängen
-            file_exists = os.path.exists(DATA_FILE_VA)
-            new_entry.to_csv(
-                DATA_FILE_VA,
-                sep=";",
-                index=False,
-                mode="a" if file_exists else "w",
-                header=not file_exists,
-                encoding="utf-8-sig"
-            )
-
-            # PDF erzeugen
+            file_exists = DATA_FILE_VA.exists()
+            new_entry.to_csv(DATA_FILE_VA, sep=";", index=False,
+                             mode="a" if file_exists else "w",
+                             header=not file_exists, encoding="utf-8-sig")
             pdf_path = pathlib.Path("va_pdf") / f"{va_nr}.pdf"
             pdf_path.parent.mkdir(exist_ok=True)
             with open(pdf_path, "w", encoding="utf-8") as f:
                 f.write(new_entry.to_string())
-
             st.success(f"VA {va_nr} gespeichert und PDF erzeugt.")
 
-        # Bestehende VAs anzeigen
         if DATA_FILE_VA.exists():
             df_va = pd.read_csv(DATA_FILE_VA, sep=";", encoding="utf-8-sig", dtype=str)
             st.dataframe(df_va)
-        else:
-            st.info("Noch keine Verfahrensanweisungen vorhanden.")
 
 # --------------------------
 # Tab 2: Lesebestätigung
 # --------------------------
 with tabs[2]:
     st.markdown("## ✅ Lesebestätigung")
+
     if not st.session_state.get("logged_in", False):
         st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
     else:
-        name_input = st.text_input("Name (Nachname, Vorname)", key="tab2_name")
-        if st.button("Bestätigen", key="tab2_confirm"):
+        name_input = st.text_input("Name (Nachname, Vorname)")
+        if st.button("Bestätigen"):
             if st.session_state.get("selected_va"):
-                try:
-                    entry = pd.DataFrame([{
-                        "Name": name_input.strip(),
-                        "VA_Nr": st.session_state.selected_va,
-                        "VA_Nr_norm": str(st.session_state.selected_va).strip().upper(),
-                        "Zeitpunkt": pd.Timestamp.now(tz="Europe/Berlin").strftime("%Y-%m-%d %H:%M:%S")
-                    }])
-                    entry.to_csv(
-                        DATA_FILE_KENNTNIS,
-                        sep=";",
-                        index=False,
-                        mode="a",
-                        header=not DATA_FILE_KENNTNIS.exists(),
-                        encoding="utf-8-sig"
-                    )
-                    st.success("Bestätigung gespeichert.")
-                except Exception as e:
-                    st.error(f"Fehler beim Speichern: {e}")
+                entry = pd.DataFrame([{
+                    "Name": name_input.strip(),
+                    "VA_Nr": st.session_state.selected_va,
+                    "VA_Nr_norm": str(st.session_state.selected_va).strip().upper(),
+                    "Zeitpunkt": pd.Timestamp.now(tz="Europe/Berlin").strftime("%Y-%m-%d %H:%M:%S")
+                }])
+                entry.to_csv(DATA_FILE_KENNTNIS, sep=";", index=False,
+                             mode="a", header=not DATA_FILE_KENNTNIS.exists(),
+                             encoding="utf-8-sig")
+                st.success("Bestätigung gespeichert.")
             else:
                 st.error("Bitte zuerst eine VA in der Sidebar auswählen.")
 
         if DATA_FILE_KENNTNIS.exists():
             df_k = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
             st.dataframe(df_k)
-        else:
-            st.info("lesebestätigung.csv nicht gefunden neben der app.py.")
+
+            # Fortschrittsbalken
+            if DATA_FILE_MA.exists():
+                df_ma = pd.read_csv(DATA_FILE_MA, sep=";", encoding="utf-8-sig", dtype=str)
+                df_ma["Name_full"] = df_ma["Vorname"].str.strip() + " " + df_ma["Name"].str.strip()
+                zielgruppe = df_ma[df_ma["VA_Nr"].str.strip().str.upper() == st.session_state.selected_va]["Name_full"].unique()
+                gelesen = df_k[df_k["VA_Nr_norm"] == st.session_state.selected_va]["Name"].unique()
+                gelesen_count = len(set(gelesen) & set(zielgruppe))
+                fortschritt = gelesen_count / len(zielgruppe) if len(zielgruppe) > 0 else 0
+                st.progress(fortschritt)
+                st.caption(f"{gelesen_count} von {len(zielgruppe)} Mitarbeiter haben bestätigt.")
+
 
 # --------------------------
 # Tab 3: Mitarbeiter
 # --------------------------
 with tabs[3]:
     st.markdown("## 👥 Mitarbeiter")
+
     if not st.session_state.get("logged_in", False):
         st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
     else:
         if DATA_FILE_MA.exists():
             df_ma = pd.read_csv(DATA_FILE_MA, sep=";", encoding="utf-8-sig", dtype=str)
             st.dataframe(df_ma)
-        else:
-            st.info("mitarbeiter.csv nicht gefunden neben der app.py.")
+
+        if st.session_state.role == "admin":
+            st.markdown("### ➕ Mitarbeiterliste aktualisieren")
+            uploaded_file = st.file_uploader("CSV-Datei hochladen", type=["csv"])
+            if uploaded_file is not None:
+                df_new = pd.read_csv(uploaded_file, sep=";", encoding="utf-8-sig", dtype=str)
+                df_new.to_csv(DATA_FILE_MA, sep=";", index=False, encoding="utf-8-sig")
+                st.success("Mitarbeiterliste aktualisiert.")
+
 
 # --------------------------
 # Tab 4: Berechtigungen & Rollen
 # --------------------------
 with tabs[4]:
     st.markdown("## 🔑 Berechtigungen & Rollen")
+
     if not st.session_state.get("logged_in", False):
         st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
     else:
-        if st.session_state.get("role") == "admin":
-            st.write("Admin: Vollzugriff auf alle Tabs und Funktionen.")
-        else:
-            st.info("Nur Admins haben Zugriff auf Rollenverwaltung.")
+        if DATA_FILE_USERS.exists():
+            df_users = pd.read_csv(DATA_FILE_USERS, sep=";", encoding="utf-8-sig", dtype=str)
+            st.dataframe(df_users)
+
+        if st.session_state.role == "admin":
+            st.markdown("### ➕ Benutzerliste aktualisieren")
+            uploaded_file = st.file_uploader("users.csv hochladen", type=["csv"])
+            if uploaded_file is not None:
+                df_new = pd.read_csv(uploaded_file, sep=";", encoding="utf-8-sig", dtype=str)
+                df_new.to_csv(DATA_FILE_USERS, sep=";", index=False, encoding="utf-8-sig")
+                st.success("Benutzerliste aktualisiert.")
 
