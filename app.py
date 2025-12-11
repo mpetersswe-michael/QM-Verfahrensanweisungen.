@@ -113,7 +113,6 @@ tabs = st.tabs([
     "Berechtigungen & Rollen"
 ])
 
-# Tab 0
 with tabs[0]:
     st.markdown("## 🔒 System & Login")
 
@@ -122,8 +121,25 @@ with tabs[0]:
         p = st.text_input("Passwort", type="password")
 
         if st.button("Login"):
-            # Login-Code hier
-            pass   # <- hier kommt dein eigentlicher Login-Code rein
+            try:
+                df_users = pd.read_csv(DATA_FILE_USERS, sep="\t", encoding="utf-8-sig", dtype=str)
+                df_users.columns = df_users.columns.str.replace("\ufeff", "", regex=False).str.strip().str.lower()
+
+                match = df_users[
+                    (df_users["username"].str.strip().str.lower() == u.strip().lower()) &
+                    (df_users["password"].str.strip() == p.strip())
+                ]
+
+                if not match.empty:
+                    st.session_state.logged_in = True
+                    st.session_state.username = match["username"].values[0].strip()
+                    st.session_state.role = match["role"].values[0].strip().lower()
+                    st.success(f"Eingeloggt als {st.session_state.username} ({st.session_state.role})")
+                    st.rerun()
+                else:
+                    st.error("Login fehlgeschlagen.")
+            except Exception as e:
+                st.error(f"Fehler beim Laden der Benutzerliste: {e}")
     else:
         st.success(f"Eingeloggt als: {st.session_state.username} ({st.session_state.role})")
         if st.button("Logout"):
