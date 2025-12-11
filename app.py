@@ -183,23 +183,43 @@ with tabs[0]:
         pw = st.text_input("Passwort", type="password", key="login_pass")
 
         if st.button("Login", key="login_button"):
-            if user == "admin" and pw == "geheim":
-                st.session_state.logged_in = True
-                st.session_state.username = user
-                st.session_state.role = "admin"
-                st.success("✅ Admin eingeloggt")
-            elif user == "mitarbeiter" and pw == "1234":
-                st.session_state.logged_in = True
-                st.session_state.username = user
-                st.session_state.role = "user"
-                st.success("✅ Mitarbeiter eingeloggt")
-            else:
-                st.error("Login fehlgeschlagen")
+            try:
+                df_users = pd.read_csv("users.csv", sep=";", encoding="utf-8-sig", dtype=str)
+                df_users = df_users.dropna(subset=["username", "password", "role"])
+
+                match = df_users[
+                    (df_users["username"].str.strip().str.lower() == user.strip().lower()) &
+                    (df_users["password"].str.strip() == pw.strip())
+                ]
+
+                if not match.empty:
+                    st.session_state.logged_in = True
+                    st.session_state.username = match["username"].values[0]
+                    st.session_state.role = match["role"].values[0]
+                    st.success(f"✅ Eingeloggt als {st.session_state.username} ({st.session_state.role})")
+                else:
+                    st.error("Login fehlgeschlagen: Benutzername oder Passwort falsch.")
+            except Exception as e:
+                st.error(f"Fehler beim Laden der Benutzerliste: {e}")
     else:
         st.success(f"Eingeloggt als: {st.session_state.username} ({st.session_state.role})")
+
         if st.session_state.role == "admin":
             st.markdown("### 🛠️ Admin-Bereich")
-            st.markdown
+            st.markdown("- Zugriff auf alle Verfahrensanweisungen")
+            st.markdown("- Lesebestätigungen einsehen und löschen")
+            st.markdown("- Rollen und Berechtigungen verwalten")
+            st.markdown("- Mitarbeiterdaten pflegen")
+        else:
+            st.info("🔐 Eingeschränkter Zugriff: Nur Lesebestätigung und VA-Ansicht möglich.")
+
+        if st.button("Logout", key="logout_button"):
+            st.session_state.logged_in = False
+            st.session_state.username = None
+            st.session_state.role = None
+            st.session_state.selected_va = None
+            st.rerun()
+
 
 # --------------------------
 # Tab 1: Verfahrensanweisungen
