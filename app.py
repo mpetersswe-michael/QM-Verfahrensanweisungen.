@@ -251,26 +251,22 @@ with tabs[2]:
     if not st.session_state.get("logged_in", False):
         st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
     else:
+        # Eingabefeld für Name immer sichtbar
+        name_input = st.text_input("Name (Nachname, Vorname)", key="tab2_name_input")
+        if st.button("Bestätigen", key="tab2_confirm_button"):
+            if st.session_state.get("selected_va"):
+                # Speichern in CSV
+                ...
+            else:
+                st.error("Bitte zuerst eine VA in der Sidebar auswählen.")
+
+        # Tabelle mit Lesebestätigungen
         if os.path.exists(DATA_FILE_KENNTNIS):
             df_all = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
             st.dataframe(df_all)
-
-            # Admin-Löschfunktion
-            if st.session_state.role == "admin":
-                st.markdown("### 🗑️ Einträge verwalten")
-                index_to_delete = st.number_input(
-                    "Zeilenindex zum Löschen auswählen",
-                    min_value=0,
-                    max_value=len(df_all)-1,
-                    step=1,
-                    key="delete_index_tab"
-                )
-                if st.button("Eintrag löschen", key="delete_button_tab"):
-                    df_all = df_all.drop(index_to_delete).reset_index(drop=True)
-                    df_all.to_csv(DATA_FILE_KENNTNIS, sep=";", index=False, encoding="utf-8-sig")
-                    st.success(f"Zeile {index_to_delete} gelöscht.")
         else:
             st.info("Noch keine Lesebestätigungen vorhanden.")
+
 # --------------------------
 # Tab 3: Mitarbeiter
 # --------------------------
