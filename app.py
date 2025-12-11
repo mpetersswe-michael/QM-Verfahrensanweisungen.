@@ -111,29 +111,39 @@ Vorgehensweise: {g('Vorgehensweise')}
 Kommentar: {g('Kommentar')}  
 Mitgeltende Unterlagen: {g('Mitgeltende Unterlagen')}
 """)
+# Eingabe für Lesebestätigung
+st.markdown("### ✅ Lesebestätigung")
+name_input = st.text_input("Name (Nachname, Vorname)", key="sidebar_name_input")
 
-                # Eingabe für Lesebestätigung
-                st.markdown("### ✅ Lesebestätigung")
-                name_input = st.text_input("Name (Nachname, Vorname)", key="sidebar_name_input")
-                if st.button("Bestätigen", key="sidebar_confirm_button"):
-                    if name_input.strip():
-                        entry = pd.DataFrame([{
-                            "Name": name_input.strip(),
-                            "VA_Nr": st.session_state.selected_va,
-                            "VA_Nr_norm": norm_va(st.session_state.selected_va),
-                            "Zeitpunkt": pd.Timestamp.now(tz="Europe/Berlin").strftime("%Y-%m-%d %H:%M:%S")
-                        }])
-                        entry.to_csv(
-                            DATA_FILE_KENNTNIS,
-                            sep=",",                # <-- Komma statt Semikolon
-                            index=False,
-                            mode="a",
-                            header=not DATA_FILE_KENNTNIS.exists(),
-                            encoding="utf-8"
-                        )
-                        st.success("Bestätigung gespeichert.")
-                    else:
-                        st.error("Bitte Name eingeben.")
+if st.button("Bestätigen", key="sidebar_confirm_button"):
+    if name_input.strip():
+        # Namensformat vereinheitlichen: "Müller, Anna" -> "Anna Müller"
+        def normalize_name(name):
+            if "," in name:
+                nach, vor = [p.strip() for p in name.split(",", 1)]
+                return f"{vor} {nach}"
+            return name.strip()
+
+        entry = pd.DataFrame([{
+            "Name": normalize_name(name_input.strip()),
+            "VA_Nr": st.session_state.selected_va,
+            "VA_Nr_norm": norm_va(st.session_state.selected_va),
+            "Zeitpunkt": pd.Timestamp.now(tz="Europe/Berlin").strftime("%Y-%m-%d %H:%M:%S")
+        }])
+
+        file_exists = DATA_FILE_KENNTNIS.exists()
+        entry.to_csv(
+            DATA_FILE_KENNTNIS,
+            sep=",",                # durchgängig Komma
+            index=False,
+            mode="a" if file_exists else "w",
+            header=not file_exists,
+            encoding="utf-8"
+        )
+        st.success("Bestätigung gespeichert.")
+        st.write("Zuletzt gespeichert:", entry.to_dict(orient="records")[0])  # Debug-Ausgabe
+    else:
+        st.error("Bitte Name eingeben.")
 
                 # Fortschrittsanzeige
                 if DATA_FILE_KENNTNIS.exists() and DATA_FILE_MA.exists():
