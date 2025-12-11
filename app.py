@@ -48,7 +48,6 @@ with st.sidebar:
                 df_va = pd.read_csv(DATA_FILE_VA, sep=";", encoding="utf-8-sig", dtype=str)
                 df_va.columns = df_va.columns.str.strip()
 
-                # Spalte VA_Nr robust finden
                 va_col = None
                 for c in ["VA_Nr", "va_nr", "Va_Nr", "VA-nr"]:
                     if c in df_va.columns:
@@ -67,7 +66,7 @@ with st.sidebar:
         selected_va = st.selectbox("VA auswählen", options=va_liste, index=None, key="sidebar_va_select")
         st.session_state.selected_va = selected_va if selected_va else st.session_state.get("selected_va")
 
-        # Vorschau
+        # Vorschau + Lesebestätigung + Fortschritt
         if st.session_state.get("selected_va") and df_va is not None:
             row = df_va[df_va["VA_clean"] == st.session_state.selected_va]
             if not row.empty:
@@ -81,6 +80,29 @@ with st.sidebar:
                     "Unterkapitel": g("Unterkapitel"),
                     "Revisionsstand": g("Revisionsstand"),
                 })
+
+                # Eingabe für Lesebestätigung
+                st.markdown("### ✅ Lesebestätigung")
+                name_input = st.text_input("Name (Nachname, Vorname)", key="sidebar_name_input")
+                if st.button("Bestätigen", key="sidebar_confirm_button"):
+                    if name_input.strip():
+                        entry = pd.DataFrame([{
+                            "Name": name_input.strip(),
+                            "VA_Nr": st.session_state.selected_va,
+                            "VA_Nr_norm": norm_va(st.session_state.selected_va),
+                            "Zeitpunkt": pd.Timestamp.now(tz="Europe/Berlin").strftime("%Y-%m-%d %H:%M:%S")
+                        }])
+                        entry.to_csv(
+                            DATA_FILE_KENNTNIS,
+                            sep=";",
+                            index=False,
+                            mode="a",
+                            header=not DATA_FILE_KENNTNIS.exists(),
+                            encoding="utf-8-sig"
+                        )
+                        st.success("Bestätigung gespeichert.")
+                    else:
+                        st.error("Bitte Name eingeben.")
 
                 # Fortschrittsanzeige
                 if DATA_FILE_KENNTNIS.exists() and DATA_FILE_MA.exists():
@@ -208,8 +230,9 @@ with tabs[2]:
     if not st.session_state.get("logged_in", False):
         st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
     else:
-        name_input = st.text_input("Name (Nachname, Vorname)")
-        if st.button("Bestätigen"):
+        # Eingabe für Lesebestätigung
+        name_input = st.text_input("Name (Nachname, Vorname)", key="tab2_name_input")
+        if st.button("Bestätigen", key="tab2_confirm_button"):
             if st.session_state.get("selected_va"):
                 entry = pd.DataFrame([{
                     "Name": name_input.strip(),
@@ -217,27 +240,24 @@ with tabs[2]:
                     "VA_Nr_norm": str(st.session_state.selected_va).strip().upper(),
                     "Zeitpunkt": pd.Timestamp.now(tz="Europe/Berlin").strftime("%Y-%m-%d %H:%M:%S")
                 }])
-                entry.to_csv(DATA_FILE_KENNTNIS, sep=";", index=False,
-                             mode="a", header=not DATA_FILE_KENNTNIS.exists(),
-                             encoding="utf-8-sig")
+                entry.to_csv(
+                    DATA_FILE_KENNTNIS,
+                    sep=";",
+                    index=False,
+                    mode="a",
+                    header=not DATA_FILE_KENNTNIS.exists(),
+                    encoding="utf-8-sig"
+                )
                 st.success("Bestätigung gespeichert.")
             else:
                 st.error("Bitte zuerst eine VA in der Sidebar auswählen.")
 
+        # Tabelle mit allen Lesebestätigungen
         if DATA_FILE_KENNTNIS.exists():
             df_k = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
             st.dataframe(df_k)
-
-            # Fortschrittsbalken
-            if DATA_FILE_MA.exists():
-                df_ma = pd.read_csv(DATA_FILE_MA, sep=";", encoding="utf-8-sig", dtype=str)
-                df_ma["Name_full"] = df_ma["Vorname"].str.strip() + " " + df_ma["Name"].str.strip()
-                zielgruppe = df_ma[df_ma["VA_Nr"].str.strip().str.upper() == st.session_state.selected_va]["Name_full"].unique()
-                gelesen = df_k[df_k["VA_Nr_norm"] == st.session_state.selected_va]["Name"].unique()
-                gelesen_count = len(set(gelesen) & set(zielgruppe))
-                fortschritt = gelesen_count / len(zielgruppe) if len(zielgruppe) > 0 else 0
-                st.progress(fortschritt)
-                st.caption(f"{gelesen_count} von {len(zielgruppe)} Mitarbeiter haben bestätigt.")
+        else:
+            st.info("Noch keine Lesebestätigungen vorhanden.")
 
 
 # --------------------------
