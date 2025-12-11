@@ -10,6 +10,10 @@ import html
 import datetime as dt
 from zoneinfo import ZoneInfo
 
+st.write("logged_in:", st.session_state.get("logged_in"))
+st.write("username:", st.session_state.get("username"))
+st.write("role:", st.session_state.get("role"))
+
 # zentrale Dateien
 DATA_FILE_VA = "qm_verfahrensanweisungen.csv"
 DATA_FILE_MA = "mitarbeiter.csv"
