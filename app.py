@@ -145,31 +145,31 @@ if st.button("Bestätigen", key="sidebar_confirm_button"):
     else:
         st.error("Bitte Name eingeben.")
 
-                # Fortschrittsanzeige
-                if DATA_FILE_KENNTNIS.exists() and DATA_FILE_MA.exists():
-                    try:
-                        df_kenntnis = pd.read_csv(DATA_FILE_KENNTNIS, sep=",", encoding="utf-8", dtype=str)
-                        df_mitarbeiter = pd.read_csv(DATA_FILE_MA, sep=",", encoding="utf-8", dtype=str)
+        # Fortschrittsanzeige
+ if DATA_FILE_KENNTNIS.exists() and DATA_FILE_MA.exists():
+        try:
+             df_kenntnis = pd.read_csv(DATA_FILE_KENNTNIS, sep=",", encoding="utf-8", dtype=str)
+             df_mitarbeiter = pd.read_csv(DATA_FILE_MA, sep=",", encoding="utf-8", dtype=str)
 
-                        df_mitarbeiter["Name_full"] = df_mitarbeiter["Vorname"].str.strip() + " " + df_mitarbeiter["Name"].str.strip()
-                        df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
+             df_mitarbeiter["Name_full"] = df_mitarbeiter["Vorname"].str.strip() + " " + df_mitarbeiter["Name"].str.strip()
+             df_mitarbeiter["VA_norm"] = df_mitarbeiter["VA_Nr"].apply(norm_va)
 
-                        zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == norm_va(st.session_state.selected_va)]["Name_full"].dropna().unique()
-                        gesamt = len(zielgruppe)
+             zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == norm_va(st.session_state.selected_va)]["Name_full"].dropna().unique()
+             gesamt = len(zielgruppe)
 
-                        df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
-                        gelesen = df_kenntnis[df_kenntnis["VA_Nr_norm"] == norm_va(st.session_state.selected_va)]["Name"].dropna().unique()
+             df_kenntnis["VA_Nr_norm"] = df_kenntnis["VA_Nr"].apply(norm_va)
+             gelesen = df_kenntnis[df_kenntnis["VA_Nr_norm"] == norm_va(st.session_state.selected_va)]["Name"].dropna().unique()
 
-                        gelesen_count = len(set(gelesen) & set(zielgruppe))
-                        fortschritt = gelesen_count / gesamt if gesamt > 0 else 0.0
+             gelesen_count = len(set(gelesen) & set(zielgruppe))
+             fortschritt = gelesen_count / gesamt if gesamt > 0 else 0.0
 
-                        st.markdown("### 📊 Lesefortschritt")
-                        st.progress(fortschritt)
-                        st.caption(f"{gelesen_count} von {gesamt} Mitarbeiter haben bestätigt.")
-                    except Exception as e:
-                        st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
-    else:
-        st.info("Bitte zuerst im Tab 'System & Login' anmelden.")
+             st.markdown("### 📊 Lesefortschritt")
+             st.progress(fortschritt)
+             st.caption(f"{gelesen_count} von {gesamt} Mitarbeiter haben bestätigt.")
+         except Exception as e:
+            st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
+     else:
+           st.info("Bitte zuerst im Tab 'System & Login' anmelden.")
 
 # --------------------------
 # Tab 0: System & Login
