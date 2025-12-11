@@ -10,6 +10,10 @@ import html
 import datetime as dt
 from zoneinfo import ZoneInfo
 
+import os
+st.write("Arbeitsverzeichnis:", os.getcwd())
+st.write("Dateien im Verzeichnis:", os.listdir())
+
 st.write("logged_in:", st.session_state.get("logged_in"))
 st.write("username:", st.session_state.get("username"))
 st.write("role:", st.session_state.get("role"))
