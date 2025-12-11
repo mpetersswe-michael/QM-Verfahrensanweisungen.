@@ -52,7 +52,7 @@ def normalize_name(name: str) -> str:
     return name
 
 # --------------------------
-# Sidebar (VA-Auswahl + Lesebestätigung für User + Dokumentanzeige)
+# Sidebar (VA-Auswahl + Lesebestätigung + Dokumentanzeige)
 # --------------------------
 with st.sidebar:
     st.markdown("## 📚 Übersicht")
@@ -302,3 +302,4 @@ with tabs[4]:
                 st.rerun()
             else:
                 st.error("Bitte Benutzername und Passwort eingeben.")
+
