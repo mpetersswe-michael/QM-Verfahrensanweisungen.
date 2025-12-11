@@ -176,12 +176,16 @@ with tabs[0]:
 # -----------------------
 
 
+# --------------------------
+# Tab 1: Verfahrensanweisungen
+# --------------------------
 with tabs[1]:
     st.markdown("## 📘 Verfahrensanweisungen")
 
     if not st.session_state.get("logged_in", False):
         st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
     else:
+        # Eingabefelder für neue VA
         st.markdown("### Neue VA anlegen")
         va_nr = st.text_input("VA-Nr")
         titel = st.text_input("Titel")
@@ -207,19 +211,44 @@ with tabs[1]:
                 "Kommentar": kommentar,
                 "Mitgeltende Unterlagen": unterlagen
             }])
+
             file_exists = DATA_FILE_VA.exists()
-            new_entry.to_csv(DATA_FILE_VA, sep=";", index=False,
-                             mode="a" if file_exists else "w",
-                             header=not file_exists, encoding="utf-8-sig")
+            new_entry.to_csv(
+                DATA_FILE_VA,
+                sep=",",                # <-- Komma statt Semikolon
+                index=False,
+                mode="a" if file_exists else "w",
+                header=not file_exists,
+                encoding="utf-8"
+            )
+
+            # PDF erzeugen (einfacher Textinhalt)
             pdf_path = pathlib.Path("va_pdf") / f"{va_nr}.pdf"
             pdf_path.parent.mkdir(exist_ok=True)
             with open(pdf_path, "w", encoding="utf-8") as f:
                 f.write(new_entry.to_string())
+
             st.success(f"VA {va_nr} gespeichert und PDF erzeugt.")
 
+            # Gelbe Info-Box mit VA-Daten
+            st.info(f"""
+**VA {va_nr} – {titel}**
+
+Kapitel: {kapitel} | Unterkapitel: {unterkapitel}  
+Revisionsstand: {revisionsstand}  
+Geltungsbereich: {geltungsbereich}  
+Ziel: {ziel}  
+Vorgehensweise: {vorgehensweise}  
+Kommentar: {kommentar}  
+Mitgeltende Unterlagen: {unterlagen}
+""")
+
+        # Bestehende VAs anzeigen
         if DATA_FILE_VA.exists():
-            df_va = pd.read_csv(DATA_FILE_VA, sep=";", encoding="utf-8-sig", dtype=str)
+            df_va = pd.read_csv(DATA_FILE_VA, sep=",", encoding="utf-8", dtype=str)
             st.dataframe(df_va)
+        else:
+            st.info("Noch keine Verfahrensanweisungen vorhanden.")
 
 # --------------------------
 # Tab 2: Lesebestätigung
