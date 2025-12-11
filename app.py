@@ -151,20 +151,22 @@ with tabs[0]:
             st.session_state.clear()
             st.rerun()
 
-    # --------------------------
-    # Button: CSV-Format anpassen
-    # --------------------------
-    st.markdown("### 🛠 CSV-Format anpassen")
-    if st.button("Alle CSVs auf Komma & UTF-8-SIG konvertieren"):
-        try:
-            for path in [DATA_FILE_VA, DATA_FILE_MA, DATA_FILE_KENNTNIS, DATA_FILE_USERS]:
-                if path.exists():
-                    df = pd.read_csv(path, sep=None, engine="python", encoding="utf-8-sig", dtype=str)
-                    df.columns = df.columns.str.replace("\ufeff", "", regex=False).str.strip().str.lower()
-                    df.to_csv(path, sep=",", index=False, encoding="utf-8-sig")
-            st.success("Alle CSVs erfolgreich angepasst. Bitte App neu laden.")
-        except Exception as e:
-            st.error(f"Fehler bei der Konvertierung: {e}")
+ # --------------------------
+# Button: CSV-Format anpassen
+# --------------------------
+st.markdown("### 🛠 CSV-Format anpassen")
+if st.button("Alle CSVs auf Komma & UTF-8-SIG konvertieren"):
+    try:
+        for path in [DATA_FILE_VA, DATA_FILE_MA, DATA_FILE_KENNTNIS, DATA_FILE_USERS]:
+            if path.exists():
+                # robust einlesen
+                df = pd.read_csv(path, sep=None, engine="python", encoding="utf-8-sig", dtype=str)
+                df.columns = df.columns.str.replace("\ufeff", "", regex=False).str.strip().str.lower()
+                # robust zurückschreiben MIT Header
+                df.to_csv(path, sep=",", index=False, encoding="utf-8-sig")
+        st.success("Alle CSVs erfolgreich angepasst. Bitte App neu laden.")
+    except Exception as e:
+        st.error(f"Fehler bei der Konvertierung: {e}")
 
 # --------------------------
 # Tab 1: Verfahrensanweisungen (Admin-only)
