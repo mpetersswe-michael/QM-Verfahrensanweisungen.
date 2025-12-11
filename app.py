@@ -246,30 +246,50 @@ with tabs[1]:
                     st.success("Neue Verfahrensanweisungen gespeichert.")
         else:
             st.info("Noch keine Verfahrensanweisungen vorhanden.")
-# --------------------------
-# Tab 2: Lesebestätigung
-# --------------------------
 with tabs[2]:
     st.markdown("## ✅ Lesebestätigung")
 
     if not st.session_state.get("logged_in", False):
         st.warning("Bitte zuerst im Tab 'System & Login' anmelden.")
     else:
-        # Eingabefeld für Name immer sichtbar
+        # Eingabefeld immer sichtbar
         name_input = st.text_input("Name (Nachname, Vorname)", key="tab2_name_input")
         if st.button("Bestätigen", key="tab2_confirm_button"):
             if st.session_state.get("selected_va"):
-                # Speichern in CSV
-                ...
+                zeitpunkt = dt.datetime.now(ZoneInfo("Europe/Berlin")).strftime("%Y-%m-%d %H:%M:%S")
+                eintrag = {
+                    "Name": name_input.strip(),
+                    "VA_Nr": st.session_state.selected_va,
+                    "VA_Nr_norm": norm_va(st.session_state.selected_va),
+                    "Zeitpunkt": zeitpunkt
+                }
+                df_new = pd.DataFrame([eintrag])
+                df_new.to_csv(DATA_FILE_KENNTNIS, sep=";", index=False, mode="a",
+                              header=not os.path.exists(DATA_FILE_KENNTNIS),
+                              encoding="utf-8-sig")
+                st.success("Bestätigung gespeichert.")
             else:
                 st.error("Bitte zuerst eine VA in der Sidebar auswählen.")
 
-        # Tabelle mit Lesebestätigungen
+        # Tabelle immer sichtbar (auch wenn leer)
         if os.path.exists(DATA_FILE_KENNTNIS):
             df_all = pd.read_csv(DATA_FILE_KENNTNIS, sep=";", encoding="utf-8-sig", dtype=str)
             st.dataframe(df_all)
         else:
             st.info("Noch keine Lesebestätigungen vorhanden.")
+
+        # Admin-Löschfunktion
+        if st.session_state.role == "admin" and os.path.exists(DATA_FILE_KENNTNIS):
+            st.markdown("### 🗑️ Einträge verwalten")
+            index_to_delete = st.number_input("Zeilenindex zum Löschen auswählen",
+                                              min_value=0,
+                                              max_value=len(df_all)-1,
+                                              step=1,
+                                              key="delete_index_tab")
+            if st.button("Eintrag löschen", key="delete_button_tab"):
+                df_all = df_all.drop(index_to_delete).reset_index(drop=True)
+                df_all.to_csv(DATA_FILE_KENNTNIS, sep=";", index=False, encoding="utf-8-sig")
+                st.success(f"Zeile {index_to_delete} gelöscht.")
 
 # --------------------------
 # Tab 3: Mitarbeiter
