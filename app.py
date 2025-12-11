@@ -6,6 +6,21 @@ import pandas as pd
 import os
 import pathlib
 
+
+# --------------------------
+# Session-State Initialisierung
+# --------------------------
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if "username" not in st.session_state:
+    st.session_state.username = ""
+if "role" not in st.session_state:
+    st.session_state.role = ""
+if "selected_va" not in st.session_state:
+    st.session_state.selected_va = None
+
+
+
 BASE_DIR = pathlib.Path(__file__).parent.resolve()
 
 DATA_FILE_VA = BASE_DIR / "qm_verfahrensanweisungen.csv"
@@ -148,88 +163,90 @@ if st.button("Bestätigen", key="sidebar_confirm_button"):
 # Fortschrittsanzeige (robust für verschiedene Mitarbeiter-/Kenntnis-Formate)
 if DATA_FILE_KENNTNIS.exists() and DATA_FILE_MA.exists():
     try:
-        df_kenntnis = pd.read_csv(DATA_FILE_KENNTNIS, sep=",", encoding="utf-8", dtype=str)
-        df_mitarbeiter = pd.read_csv(DATA_FILE_MA, sep=",", encoding="utf-8", dtype=str)
-
-        # Hilfen
-        def normalize_name(name):
-            if not isinstance(name, str):
-                return ""
-            name = name.strip()
-            if "," in name:
-                nach, vor = [p.strip() for p in name.split(",", 1)]
-                return f"{vor} {nach}"
-            return name
-
-        def find_col(df, candidates):
-            for c in candidates:
-                if c in df.columns:
-                    return c
-            return None
-
-        # Spalten robust finden
-        col_va_m = find_col(df_mitarbeiter, ["VA_Nr", "va_nr", "Va_Nr", "VA-nr", "VA"])
-        col_vor = find_col(df_mitarbeiter, ["Vorname", "vorname", "FirstName", "first_name"])
-        col_nach = find_col(df_mitarbeiter, ["Nachname", "nachname", "Name", "LastName", "last_name"])
-        col_name_single = find_col(df_mitarbeiter, ["Name", "FullName", "fullname"])
-
-        # Falls gar keine sinnvollen Header vorhanden (z.B. nur drei Spalten ohne Namen)
-        if col_va_m is None and df_mitarbeiter.shape[1] >= 3 and set(df_mitarbeiter.columns) == set(range(df_mitarbeiter.shape[1])):
-            # interpretieren als Vorname, Nachname, VA_Nr
-            df_mitarbeiter = df_mitarbeiter.rename(columns={0: "Vorname", 1: "Nachname", 2: "VA_Nr"})
-            col_vor, col_nach, col_va_m = "Vorname", "Nachname", "VA_Nr"
-
-        # Name_full konstruieren
-        if col_vor and col_nach:
-            df_mitarbeiter["Name_full"] = df_mitarbeiter[col_vor].str.strip() + " " + df_mitarbeiter[col_nach].str.strip()
-        elif col_name_single:
-            # Wenn ein einzelner Name existiert, erst normalisieren
-            df_mitarbeiter["Name_full"] = df_mitarbeiter[col_name_single].apply(normalize_name)
+        # Prüfen, ob eine VA gewählt ist
+        selected_va = st.session_state.get("selected_va")
+        if not selected_va:
+            st.info("Bitte zuerst eine VA in der Sidebar auswählen.")
         else:
-            # Fallback: baue aus allen Spalten, die es gibt
-            df_mitarbeiter["Name_full"] = df_mitarbeiter.apply(
-                lambda r: normalize_name((" ".join(str(x).strip() for x in r.values[:2]))), axis=1
-            )
+            selected_va_norm = norm_va(selected_va)
 
-        # VA-Spalte sicherstellen
-        if col_va_m is None:
-            # Fallback: versuche letzte Spalte als VA_Nr
-            col_va_m = df_mitarbeiter.columns[-1]
-        df_mitarbeiter["VA_norm"] = df_mitarbeiter[col_va_m].apply(norm_va)
+            df_kenntnis = pd.read_csv(DATA_FILE_KENNTNIS, sep=",", encoding="utf-8", dtype=str)
+            df_mitarbeiter = pd.read_csv(DATA_FILE_MA, sep=",", encoding="utf-8", dtype=str)
 
-        # Zielgruppe für ausgewählte VA
-        selected_va_norm = norm_va(st.session_state.selected_va)
-        zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == selected_va_norm]["Name_full"].dropna().unique()
-        gesamt = len(zielgruppe)
+            # Hilfen
+            def normalize_name(name):
+                if not isinstance(name, str):
+                    return ""
+                name = name.strip()
+                if "," in name:
+                    nach, vor = [p.strip() for p in name.split(",", 1)]
+                    return f"{vor} {nach}"
+                return name
 
-        # Kenntnis: VA_Nr kolonne robust
-        col_va_k = find_col(df_kenntnis, ["VA_Nr", "va_nr", "Va_Nr", "VA-nr", "VA"])
-        col_name_k = find_col(df_kenntnis, ["Name", "FullName", "fullname"])
-        if col_va_k is None:
-            # Fallback: wenn keine VA-Spalte vorhanden, nimm alles (zeigt Gesamtbestätigungen)
-            df_kenntnis["VA_Nr_norm"] = selected_va_norm
-        else:
-            df_kenntnis["VA_Nr_norm"] = df_kenntnis[col_va_k].apply(norm_va)
+            def find_col(df, candidates):
+                for c in candidates:
+                    if c in df.columns:
+                        return c
+                return None
 
-        # Namen aus Kenntnis normalisieren
-        if col_name_k is None:
-            gelesen_raw = []
-        else:
-            gelesen_raw = df_kenntnis[df_kenntnis["VA_Nr_norm"] == selected_va_norm][col_name_k].dropna().unique()
+            # Spalten robust finden
+            col_va_m = find_col(df_mitarbeiter, ["VA_Nr", "va_nr", "Va_Nr", "VA-nr", "VA"])
+            col_vor = find_col(df_mitarbeiter, ["Vorname", "vorname", "FirstName", "first_name"])
+            col_nach = find_col(df_mitarbeiter, ["Nachname", "nachname", "Name", "LastName", "last_name"])
+            col_name_single = find_col(df_mitarbeiter, ["Name", "FullName", "fullname"])
 
-        gelesen_norm = [normalize_name(n) for n in gelesen_raw]
+            # Falls gar keine sinnvollen Header vorhanden (z.B. nur drei Spalten ohne Namen)
+            if col_va_m is None and df_mitarbeiter.shape[1] >= 3 and set(df_mitarbeiter.columns) == set(range(df_mitarbeiter.shape[1])):
+                df_mitarbeiter = df_mitarbeiter.rename(columns={0: "Vorname", 1: "Nachname", 2: "VA_Nr"})
+                col_vor, col_nach, col_va_m = "Vorname", "Nachname", "VA_Nr"
 
-        # Schnittmenge
-        gelesen_count = len(set(gelesen_norm) & set(zielgruppe))
-        fortschritt = gelesen_count / gesamt if gesamt > 0 else 0.0
+            # Name_full konstruieren
+            if col_vor and col_nach:
+                df_mitarbeiter["Name_full"] = df_mitarbeiter[col_vor].str.strip() + " " + df_mitarbeiter[col_nach].str.strip()
+            elif col_name_single:
+                df_mitarbeiter["Name_full"] = df_mitarbeiter[col_name_single].apply(normalize_name)
+            else:
+                df_mitarbeiter["Name_full"] = df_mitarbeiter.apply(
+                    lambda r: normalize_name((" ".join(str(x).strip() for x in r.values[:2]))), axis=1
+                )
 
-        st.markdown("### 📊 Lesefortschritt")
-        st.progress(fortschritt)
-        st.caption(f"{gelesen_count} von {gesamt} Mitarbeiter haben bestätigt.")
+            # VA-Spalte sicherstellen
+            if col_va_m is None:
+                col_va_m = df_mitarbeiter.columns[-1]
+            df_mitarbeiter["VA_norm"] = df_mitarbeiter[col_va_m].apply(norm_va)
+
+            # Zielgruppe für ausgewählte VA
+            zielgruppe = df_mitarbeiter[df_mitarbeiter["VA_norm"] == selected_va_norm]["Name_full"].dropna().unique()
+            gesamt = len(zielgruppe)
+
+            # Kenntnis: VA_Nr kolonne robust
+            col_va_k = find_col(df_kenntnis, ["VA_Nr", "va_nr", "Va_Nr", "VA-nr", "VA"])
+            col_name_k = find_col(df_kenntnis, ["Name", "FullName", "fullname"])
+            if col_va_k is None:
+                df_kenntnis["VA_Nr_norm"] = selected_va_norm
+            else:
+                df_kenntnis["VA_Nr_norm"] = df_kenntnis[col_va_k].apply(norm_va)
+
+            # Namen aus Kenntnis normalisieren
+            if col_name_k is None:
+                gelesen_raw = []
+            else:
+                gelesen_raw = df_kenntnis[df_kenntnis["VA_Nr_norm"] == selected_va_norm][col_name_k].dropna().unique()
+
+            gelesen_norm = [normalize_name(n) for n in gelesen_raw]
+
+            # Schnittmenge
+            gelesen_count = len(set(gelesen_norm) & set(zielgruppe))
+            fortschritt = gelesen_count / gesamt if gesamt > 0 else 0.0
+
+            st.markdown("### 📊 Lesefortschritt")
+            st.progress(fortschritt)
+            st.caption(f"{gelesen_count} von {gesamt} Mitarbeiter haben bestätigt.")
     except Exception as e:
         st.warning(f"Fortschritt konnte nicht berechnet werden: {e}")
 else:
     st.info("Für die Fortschrittsanzeige werden Mitarbeiter- und Lesebestätigungsdateien benötigt.")
+
 
 # --------------------------
 # Tab 0: System & Login
