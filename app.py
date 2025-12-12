@@ -1,34 +1,37 @@
-# --------------------------
-# Verbindung zu Google Sheets (robust)
-# --------------------------
-import streamlit as st
 import gspread
-import json
 from oauth2client.service_account import ServiceAccountCredentials
+import json
 
-# 1) Scopes EXPLIZIT setzen (Sheets + Drive)
+# Falls du lokal testest, ersetze das durch dein JSON
+creds_dict = {
+    "type": "service_account",
+    "project_id": "...",
+    "private_key_id": "...",
+    "private_key": "...",
+    "client_email": "streamlit-qm-app@x-casing-480915-f5.iam.gserviceaccount.com",
+    "client_id": "...",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/streamlit-qm-app@x-casing-480915-f5.iam.gserviceaccount.com"
+}
+
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
 ]
 
-# 2) Secrets laden: je nach Format (dict vs. JSON-String)
-raw = st.secrets.get("gspread_credentials")
-if isinstance(raw, str):
-    creds_dict = json.loads(raw)
-else:
-    creds_dict = dict(raw)
-
-# Optional: Sichtprüfung, welcher Account tatsächlich verwendet wird
-service_email = creds_dict.get("client_email", "<unbekannt>")
-st.write(f"Service-Account: {service_email}")
-
-# 3) Credentials mit Scopes
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scopes=SCOPES)
 client = gspread.authorize(creds)
 
-# 4) Zugriff per ID (robust)
-sheet_va = client.open_by_key("1-OSvQP8Sf93ra2kWBXC0P8g4i1JDesQB4qGala6ifmE").sheet1
+# Test: Zugriff auf die Tabelle per ID
+spreadsheet_id = "1-OSvQP8Sf93ra2kWBXC0P8g4i1JDesQB4qGala6ifmE"
+try:
+    sheet = client.open_by_key(spreadsheet_id)
+    print("✅ Zugriff erfolgreich:", sheet.title)
+except Exception as e:
+    print("❌ Zugriff fehlgeschlagen:", e)
+
 
 
 
