@@ -1,25 +1,35 @@
-# ==========================================
-# QM-Verfahrensanweisungen – Komplettversion (Google Sheets)
-# ==========================================
+# --------------------------
+# Verbindung zu Google Sheets (robust)
+# --------------------------
 import streamlit as st
-import pandas as pd
 import gspread
 import json
 from oauth2client.service_account import ServiceAccountCredentials
 
-# --------------------------
-# Verbindung zu Google Sheets
-# --------------------------
+# 1) Scopes EXPLIZIT setzen (Sheets + Drive)
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
 
-creds_dict = json.loads(st.secrets["gspread_credentials"])
-creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict)
+# 2) Secrets laden: je nach Format (dict vs. JSON-String)
+raw = st.secrets.get("gspread_credentials")
+if isinstance(raw, str):
+    creds_dict = json.loads(raw)
+else:
+    creds_dict = dict(raw)
+
+# Optional: Sichtprüfung, welcher Account tatsächlich verwendet wird
+service_email = creds_dict.get("client_email", "<unbekannt>")
+st.write(f"Service-Account: {service_email}")
+
+# 3) Credentials mit Scopes
+creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scopes=SCOPES)
 client = gspread.authorize(creds)
 
-# Tabellen öffnen (Name muss mit deinem Google Sheet übereinstimmen)
+# 4) Zugriff per ID (robust)
 sheet_va = client.open_by_key("1-OSvQP8Sf93ra2kWBXC0P8g4i1JDesQB4qGala6ifmE").sheet1
-sheet_ma = client.open("mitarbeiter").sheet1
-sheet_users = client.open("users").sheet1
-sheet_kenntnis = client.open("lesebestätigung").sheet1
+
 
 
 # --------------------------
