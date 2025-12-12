@@ -16,7 +16,7 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict)
 client = gspread.authorize(creds)
 
 # Tabellen öffnen (Name muss mit deinem Google Sheet übereinstimmen)
-sheet_va = client.open_by_key("1-OSvQP8Sf93ra2kWBXC0P8g4i1JDesQB4qGala6ifmE")
+sheet_va = client.open_by_key("1-OSvQP8Sf93ra2kWBXC0P8g4i1JDesQB4qGala6ifmE").sheet1
 sheet_ma = client.open("mitarbeiter").sheet1
 sheet_users = client.open("users").sheet1
 sheet_kenntnis = client.open("lesebestätigung").sheet1
